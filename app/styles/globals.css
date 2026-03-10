@@ -1,0 +1,16 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #__next {
+  height: 100%;
+}
+
+:root {
+  --bg: #0b1020;
+}
+
+/* Basic dark mode reset */
+.dark {
+  background-color: #0b1020;
+}

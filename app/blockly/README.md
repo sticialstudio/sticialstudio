@@ -1,0 +1,1 @@
+This folder contains a lightweight integration point for Blockly-based blocks. The actual blocks are loaded dynamically in BlockEditor.tsx from the Blockly CDN, and code generation is exposed via a lightweight Arduino-style code generator when available.

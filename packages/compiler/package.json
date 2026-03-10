@@ -1,0 +1,7 @@
+{
+    "name": "edtech-compiler",
+    "version": "1.0.0",
+    "description": "EdTech compiler stub service",
+    "main": "index.js",
+    "dependencies": {}
+}

@@ -1,0 +1,245 @@
+@import "tailwindcss";
+
+:root {
+  --background: #020617;
+  --foreground: #e2e8f0;
+  --panel-bg: rgba(15, 23, 42, 0.82);
+  --panel-border: rgba(51, 65, 85, 0.75);
+  --muted: #94a3b8;
+  --muted-2: #6b7280;
+  --accent: #22d3ee;
+  --accent-hover: #06b6d4;
+  --canvas-glow-1: rgba(34, 211, 238, 0.14);
+  --canvas-glow-2: rgba(249, 115, 22, 0.12);
+  --scroll-thumb: rgba(100, 116, 139, 0.5);
+  --scroll-thumb-hover: rgba(148, 163, 184, 0.6);
+}
+
+html[data-theme='light'] {
+  --background: #fff9f2;
+  --foreground: #101418;
+  --panel-bg: rgba(255, 255, 255, 0.94);
+  --panel-border: rgba(249, 115, 22, 0.24);
+  --muted: #334155;
+  --muted-2: #6b7280;
+  --accent: #f97316;
+  --accent-hover: #ea580c;
+  --canvas-glow-1: rgba(249, 115, 22, 0.24);
+  --canvas-glow-2: rgba(251, 146, 60, 0.12);
+  --scroll-thumb: rgba(249, 115, 22, 0.32);
+  --scroll-thumb-hover: rgba(249, 115, 22, 0.5);
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-panel: var(--panel-bg);
+  --color-panel-border: var(--panel-border);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --font-sans: var(--font-space-grotesk), 'Segoe UI', sans-serif;
+  --font-mono: var(--font-jetbrains-mono), 'Consolas', monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: radial-gradient(circle at 10% 10%, color-mix(in srgb, var(--accent) 25%, transparent), transparent 32%), var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  transition: background-color 180ms ease, color 180ms ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.app-canvas {
+  background:
+    radial-gradient(circle at 15% 20%, var(--canvas-glow-1), transparent 35%),
+    radial-gradient(circle at 85% 20%, var(--canvas-glow-2), transparent 32%),
+    var(--background);
+  transition: background 220ms ease;
+}
+
+@keyframes uiFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.ui-fade-up {
+  opacity: 0;
+  animation: uiFadeUp 420ms cubic-bezier(0.2, 0.75, 0.2, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .ui-fade-up {
+    opacity: 1;
+    transform: none;
+    animation: none;
+  }
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover);
+}
+
+/* Light mode compatibility layer for remaining slate/cyan utility classes */
+html[data-theme='light'] .bg-slate-950,
+html[data-theme='light'] .bg-slate-950\/85,
+html[data-theme='light'] .bg-slate-950\/80,
+html[data-theme='light'] .bg-slate-950\/75,
+html[data-theme='light'] .bg-slate-950\/70,
+html[data-theme='light'] .bg-slate-950\/60,
+html[data-theme='light'] .bg-slate-950\/50,
+html[data-theme='light'] .bg-slate-900,
+html[data-theme='light'] .bg-slate-900\/85,
+html[data-theme='light'] .bg-slate-900\/80,
+html[data-theme='light'] .bg-slate-900\/70,
+html[data-theme='light'] .bg-slate-900\/60,
+html[data-theme='light'] .bg-slate-900\/50,
+html[data-theme='light'] .bg-slate-800,
+html[data-theme='light'] .bg-slate-800\/50 {
+  background-color: var(--panel-bg) !important;
+}
+
+html[data-theme='light'] .border-slate-700,
+html[data-theme='light'] .border-slate-700\/80,
+html[data-theme='light'] .border-slate-700\/70,
+html[data-theme='light'] .border-slate-700\/60,
+html[data-theme='light'] .border-slate-600,
+html[data-theme='light'] .border-slate-600\/80 {
+  border-color: var(--panel-border) !important;
+}
+
+html[data-theme='light'] .text-slate-100,
+html[data-theme='light'] .text-slate-200 {
+  color: #0f172a !important;
+}
+
+html[data-theme='light'] .text-slate-300 {
+  color: #1f2937 !important;
+}
+
+html[data-theme='light'] .text-slate-400 {
+  color: #4b5563 !important;
+}
+
+html[data-theme='light'] .text-slate-500 {
+  color: #6b7280 !important;
+}
+
+html[data-theme='light'] .text-cyan-200,
+html[data-theme='light'] .text-cyan-300,
+html[data-theme='light'] .text-cyan-400 {
+  color: var(--accent) !important;
+}
+
+html[data-theme='light'] .border-cyan-400\/70,
+html[data-theme='light'] .border-cyan-400\/60,
+html[data-theme='light'] .border-cyan-400\/50 {
+  border-color: color-mix(in srgb, var(--accent) 60%, transparent) !important;
+}
+
+html[data-theme='light'] .bg-cyan-400\/10,
+html[data-theme='light'] .bg-cyan-400\/20 {
+  background-color: color-mix(in srgb, var(--accent) 12%, transparent) !important;
+}
+
+/* Blockly toolbox tuning for narrow category rail */
+.blocklyToolboxDiv {
+  background-color: color-mix(in srgb, var(--background) 95%, transparent) !important;
+  border-right: 1px solid var(--panel-border) !important;
+  width: 88px !important;
+  padding: 0 !important;
+}
+
+.blocklyTreeRoot {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+.blocklyTreeRow {
+  min-height: 68px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin: 0 !important;
+  border-left: 3px solid transparent !important;
+  transition: background-color 140ms ease !important;
+}
+
+.blocklyTreeRow:hover {
+  background-color: color-mix(in srgb, var(--background) 90%, transparent) !important;
+}
+
+.blocklyTreeRow.blocklyTreeSelected {
+  border-left-color: var(--accent) !important;
+  background-color: color-mix(in srgb, var(--accent) 16%, transparent) !important;
+}
+
+.blocklyTreeLabel {
+  margin-top: 4px !important;
+  color: var(--muted) !important;
+  font-size: 10px !important;
+  font-weight: 600 !important;
+  line-height: 1.2 !important;
+  text-align: center !important;
+}
+
+.blocklyTreeRow.blocklyTreeSelected .blocklyTreeLabel {
+  color: var(--foreground) !important;
+}
+
+.blocklyTreeIcon {
+  margin: 0 !important;
+  opacity: 0.86 !important;
+  font-size: 20px !important;
+}
+
+.blocklyTreeRow.blocklyTreeSelected .blocklyTreeIcon {
+  opacity: 1 !important;
+}
+
+.blocklyTreeIconClosed,
+.blocklyTreeIconOpen {
+  display: none !important;
+}
+

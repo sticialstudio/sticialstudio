@@ -1,0 +1,35 @@
+node_modules/
+prisma/dev.db
+.DS_Store
+dist/
+build/
+.next/
+*.log
+*.tsbuildinfo
+*.sqlite
+
+# Environment secrets — never commit these
+.env
+.env.local
+.env.*.local
+.env.production
+.env.development
+
+# Backup & debug artifacts
+*.bak
+testlog*.txt
+output.json
+
+# OS artifacts
+Thumbs.db
+
+# Large binaries & compiled tools
+apps/api/bin/*.exe
+apps/api/bin/*.bin
+
+# Projects folder — large media assets, not version-controlled here
+Projects/
+
+# Compiled output
+packages/database/dist/
+apps/web/.next/

@@ -1,0 +1,108 @@
+"use client";
+
+import React from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+import { Bell, LayoutDashboard, LogOut, Maximize, Cpu } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useBoard } from '@/contexts/BoardContext';
+import { useProject } from '@/contexts/ProjectContext';
+import ThemeToggle from './ThemeToggle';
+
+export default function Navbar() {
+    const router = useRouter();
+    const pathname = usePathname();
+    const isDashboard = pathname === '/dashboard';
+
+    const { user, logout } = useAuth();
+    const { codingMode, currentBoard, setIsFullScreen } = useBoard();
+    const { projectId } = useProject();
+
+    return (
+        <header className="flex h-14 items-center justify-between border-b border-panel-border bg-panel px-4 text-foreground backdrop-blur-xl transition-colors">
+            <div className="flex items-center gap-4">
+                <button
+                    type="button"
+                    onClick={() => router.push('/')}
+                    className="text-lg font-bold tracking-tight text-foreground transition-colors hover:text-accent"
+                >
+                    EdTech Studio
+                </button>
+
+                {!isDashboard ? (
+                    <span className="hidden rounded-full border border-panel-border bg-panel px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-muted lg:inline-flex">
+                        {codingMode === 'block' ? 'Block Coding' : 'Text Coding'}
+                    </span>
+                ) : null}
+
+                {!isDashboard ? (
+                    <span className="hidden items-center gap-1.5 text-xs text-muted xl:inline-flex">
+                        <Cpu size={13} className="text-accent" />
+                        {currentBoard}
+                    </span>
+                ) : null}
+            </div>
+
+            <div className="flex items-center gap-2">
+                {isDashboard && projectId ? (
+                    <button
+                        type="button"
+                        onClick={() => router.push('/projects/ide')}
+                        className="rounded-lg border border-accent/60 bg-accent/10 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-accent transition-colors hover:bg-accent/20"
+                    >
+                        Resume IDE
+                    </button>
+                ) : null}
+
+                <button
+                    type="button"
+                    onClick={() => router.push('/dashboard')}
+                    className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
+                        pathname === '/dashboard'
+                            ? 'border-accent/70 bg-accent/10 text-accent'
+                            : 'border-panel-border bg-panel text-muted hover:border-accent/50 hover:text-foreground'
+                    }`}
+                >
+                    <LayoutDashboard size={13} />
+                    Dashboard
+                </button>
+
+                <ThemeToggle />
+
+                {!isDashboard ? (
+                    <button
+                        type="button"
+                        onClick={() => setIsFullScreen(true)}
+                        className="rounded-lg border border-panel-border bg-panel p-2 text-muted transition-colors hover:border-accent/50 hover:text-accent"
+                        title="Focus Mode"
+                    >
+                        <Maximize size={14} />
+                    </button>
+                ) : null}
+
+                <button
+                    type="button"
+                    className="rounded-lg border border-panel-border bg-panel p-2 text-muted transition-colors hover:border-accent/50 hover:text-accent"
+                    title="Notifications"
+                >
+                    <Bell size={14} />
+                </button>
+
+                <button
+                    type="button"
+                    onClick={logout}
+                    className="rounded-lg border border-panel-border bg-panel p-2 text-muted transition-colors hover:border-rose-400/60 hover:text-rose-500"
+                    title="Sign Out"
+                >
+                    <LogOut size={14} />
+                </button>
+
+                <div
+                    className="ml-1 flex h-8 w-8 items-center justify-center rounded-full border border-panel-border bg-panel text-xs font-semibold text-foreground"
+                    title={user?.email || 'User'}
+                >
+                    {user?.name?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || 'U'}
+                </div>
+            </div>
+        </header>
+    );
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@edtech/database",
+  "version": "1.0.0",
+  "description": "Prisma ORM and Database Client",
+  "main": "./src/index.ts",
+  "scripts": {
+    "db:push": "prisma db push",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.10.0"
+  },
+  "devDependencies": {
+    "prisma": "^5.10.0",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
