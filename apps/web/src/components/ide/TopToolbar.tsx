@@ -1,6 +1,7 @@
 ﻿"use client";
 
 import {
+  AlertCircle,
   CheckCircle2,
   ChevronDown,
   Code2,
@@ -18,10 +19,15 @@ import {
   Save,
   Sparkles,
 } from "lucide-react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/Button";
+import { fadeInUp } from "@/components/ui/motion";
+import WorkspaceStageRail from "./WorkspaceStageRail";
 
 export type StudioView = "code" | "circuit";
 
 interface TopToolbarProps {
+  projectName?: string;
   boardName: string;
   codingMode: string | null;
   environment: string;
@@ -51,13 +57,14 @@ interface TopToolbarProps {
   saveStatusTone?: "neutral" | "success" | "error";
 }
 
-const actionButtonClass =
-  "inline-flex h-9 items-center gap-2 rounded-xl border border-panel-border bg-background/45 px-3 text-xs font-semibold text-foreground transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/60 hover:text-accent focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 disabled:cursor-not-allowed disabled:opacity-50";
+const chipBaseClass =
+  "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]";
 
 const utilityButtonClass =
-  "rounded-lg p-1.5 text-muted transition-colors hover:bg-background hover:text-accent";
+  "inline-flex h-10 w-10 items-center justify-center rounded-[16px] border border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)] transition-all hover:-translate-y-0.5 hover:border-[color:var(--ui-border-strong)] hover:text-[var(--ui-color-primary)]";
 
 export default function TopToolbar({
+  projectName,
   boardName,
   codingMode,
   environment,
@@ -88,161 +95,172 @@ export default function TopToolbar({
 }: TopToolbarProps) {
   const saveStatusClass =
     saveStatusTone === "success"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+      ? "border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]"
       : saveStatusTone === "error"
-        ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
-        : "border-slate-700/70 bg-slate-900/70 text-slate-300";
+        ? "border-rose-300 bg-rose-50 text-rose-600"
+        : "border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]";
 
   const canSwitchStudios = Boolean(showStudioToggle && activeStudioView && onChangeStudioView && environment !== "physical");
 
+  const stageItems = canSwitchStudios
+    ? [
+        {
+          label: "Build",
+          active: activeStudioView === "circuit",
+          icon: <Cpu size={14} />,
+          onClick: () => onChangeStudioView?.("circuit"),
+        },
+        {
+          label: "Code",
+          active: activeStudioView === "code",
+          icon: <Code2 size={14} />,
+          onClick: () => onChangeStudioView?.("code"),
+        },
+        {
+          label: isCompiling ? "Run busy" : "Run ready",
+          subtle: true,
+          icon: <Rocket size={14} />,
+        },
+      ]
+    : [
+        {
+          label: environment === "physical" ? "Physical run" : "Code workspace",
+          active: true,
+          icon: environment === "physical" ? <Rocket size={14} /> : <Code2 size={14} />,
+        },
+      ];
+
   return (
-    <header className="ui-fade-up flex min-h-16 flex-col gap-3 rounded-2xl glass-panel px-3 py-3 xl:flex-row xl:items-center xl:justify-between">
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={onVerify} disabled={isCompiling} className={actionButtonClass}>
-          <CheckCircle2 size={14} />
-          <span>{isCompiling ? "Verifying..." : "Verify"}</span>
-        </button>
-        <button type="button" onClick={onUpload} disabled={isCompiling} className={actionButtonClass}>
-          <Rocket size={14} />
-          <span>Upload</span>
-        </button>
-        <button
-          type="button"
-          onClick={onConnectDevice}
-          className={`${actionButtonClass} ${isConnected ? "border-emerald-500/40 text-emerald-300 shadow-[0_0_12px_rgba(16,185,129,0.1)]" : ""}`}
-        >
-          {isConnected ? (
-            <div className="flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <Link2Off size={14} />
-              <span>Connected</span>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <Link2 size={14} />
-              <span>Connect Device</span>
-            </div>
-          )}
-        </button>
-        <button type="button" onClick={onSelectBoard} className={actionButtonClass}>
-          <ChevronDown size={14} />
-          <span>Change Board</span>
-        </button>
-      </div>
-
-      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2 xl:justify-center">
-        {canSwitchStudios ? (
-          <div className="inline-flex items-center gap-1 rounded-2xl border border-panel-border bg-background/50 p-1.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-            <button
-              type="button"
-              onClick={() => onChangeStudioView?.("code")}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-200 ${
-                activeStudioView === "code"
-                  ? "bg-slate-100 text-slate-900 shadow-[0_10px_30px_-16px_rgba(255,255,255,0.9)]"
-                  : "text-slate-300 hover:bg-background/70 hover:text-foreground"
-              }`}
-            >
-              <Code2 size={14} />
-              <span>Code Studio</span>
-            </button>
-            <span className="px-1 text-xs text-slate-500" aria-hidden="true">
-              /
+    <motion.header
+      className="ui-foundation-panel overflow-hidden px-4 py-4 sm:px-5 sm:py-5"
+      variants={fadeInUp}
+      initial="hidden"
+      animate="visible"
+    >
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_auto_minmax(0,1fr)] xl:items-center">
+        <div className="min-w-0 space-y-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              <Sparkles size={13} className="text-[var(--ui-color-accent)]" />
+              IDE workspace
             </span>
-            <button
-              type="button"
-              onClick={() => onChangeStudioView?.("circuit")}
-              className={`inline-flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-semibold transition-all duration-200 ${
-                activeStudioView === "circuit"
-                  ? "bg-slate-100 text-slate-900 shadow-[0_10px_30px_-16px_rgba(255,255,255,0.9)]"
-                  : "text-slate-300 hover:bg-background/70 hover:text-foreground"
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              {boardName}
+            </span>
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              {codingMode || "text"}
+            </span>
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              {environment}
+            </span>
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <h1 className="truncate text-2xl font-bold tracking-[-0.04em] text-[var(--ui-color-text)] sm:text-[2rem]">
+                {projectName || "Untitled Project"}
+              </h1>
+              {hasUnsavedChanges ? (
+                <span className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ui-color-warning)]">
+                  <span className="h-2 w-2 rounded-full bg-amber-400" />
+                  Unsaved
+                </span>
+              ) : null}
+            </div>
+            <p className="max-w-2xl text-sm leading-6 text-[var(--ui-color-text-muted)]">
+              One calm workspace for building, coding, saving, and running hardware projects on {boardName}.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-col items-start gap-3 xl:items-center">
+          <WorkspaceStageRail items={stageItems} />
+          <div className="flex flex-wrap items-center gap-2">
+            <span
+              className={`${chipBaseClass} ${
+                isConnected
+                  ? "border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]"
+                  : "border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]"
               }`}
             >
-              <Cpu size={14} />
-              <span>Circuit Lab</span>
-            </button>
+              {isConnected ? <Link2Off size={13} /> : <Link2 size={13} />}
+              {isConnected ? "Board connected" : "Board not connected"}
+            </span>
+            {saveStatusText ? <span className={`${chipBaseClass} ${saveStatusClass}`}>{saveStatusText}</span> : null}
           </div>
-        ) : environment === "physical" ? (
-          <div className="inline-flex items-center gap-2 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-2 text-xs font-bold uppercase tracking-wider text-emerald-400">
-            <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.6)]" />
-            Physical Hardware
-          </div>
-        ) : null}
-
-        <div className="inline-flex min-w-0 items-center gap-2 rounded-xl border border-panel-border bg-background/40 px-3 py-2 text-xs text-slate-300">
-          <Sparkles size={13} className="shrink-0 text-cyan-300" />
-          <span className="truncate font-semibold text-slate-100">{boardName}</span>
-        </div>
-        <span className="rounded-full bg-cyan-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-cyan-200">
-          {codingMode || "text"}
-        </span>
-        <span className="rounded-full bg-emerald-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-200">
-          {environment}
-        </span>
-        {saveStatusText ? (
-          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${saveStatusClass}`}>
-            {saveStatusText}
-          </span>
-        ) : null}
-        <span
-          className={`rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-            isConnected ? "bg-emerald-400/10 text-emerald-200" : "bg-slate-700/70 text-slate-400"
-          }`}
-        >
-          {isConnected ? "device connected" : "device not connected"}
-        </span>
-
-        {serialError && (
-          <div className="flex items-center gap-2 rounded-lg bg-rose-500/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-rose-300 ring-1 ring-row-error/20 animate-in fade-in slide-in-from-left-2">
-            <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
-            Serial Error: {serialError}
-          </div>
-        )}
-      </div>
-
-      <div className="flex flex-wrap items-center justify-between gap-2 xl:justify-end">
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={onSaveProject} disabled={isSaving} className={actionButtonClass}>
-            <Save size={14} />
-            <span>{isSaving ? "Saving..." : "Save Project"}</span>
-            {hasUnsavedChanges ? <span className="h-2 w-2 rounded-full bg-amber-400" /> : null}
-          </button>
-          <button type="button" onClick={onOpenProject} className={actionButtonClass}>
-            <FolderOpen size={14} />
-            <span>Open Projects</span>
-          </button>
+          {serialError ? (
+            <div className="inline-flex items-center gap-2 rounded-[18px] border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-600">
+              <AlertCircle size={14} />
+              <span>{serialError}</span>
+            </div>
+          ) : null}
         </div>
 
-        {showPanelControls ? (
-          <div className="inline-flex items-center gap-1 rounded-xl border border-panel-border bg-background/40 p-1">
-            {showLeftToggle ? (
+        <div className="flex flex-col gap-3 xl:items-end">
+          <div className="flex flex-wrap items-center justify-start gap-2 xl:justify-end">
+            <Button variant="secondary" icon={<CheckCircle2 size={16} />} onClick={onVerify} disabled={isCompiling} className="min-h-10 rounded-[16px] px-4 py-2 text-sm">
+              {isCompiling ? "Verifying..." : "Verify"}
+            </Button>
+            <Button icon={<Rocket size={16} />} onClick={onUpload} disabled={isCompiling} className="min-h-10 rounded-[16px] px-4 py-2 text-sm">
+              {isCompiling ? "Working..." : "Upload"}
+            </Button>
+            <Button
+              variant="secondary"
+              icon={isConnected ? <Link2Off size={16} /> : <Link2 size={16} />}
+              onClick={onConnectDevice}
+              className="min-h-10 rounded-[16px] px-4 py-2 text-sm"
+            >
+              {isConnected ? "Disconnect" : "Connect Board"}
+            </Button>
+            <Button variant="secondary" icon={<ChevronDown size={16} />} onClick={onSelectBoard} className="min-h-10 rounded-[16px] px-4 py-2 text-sm">
+              Change Board
+            </Button>
+            <Button
+              variant="secondary"
+              icon={<Save size={16} />}
+              onClick={onSaveProject}
+              disabled={isSaving}
+              className="min-h-10 rounded-[16px] px-4 py-2 text-sm"
+            >
+              {isSaving ? "Saving..." : "Save Project"}
+            </Button>
+            <Button variant="secondary" icon={<FolderOpen size={16} />} onClick={onOpenProject} className="min-h-10 rounded-[16px] px-4 py-2 text-sm">
+              Open Projects
+            </Button>
+          </div>
+
+          {showPanelControls ? (
+            <div className="flex flex-wrap items-center gap-2 rounded-[20px] border border-[color:var(--ui-border-soft)] bg-white/70 p-1.5 shadow-[0_18px_40px_-30px_rgba(26,41,72,0.18)]">
+              {showLeftToggle ? (
+                <button
+                  type="button"
+                  onClick={onToggleLeft}
+                  className={utilityButtonClass}
+                  title={leftCollapsed ? "Show left panel" : "Hide left panel"}
+                >
+                  {leftCollapsed ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
+                </button>
+              ) : null}
               <button
                 type="button"
-                onClick={onToggleLeft}
+                onClick={onToggleRight}
                 className={utilityButtonClass}
-                title={leftCollapsed ? "Show left panel" : "Hide left panel"}
+                title={rightCollapsed ? "Show right panel" : "Hide right panel"}
               >
-                {leftCollapsed ? <PanelLeftOpen size={14} /> : <PanelLeftClose size={14} />}
+                {rightCollapsed ? <PanelRightOpen size={15} /> : <PanelRightClose size={15} />}
               </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={onToggleRight}
-              className={utilityButtonClass}
-              title={rightCollapsed ? "Show right panel" : "Hide right panel"}
-            >
-              {rightCollapsed ? <PanelRightOpen size={14} /> : <PanelRightClose size={14} />}
-            </button>
-            <button
-              type="button"
-              onClick={onToggleBottom}
-              className={utilityButtonClass}
-              title={bottomCollapsed ? "Show terminal panel" : "Hide terminal panel"}
-            >
-              {bottomCollapsed ? <PanelBottomOpen size={14} /> : <PanelBottomClose size={14} />}
-            </button>
-          </div>
-        ) : null}
+              <button
+                type="button"
+                onClick={onToggleBottom}
+                className={utilityButtonClass}
+                title={bottomCollapsed ? "Show terminal panel" : "Hide terminal panel"}
+              >
+                {bottomCollapsed ? <PanelBottomOpen size={15} /> : <PanelBottomClose size={15} />}
+              </button>
+            </div>
+          ) : null}
+        </div>
       </div>
-    </header>
+    </motion.header>
   );
 }

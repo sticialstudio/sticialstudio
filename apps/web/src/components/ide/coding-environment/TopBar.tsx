@@ -1,8 +1,12 @@
 ﻿"use client";
 
-import React from "react";
-import { ArrowLeft, Blocks, Code2, Cpu, Play, RotateCcw, Save, Square } from "lucide-react";
-import type { CodingMode } from "@/contexts/BoardContext";
+import React from 'react';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Blocks, Code2, Play, RotateCcw, Rocket, Save, Square } from 'lucide-react';
+import type { CodingMode } from '@/contexts/BoardContext';
+import { Button } from '@/components/ui/Button';
+import { fadeInUp } from '@/components/ui/motion';
+import WorkspaceStageRail from '../WorkspaceStageRail';
 
 interface CodingEnvironmentTopBarProps {
   projectName: string;
@@ -24,14 +28,11 @@ interface CodingEnvironmentTopBarProps {
   onResetSimulation: () => void;
   onSaveProject: () => void;
   saveStatusText?: string | null;
-  saveStatusTone?: "neutral" | "success" | "error";
+  saveStatusTone?: 'neutral' | 'success' | 'error';
 }
 
-const buttonClass =
-  "inline-flex h-10 items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 text-xs font-semibold text-slate-200 transition-all duration-150 hover:border-cyan-400/35 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-45";
-
-const modeChipClass =
-  "inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]";
+const chipBaseClass =
+  'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]';
 
 export default function CodingEnvironmentTopBar({
   projectName,
@@ -53,149 +54,139 @@ export default function CodingEnvironmentTopBar({
   onResetSimulation,
   onSaveProject,
   saveStatusText,
-  saveStatusTone = "neutral",
+  saveStatusTone = 'neutral',
 }: CodingEnvironmentTopBarProps) {
-  const activeMode = codingMode === "text" ? "text" : "block";
+  const activeMode = codingMode === 'text' ? 'text' : 'block';
   const simulationDisabled = !supportsSimulation || isSimulationBusy || (!isSimulationActive && !canUploadAndSimulate);
   const saveStatusClass =
-    saveStatusTone === "success"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-      : saveStatusTone === "error"
-        ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
-        : "border-slate-800 bg-slate-900/80 text-slate-400";
+    saveStatusTone === 'success'
+      ? 'border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]'
+      : saveStatusTone === 'error'
+        ? 'border-rose-300 bg-rose-50 text-rose-600'
+        : 'border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]';
 
   return (
-    <header className="sticky top-0 z-20 flex min-h-[4rem] flex-wrap items-center justify-between gap-3 rounded-[22px] border border-slate-800 bg-slate-950/88 px-4 py-3 shadow-[0_24px_60px_-42px_rgba(15,23,42,0.95)] backdrop-blur-xl">
-      <div className="flex min-w-0 items-center gap-3">
-        <button type="button" onClick={onBackToCircuitLab} className={buttonClass}>
-          <ArrowLeft size={15} />
-          <span>Back to Circuit</span>
-        </button>
-
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-            <Code2 size={12} className="text-cyan-300" />
-            Code Studio
-            <span className={`${modeChipClass} border-emerald-400/25 bg-emerald-400/10 text-emerald-100`}>
-              Mode: Coding
+    <motion.header
+      className='ui-foundation-panel overflow-hidden px-4 py-4 sm:px-5 sm:py-5'
+      variants={fadeInUp}
+      initial='hidden'
+      animate='visible'
+    >
+      <div className='grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_auto_minmax(0,1fr)] xl:items-center'>
+        <div className='min-w-0 space-y-4'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              Code Studio
             </span>
-            <span className={`${modeChipClass} border-slate-800 bg-slate-900/80 text-slate-400`}>
-              Step 2: Code & Simulate
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              {boardName}
             </span>
-          </div>
-          <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-100">
-            <span className="truncate">{projectName || "Untitled Project"}</span>
-            <span className="relative flex items-center justify-center">
-              {hasUnsavedChanges && (
-                <span className="absolute -left-1.5 h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]" title="Unsaved changes" />
-              )}
-              {isSimulationActive && (
-                <span className="absolute -right-1.5 h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.8)]" title="Simulation active" />
-              )}
-              <span className="rounded-full border border-slate-700 bg-slate-800/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 shadow-inner">
-                {boardName}
-              </span>
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              {componentCount} parts
+            </span>
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              {mappedPinCount} linked pins
             </span>
           </div>
-        </div>
-      </div>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 text-xs font-semibold text-cyan-100">
-          <Cpu size={14} />
-          Simulator Ready
-        </span>
-        <span className="rounded-full border border-slate-800 bg-slate-900/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-          {componentCount} parts on canvas
-        </span>
-        <span className="rounded-full border border-slate-800 bg-slate-900/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-          {mappedPinCount} pins linked
-        </span>
-        {!canUploadAndSimulate && !isSimulationActive ? (
-          <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
-            Add code to start simulation
-          </span>
-        ) : null}
-        {saveStatusText ? (
-          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${saveStatusClass}`}>
-            {saveStatusText}
-          </span>
-        ) : null}
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <div className="inline-flex items-center gap-1 rounded-2xl border border-slate-800 bg-slate-950/75 p-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-          <button
-            type="button"
-            onClick={() => onChangeCodingMode("block")}
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-              activeMode === "block"
-                ? "bg-slate-100 text-slate-950 shadow-[0_12px_24px_-18px_rgba(255,255,255,0.95)]"
-                : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-            }`}
-          >
-            <Blocks size={14} />
-            Blocks
-          </button>
-          <button
-            type="button"
-            onClick={() => onChangeCodingMode("text")}
-            className={`inline-flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
-              activeMode === "text"
-                ? "bg-slate-100 text-slate-950 shadow-[0_12px_24px_-18px_rgba(255,255,255,0.95)]"
-                : "text-slate-400 hover:bg-slate-900 hover:text-slate-100"
-            }`}
-          >
-            <Code2 size={14} />
-            Text
-          </button>
+          <div className='space-y-2'>
+            <div className='flex flex-wrap items-center gap-3'>
+              <h1 className='truncate text-2xl font-bold tracking-[-0.04em] text-[var(--ui-color-text)] sm:text-[2rem]'>
+                {projectName || 'Untitled Project'}
+              </h1>
+              {hasUnsavedChanges ? (
+                <span className='inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ui-color-warning)]'>
+                  <span className='h-2 w-2 rounded-full bg-amber-400' />
+                  Unsaved
+                </span>
+              ) : null}
+            </div>
+            <p className='max-w-2xl text-sm leading-6 text-[var(--ui-color-text-muted)]'>
+              Write blocks or text, then run the current circuit in simulation without leaving the workspace.
+            </p>
+          </div>
         </div>
 
-        <button type="button" onClick={onSaveProject} disabled={isSaving} className={`${buttonClass} hover:border-cyan-400/40 hover:bg-cyan-500/10 hover:shadow-[0_0_15px_rgba(34,211,238,0.15)]`}>
-          <Save size={15} />
-          <span>{isSaving ? "Saving..." : "Save Project"}</span>
-        </button>
+        <div className='flex flex-col items-start gap-3 xl:items-center'>
+          <WorkspaceStageRail
+            items={[
+              { label: 'Build', icon: <ArrowLeft size={14} />, onClick: onBackToCircuitLab },
+              { label: 'Code', active: true, icon: <Code2 size={14} /> },
+              { label: isSimulationActive ? 'Run live' : 'Run ready', subtle: !isSimulationActive, active: isSimulationActive, icon: <Rocket size={14} /> },
+            ]}
+          />
+          <div className='flex flex-wrap items-center gap-2'>
+            <span
+              className={`${chipBaseClass} ${
+                isSimulationActive
+                  ? 'border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]'
+                  : 'border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]'
+              }`}
+            >
+              {isSimulationActive ? 'Simulation live' : supportsSimulation ? 'Simulation ready' : 'Simulation unavailable'}
+            </span>
+            {saveStatusText ? <span className={`${chipBaseClass} ${saveStatusClass}`}>{saveStatusText}</span> : null}
+          </div>
+        </div>
 
-        <button
-          type="button"
-          onClick={onResetSimulation}
-          disabled={!canResetSimulation}
-          className={`${buttonClass} hover:border-slate-500/50 hover:bg-slate-800/60 hover:shadow-[0_0_15px_rgba(148,163,184,0.14)]`}
-        >
-          <RotateCcw size={15} />
-          <span>Reset</span>
-        </button>
+        <div className='flex flex-col gap-3 xl:items-end'>
+          <div className='inline-flex items-center gap-1 rounded-[20px] border border-[color:var(--ui-border-soft)] bg-white/70 p-1.5 shadow-[0_18px_40px_-30px_rgba(26,41,72,0.18)]'>
+            <button
+              type='button'
+              onClick={() => onChangeCodingMode('block')}
+              className={`inline-flex items-center gap-2 rounded-[16px] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-all ${
+                activeMode === 'block'
+                  ? 'bg-[var(--ui-color-primary)] text-white shadow-[var(--ui-shadow-button)]'
+                  : 'text-[var(--ui-color-text-muted)] hover:bg-white/75 hover:text-[var(--ui-color-text)]'
+              }`}
+            >
+              <Blocks size={14} />
+              Blocks
+            </button>
+            <button
+              type='button'
+              onClick={() => onChangeCodingMode('text')}
+              className={`inline-flex items-center gap-2 rounded-[16px] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-all ${
+                activeMode === 'text'
+                  ? 'bg-[var(--ui-color-primary)] text-white shadow-[var(--ui-shadow-button)]'
+                  : 'text-[var(--ui-color-text-muted)] hover:bg-white/75 hover:text-[var(--ui-color-text)]'
+              }`}
+            >
+              <Code2 size={14} />
+              Text
+            </button>
+          </div>
 
-        <button
-          type="button"
-          onClick={() => {
-            if (isSimulationActive) {
-              onStopSimulation();
-            } else {
-              onUploadAndSimulate();
-            }
-          }}
-          disabled={simulationDisabled}
-          className={`group relative overflow-hidden ${buttonClass} ${
-            isSimulationActive
-              ? "border-rose-500/40 bg-rose-500/10 text-rose-200 hover:border-rose-400/60 hover:bg-rose-500/20 hover:shadow-[0_0_20px_rgba(244,63,94,0.25)]"
-              : "border-emerald-500/40 bg-emerald-500/10 text-emerald-200 hover:border-emerald-400/60 hover:bg-emerald-500/20 hover:shadow-[0_0_20px_rgba(16,185,129,0.25)]"
-          }`}
-        >
-          {!isSimulationActive && <div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-emerald-400/10 to-transparent transition-transform duration-500 ease-out group-hover:translate-x-[100%]" />}
-          <div className="relative z-10 flex items-center gap-2">
-            {isSimulationActive ? <Square size={15} strokeWidth={2.5} /> : <Play size={15} strokeWidth={2.5} />}
-            <span>
+          <div className='flex flex-wrap items-center justify-start gap-2 xl:justify-end'>
+            <Button variant='secondary' icon={<Save size={16} />} onClick={onSaveProject} disabled={isSaving} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
+              {isSaving ? 'Saving...' : 'Save Project'}
+            </Button>
+            <Button variant='secondary' icon={<RotateCcw size={16} />} onClick={onResetSimulation} disabled={!canResetSimulation} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
+              Reset
+            </Button>
+            <Button
+              icon={isSimulationActive ? <Square size={16} /> : <Play size={16} />}
+              onClick={() => {
+                if (isSimulationActive) {
+                  onStopSimulation();
+                } else {
+                  onUploadAndSimulate();
+                }
+              }}
+              disabled={simulationDisabled}
+              className={`min-h-10 rounded-[16px] px-4 py-2 text-sm ${
+                isSimulationActive ? 'bg-rose-500 hover:bg-rose-600' : ''
+              }`}
+            >
               {isSimulationBusy && !isSimulationActive
-                ? "Uploading..."
+                ? 'Preparing...'
                 : isSimulationActive
-                  ? "Stop Simulation"
-                  : "Upload & Simulate"}
-            </span>
+                  ? 'Stop Simulation'
+                  : 'Upload & Simulate'}
+            </Button>
           </div>
-        </button>
+        </div>
       </div>
-    </header>
+    </motion.header>
   );
 }
-

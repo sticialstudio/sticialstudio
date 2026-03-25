@@ -1,8 +1,11 @@
 ﻿"use client";
 
 import React from 'react';
-import { Code2, Cpu, FolderOpen, Link2, Link2Off, Rocket, Save, Trash2 } from 'lucide-react';
-
+import { motion } from 'framer-motion';
+import { Code2, FolderOpen, Link2, Link2Off, Rocket, Save, Sparkles, Trash2, Wrench } from 'lucide-react';
+import { Button } from '@/components/ui/Button';
+import { fadeInUp } from '@/components/ui/motion';
+import WorkspaceStageRail from '../WorkspaceStageRail';
 import { useCircuit } from '@/contexts/CircuitContext';
 
 interface CircuitLabTopBarProps {
@@ -18,14 +21,11 @@ interface CircuitLabTopBarProps {
   onOpenProject: () => void;
   onOpenCodingEnvironment: () => void;
   saveStatusText?: string | null;
-  saveStatusTone?: "neutral" | "success" | "error";
+  saveStatusTone?: 'neutral' | 'success' | 'error';
 }
 
-const buttonClass =
-  'inline-flex h-10 items-center gap-2 rounded-xl border border-slate-800 bg-slate-950/70 px-3 text-xs font-semibold text-slate-200 transition-all duration-150 hover:border-cyan-400/35 hover:text-cyan-100 disabled:cursor-not-allowed disabled:opacity-45';
-
-const modeChipClass =
-  'inline-flex items-center gap-2 rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.18em]';
+const chipBaseClass =
+  'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]';
 
 export default function TopBar({
   projectName,
@@ -40,15 +40,16 @@ export default function TopBar({
   onOpenProject,
   onOpenCodingEnvironment,
   saveStatusText,
-  saveStatusTone = "neutral",
+  saveStatusTone = 'neutral',
 }: CircuitLabTopBarProps) {
   const { clearCircuit } = useCircuit();
+
   const saveStatusClass =
-    saveStatusTone === "success"
-      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
-      : saveStatusTone === "error"
-        ? "border-rose-500/30 bg-rose-500/10 text-rose-200"
-        : "border-slate-700/70 bg-slate-900/70 text-slate-300";
+    saveStatusTone === 'success'
+      ? 'border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]'
+      : saveStatusTone === 'error'
+        ? 'border-rose-300 bg-rose-50 text-rose-600'
+        : 'border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]';
 
   const handleClearCanvas = () => {
     if (window.confirm('Clear the whole circuit? You can undo this after it happens.')) {
@@ -57,100 +58,111 @@ export default function TopBar({
   };
 
   return (
-    <header className="sticky top-0 z-20 flex min-h-[4rem] flex-wrap items-center justify-between gap-3 rounded-[22px] border border-slate-800/80 bg-slate-950/80 px-4 py-3 shadow-[0_24px_60px_-42px_rgba(34,211,238,0.1)] backdrop-blur-xl">
-      <div className="flex min-w-0 items-center gap-3">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
-            <Cpu size={12} className="text-cyan-300" />
-            Circuit Lab
-            <span className={`${modeChipClass} border-cyan-400/25 bg-cyan-400/10 text-cyan-100`}>
-              Mode: Circuit
+    <motion.header
+      className='ui-foundation-panel overflow-hidden px-4 py-4 sm:px-5 sm:py-5'
+      variants={fadeInUp}
+      initial='hidden'
+      animate='visible'
+    >
+      <div className='grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1fr)] xl:items-center'>
+        <div className='min-w-0 space-y-4'>
+          <div className='flex flex-wrap items-center gap-2'>
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              <Sparkles size={13} className='text-[var(--ui-color-accent)]' />
+              Circuit Lab
             </span>
-            <span className={`${modeChipClass} border-slate-800 bg-slate-900/80 text-slate-400`}>
-              Step 1: Build
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              {boardName}
+            </span>
+            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+              Build mode
             </span>
           </div>
-          <div className="mt-1 flex min-w-0 items-center gap-2">
-            <input
-              type="text"
-              value={projectName}
-              onChange={(event) => onProjectNameChange(event.target.value)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.currentTarget.blur();
-                  onSaveProject();
-                }
-              }}
-              placeholder="Untitled Project"
-              className="min-w-[12rem] max-w-[20rem] rounded-xl border-b-2 border-transparent bg-transparent px-2 py-1 text-sm font-bold text-slate-100 outline-none transition-all placeholder:text-slate-600 focus:border-cyan-400 focus:bg-slate-900/80 focus:shadow-[0_4px_24px_-8px_rgba(34,211,238,0.5)]"
-            />
-            <span className="relative flex items-center justify-center">
+
+          <div className='space-y-2'>
+            <div className='flex flex-wrap items-center gap-3'>
+              <input
+                type='text'
+                value={projectName}
+                onChange={(event) => onProjectNameChange(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    event.currentTarget.blur();
+                    onSaveProject();
+                  }
+                }}
+                placeholder='Untitled Project'
+                className='min-w-[14rem] max-w-[24rem] rounded-[18px] border border-transparent bg-white/65 px-4 py-3 text-xl font-bold tracking-[-0.03em] text-[var(--ui-color-text)] outline-none transition-all placeholder:text-[var(--ui-color-text-soft)] focus:border-[color:var(--ui-border-strong)] focus:bg-white'
+              />
               {hasUnsavedChanges ? (
-                <span
-                  className="absolute -left-1.5 h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.8)]"
-                  title="Unsaved changes"
-                />
+                <span className='inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ui-color-warning)]'>
+                  <span className='h-2 w-2 rounded-full bg-amber-400' />
+                  Unsaved
+                </span>
               ) : null}
-              <span className="rounded-full border border-slate-700 bg-slate-800/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300 shadow-inner">
-                {boardName}
-              </span>
+            </div>
+            <p className='max-w-2xl text-sm leading-6 text-[var(--ui-color-text-muted)]'>
+              Build the circuit visually first, then move into code when the board and wiring are ready.
+            </p>
+          </div>
+        </div>
+
+        <div className='flex flex-col items-start gap-3 xl:items-center'>
+          <WorkspaceStageRail
+            items={[
+              { label: 'Build', active: true, icon: <Wrench size={14} /> },
+              { label: 'Code', icon: <Code2 size={14} />, onClick: onOpenCodingEnvironment },
+              { label: 'Run ready', subtle: true, icon: <Rocket size={14} /> },
+            ]}
+          />
+          <div className='flex flex-wrap items-center gap-2'>
+            <span
+              className={`${chipBaseClass} ${
+                isConnected
+                  ? 'border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]'
+                  : 'border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]'
+              }`}
+            >
+              {isConnected ? <Link2Off size={13} /> : <Link2 size={13} />}
+              {isConnected ? 'Board connected' : 'Board not connected'}
             </span>
-            {saveStatusText ? (
-              <span className={`rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${saveStatusClass}`}>
-                {saveStatusText}
-              </span>
-            ) : null}
+            {saveStatusText ? <span className={`${chipBaseClass} ${saveStatusClass}`}>{saveStatusText}</span> : null}
+          </div>
+        </div>
+
+        <div className='flex flex-col gap-3 xl:items-end'>
+          <div className='flex flex-wrap items-center justify-start gap-2 xl:justify-end'>
+            <Button icon={<Code2 size={16} />} onClick={onOpenCodingEnvironment} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
+              Open Code
+            </Button>
+            <Button
+              variant='secondary'
+              icon={isConnected ? <Link2Off size={16} /> : <Link2 size={16} />}
+              onClick={onConnectDevice}
+              className='min-h-10 rounded-[16px] px-4 py-2 text-sm'
+            >
+              {isConnected ? 'Disconnect' : 'Connect Board'}
+            </Button>
+            <Button variant='secondary' icon={<Rocket size={16} />} onClick={onUpload} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
+              Upload
+            </Button>
+            <Button variant='secondary' icon={<Save size={16} />} onClick={onSaveProject} disabled={isSaving} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
+              {isSaving ? 'Saving...' : 'Save Project'}
+            </Button>
+            <Button variant='secondary' icon={<FolderOpen size={16} />} onClick={onOpenProject} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
+              Open Projects
+            </Button>
+            <Button
+              variant='secondary'
+              icon={<Trash2 size={16} />}
+              onClick={handleClearCanvas}
+              className='min-h-10 rounded-[16px] border-rose-200 px-4 py-2 text-sm text-rose-600 hover:border-rose-300 hover:text-rose-700'
+            >
+              Clear Circuit
+            </Button>
           </div>
         </div>
       </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="hidden rounded-full border border-slate-800 bg-slate-900/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 xl:inline-flex">
-          1. Add parts and wiring  2. Open Code Studio  3. Simulate
-        </span>
-        <button
-          type="button"
-          onClick={onOpenCodingEnvironment}
-          className={`${buttonClass} group relative overflow-hidden border-cyan-500/30 bg-cyan-500/5 text-cyan-300 hover:border-cyan-400/50 hover:bg-cyan-500/10 hover:shadow-[0_0_20px_rgba(34,211,238,0.15)]`}
-        >
-          <div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-cyan-400/10 to-transparent transition-transform duration-500 ease-out group-hover:translate-x-[100%]" />
-          <Code2 size={15} />
-          <span>Open Code Studio</span>
-        </button>
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <button type="button" onClick={onConnectDevice} className={buttonClass}>
-          {isConnected ? <Link2Off size={15} /> : <Link2 size={15} />}
-          <span>{isConnected ? 'Disconnect' : 'Connect Board'}</span>
-        </button>
-
-        <button type="button" onClick={onUpload} className={buttonClass}>
-          <Rocket size={15} />
-          <span>Upload</span>
-        </button>
-
-        <button type="button" onClick={onSaveProject} disabled={isSaving} className={buttonClass}>
-          <Save size={15} />
-          <span>{isSaving ? 'Saving...' : 'Save Project'}</span>
-        </button>
-
-        <button type="button" onClick={onOpenProject} className={buttonClass}>
-          <FolderOpen size={15} />
-          <span>Open Projects</span>
-        </button>
-
-        <div className="ml-2 h-4 w-[1px] bg-slate-800" />
-        <button
-          type="button"
-          onClick={handleClearCanvas}
-          className={`${buttonClass} border-transparent text-rose-400 hover:bg-rose-500/10 hover:text-rose-300`}
-        >
-          <Trash2 size={15} />
-          <span>Clear Circuit</span>
-        </button>
-      </div>
-    </header>
+    </motion.header>
   );
 }
-

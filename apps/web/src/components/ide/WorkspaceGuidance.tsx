@@ -2,6 +2,9 @@
 
 import React from "react";
 import type { ReactNode } from "react";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/Button";
+import { fadeInUp } from "@/components/ui/motion";
 
 interface WorkspaceGuidanceAction {
   label: string;
@@ -29,22 +32,34 @@ export default function WorkspaceGuidance({
   compact = false,
 }: WorkspaceGuidanceProps) {
   return (
-    <section className={`rounded-[24px] border border-slate-800/90 bg-slate-950/78 shadow-[0_24px_60px_-44px_rgba(8,47,73,0.95)] backdrop-blur-xl ${compact ? "px-4 py-4" : "px-5 py-5"}`}>
-      <div className="flex flex-wrap items-start justify-between gap-3">
+    <motion.section
+      className={`ui-foundation-panel ${compact ? 'px-4 py-4' : 'px-5 py-5 sm:px-6 sm:py-6'}`}
+      variants={fadeInUp}
+      initial="hidden"
+      animate="visible"
+    >
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           {eyebrow ? (
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">{eyebrow}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--ui-color-text-soft)]">{eyebrow}</p>
           ) : null}
-          <h3 className="mt-1 text-lg font-semibold text-slate-100">{title}</h3>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-400">{description}</p>
+          <h3 className="mt-2 text-xl font-bold tracking-[-0.03em] text-[var(--ui-color-text)]">{title}</h3>
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-[var(--ui-color-text-muted)]">{description}</p>
         </div>
-        {icon ? <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-slate-800 bg-slate-900/75 text-cyan-300">{icon}</div> : null}
+        {icon ? (
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[18px] border border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-primary)]">
+            {icon}
+          </div>
+        ) : null}
       </div>
 
       {chips.length > 0 ? (
         <div className="mt-4 flex flex-wrap gap-2">
           {chips.map((chip) => (
-            <span key={chip} className="rounded-full border border-slate-800 bg-slate-900/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+            <span
+              key={chip}
+              className="rounded-full border border-[color:var(--ui-border-soft)] bg-white/78 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ui-color-text-soft)]"
+            >
               {chip}
             </span>
           ))}
@@ -52,22 +67,19 @@ export default function WorkspaceGuidance({
       ) : null}
 
       {actions.length > 0 ? (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-5 flex flex-wrap gap-3">
           {actions.map((action) => (
-            <button
+            <Button
               key={action.label}
-              type="button"
+              variant={action.tone === 'secondary' ? 'secondary' : 'primary'}
               onClick={action.onClick}
-              className={action.tone === "secondary"
-                ? "rounded-xl border border-slate-700 bg-slate-950/80 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-cyan-400/50 hover:text-cyan-200"
-                : "rounded-xl border border-cyan-400/60 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/20"
-              }
+              className="min-h-10 rounded-[16px] px-4 py-2 text-sm"
             >
               {action.label}
-            </button>
+            </Button>
           ))}
         </div>
       ) : null}
-    </section>
+    </motion.section>
   );
 }

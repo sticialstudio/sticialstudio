@@ -618,7 +618,7 @@ export default function SplitView() {
   const leftSubtitle = "Keep project files close while the editor stays in focus.";
 
   const textCenterStage = (
-    <div className="relative flex h-full w-full min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl glass-panel">
+    <div className="ui-foundation-panel relative flex h-full w-full min-h-0 min-w-0 flex-1 overflow-hidden rounded-[30px]">
       <TextEditor code={sourceCode} language={currentLanguage || "cpp"} onChange={handleSourceCodeChange} />
     </div>
   );
@@ -645,7 +645,7 @@ export default function SplitView() {
   );
 
   const codeStudioStage = (
-    <div className="mt-3 grid min-h-0 flex-1 gap-3 xl:grid-cols-[220px_minmax(0,1fr)_400px]">
+    <div className="mt-4 grid min-h-0 flex-1 gap-4 xl:grid-cols-[220px_minmax(0,1fr)_400px]">
       <aside className="min-h-0 overflow-hidden">
         <WorkspaceSidebar
           codingMode="block"
@@ -670,7 +670,7 @@ export default function SplitView() {
   );
 
   const virtualCodingStage = (
-    <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
+    <div className="mt-4 flex min-h-0 flex-1 flex-col gap-4">
       {renderCodeGuidanceCard()}
       <CodingEnvironmentSummary
         simulationError={simulationStatus?.errorText ?? null}
@@ -827,7 +827,7 @@ export default function SplitView() {
 
   if (environment === "virtual") {
     return (
-      <div className="flex h-full min-h-0 flex-col bg-background p-2 sm:p-3">
+      <div className="ui-foundation-shell flex h-full min-h-0 flex-col p-3 sm:p-4">
         {activeView === "circuit" ? (
           <>
             <CircuitLabTopBar
@@ -848,7 +848,7 @@ export default function SplitView() {
             />
 
             <div className="mt-3 min-h-0 flex-1">
-              <div className="relative h-full min-h-0">
+              <div className="ui-foundation-panel relative h-full min-h-0 overflow-hidden rounded-[32px] p-1">
                 <CanvasWorkspace />
                 {circuitEmptyOverlay}
               </div>
@@ -890,8 +890,9 @@ export default function SplitView() {
   const blockModeStage = codeStudioStage;
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-background p-2 sm:p-3">
+    <div className="ui-foundation-shell flex h-full min-h-0 flex-col p-3 sm:p-4">
       <TopToolbar
+        projectName={projectName}
         boardName={currentBoard}
         codingMode={codingMode}
         environment={environment}
