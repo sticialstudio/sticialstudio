@@ -32,9 +32,9 @@ const capabilities = [
 ];
 
 const workflow = [
-  "Choose your coding path and hardware target.",
-  "Build the circuit, generate code, and save everything in one project.",
-  "Upload to a connected board or run the virtual simulator when supported.",
+  "Choose how you want to code, then pick your board.",
+  "Build the circuit and add code in the same project.",
+  "Simulate it or upload it when you are ready.",
 ];
 
 export default function WelcomePage() {
@@ -56,7 +56,7 @@ export default function WelcomePage() {
                     Build circuits, generate code, and ship to hardware from one workspace.
                   </h1>
                   <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                    EdTech OS combines circuit design, block coding, source editing, simulation, and live board upload into a guided embedded workflow.
+                    EdTech OS brings circuit building, coding, simulation, and board upload into one guided hardware workflow.
                   </p>
                 </div>
 
@@ -96,7 +96,7 @@ export default function WelcomePage() {
                   ))}
                 </div>
                 <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3 text-sm text-emerald-100">
-                  First time here? Start with a virtual Arduino project for the quickest path from circuit to simulation, or open a course if you want guided steps.
+                  New here? Start with a virtual Arduino project for the fastest first win, or try a course if you want step-by-step help.
                 </div>
               </div>
             </div>
@@ -122,15 +122,15 @@ export default function WelcomePage() {
             <DashboardCard
               href="/courses"
               icon={BookOpen}
-              title="Study Course"
-              description="Follow guided lessons to learn embedded systems, components, and programming foundations."
+              title="Try a Course"
+              description="Follow guided lessons, learn the basics, and launch project setups that match each lesson."
               delayMs={120}
             />
             <DashboardCard
               href="/projects/select-mode"
               icon={FolderGit2}
-              title="Build Project"
-              description="Create a project, pick a board, build the circuit, and move straight into blocks or source code."
+              title="Start Project"
+              description="Start a project, choose a board, build the circuit, and move straight into blocks or code."
               delayMs={190}
             />
           </section>

@@ -63,7 +63,7 @@ export default function SelectBoardPage() {
         setSelectedBoard(boardKey);
         window.setTimeout(() => {
             setCurrentBoard(boardKey);
-            router.push('/projects/ide');
+            router.push('/projects/select-environment');
         }, 160);
     };
 
@@ -81,10 +81,10 @@ export default function SelectBoardPage() {
 
                 <div className="w-full max-w-6xl space-y-7 pt-10 sm:space-y-8 sm:pt-12">
                     <header className="ui-fade-up space-y-3 text-center">
-                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300 sm:text-base">Hardware Selection</p>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl">Choose a Board</h1>
+                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300 sm:text-base">Board Setup</p>
+                        <h1 className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl">Choose Your Board</h1>
                         <p className="mx-auto max-w-2xl text-sm leading-7 text-slate-400 md:text-base">
-                            Select target hardware for your project. Board options follow your selected coding path automatically.
+                            Pick the board you want to program. We will keep the next setup steps matched to this board.
                         </p>
                     </header>
 
@@ -95,7 +95,7 @@ export default function SelectBoardPage() {
                                 <input
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Search board, chip, or capability"
+                                    placeholder="Search by board, chip, or feature"
                                     className="h-10 w-full rounded-lg border border-slate-700 bg-slate-950 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/70 focus:outline-none"
                                 />
                             </div>
@@ -125,8 +125,8 @@ export default function SelectBoardPage() {
 
                     {filteredBoards.length === 0 ? (
                         <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 px-6 py-16 text-center">
-                            <p className="text-lg font-semibold text-slate-200">No boards matched your filters</p>
-                            <p className="mt-2 text-sm text-slate-400">Try a different search term or switch the hardware filter tab.</p>
+                            <p className="text-lg font-semibold text-slate-200">No boards match that filter</p>
+                            <p className="mt-2 text-sm text-slate-400">Try a different search term or choose another board family.</p>
                         </div>
                     ) : (
                         <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -153,6 +153,7 @@ export default function SelectBoardPage() {
         </MainLayout>
     );
 }
+
 
 
 

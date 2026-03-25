@@ -428,7 +428,7 @@ export default function SplitView() {
   const handleSaveProject = useCallback(async () => {
     if (!projectId) {
       webSerial.addMessage("error", "No active project selected.");
-      setSaveStatusText("No active project");
+      setSaveStatusText("Open or create a project first");
       setSaveStatusTone("error");
       return;
     }
@@ -442,7 +442,7 @@ export default function SplitView() {
     try {
       await saveProject();
       webSerial.addMessage("system", "Project saved.");
-      setSaveStatusText("Saved just now");
+      setSaveStatusText("Project saved");
       setSaveStatusTone("success");
       saveStatusTimeoutRef.current = setTimeout(() => {
         setSaveStatusText(null);
@@ -773,31 +773,31 @@ export default function SplitView() {
         eyebrow="Next Step"
         title={
           environment === "virtual" && virtualComponentCount === 0
-            ? "Build the circuit, then add code"
+            ? "Build the circuit first, then add code"
             : isBlockMode
-              ? "Start with blocks or switch to text"
-              : "Start writing code to bring this project to life"
+              ? "Add your first blocks"
+              : "Write your first code"
         }
         description={
           environment === "virtual" && virtualComponentCount === 0
-            ? "Place a board and a few components in Circuit Lab first, then come back here to generate logic, simulate behavior, and save the full project."
+            ? "Add a board and a few parts in Circuit Lab first. Then come back here to write code, simulate, and save the project."
             : isBlockMode
               ? "Choose a block category on the left, drag logic into the workspace, and use the generated code panel to follow what is happening."
-              : "Begin with setup and loop logic for Arduino C++, or write your MicroPython script before you upload or simulate."
+              : "Start with setup and loop for Arduino C++, or write your MicroPython script before you run or upload it."
         }
         chips={
           environment === "virtual" && virtualComponentCount === 0
-            ? ["Step 1: Build circuit", "Step 2: Add code", "Step 3: Simulate"]
+            ? ["1. Add parts", "2. Add code", "3. Simulate"]
             : isBlockMode
               ? ["Open blocks", "Generate code", "Save when ready"]
-              : ["Write code", "Save project", "Run or upload"]
+              : ["Write code", "Save project", "Run when ready"]
         }
         icon={environment === "virtual" && virtualComponentCount === 0 ? <CircuitBoard size={18} /> : <Code2 size={18} />}
         compact
         actions={
           environment === "virtual" && virtualComponentCount === 0
             ? [
-                { label: "Back to Circuit Lab", onClick: () => handleSetActiveView("circuit") },
+                { label: "Back to Circuit", onClick: () => handleSetActiveView("circuit") },
                 { label: "Try a Course", onClick: () => router.push("/courses"), tone: "secondary" },
               ]
             : []
@@ -811,13 +811,13 @@ export default function SplitView() {
       <div className="pointer-events-auto max-w-xl">
         <WorkspaceGuidance
           eyebrow="Start Project"
-          title="Begin with a board and a few parts"
-          description="Place an Arduino, breadboard, and the first components on the canvas. Once the circuit exists, you can wire it, move into code, and simulate the full project."
-          chips={["Add components", "Wire pins", "Then open code"]}
+          title="Start with a board and a few parts"
+          description="Add an Arduino, a breadboard, and your first parts to the canvas. Then wire them, open Code Studio, and run the project."
+          chips={["Add parts", "Wire them", "Then open code"]}
           icon={<PlayCircle size={18} />}
           actions={[
             { label: "Try a Course", onClick: () => router.push("/courses") },
-            { label: "Go to Code Anyway", onClick: () => handleSetActiveView("code"), tone: "secondary" },
+            { label: "Open Code Anyway", onClick: () => handleSetActiveView("code"), tone: "secondary" },
           ]}
         />
       </div>

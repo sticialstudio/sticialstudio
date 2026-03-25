@@ -69,18 +69,18 @@ export default function CodingEnvironmentTopBar({
       <div className="flex min-w-0 items-center gap-3">
         <button type="button" onClick={onBackToCircuitLab} className={buttonClass}>
           <ArrowLeft size={15} />
-          <span>Back to Circuit Lab</span>
+          <span>Back to Circuit</span>
         </button>
 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">
             <Code2 size={12} className="text-cyan-300" />
-            Coding Environment
+            Code Studio
             <span className={`${modeChipClass} border-emerald-400/25 bg-emerald-400/10 text-emerald-100`}>
               Mode: Coding
             </span>
             <span className={`${modeChipClass} border-slate-800 bg-slate-900/80 text-slate-400`}>
-              Step 2: Code and Simulate
+              Step 2: Code & Simulate
             </span>
           </div>
           <div className="mt-1 flex min-w-0 flex-wrap items-center gap-2 text-sm font-semibold text-slate-100">
@@ -103,17 +103,17 @@ export default function CodingEnvironmentTopBar({
       <div className="flex flex-wrap items-center gap-2">
         <span className="inline-flex h-10 items-center gap-2 rounded-xl border border-cyan-400/20 bg-cyan-400/10 px-3 text-xs font-semibold text-cyan-100">
           <Cpu size={14} />
-          Virtual Simulator
+          Simulator Ready
         </span>
         <span className="rounded-full border border-slate-800 bg-slate-900/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-          {componentCount} components loaded
+          {componentCount} parts on canvas
         </span>
         <span className="rounded-full border border-slate-800 bg-slate-900/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-          {mappedPinCount} pins mapped
+          {mappedPinCount} pins linked
         </span>
         {!canUploadAndSimulate && !isSimulationActive ? (
           <span className="rounded-full border border-amber-500/25 bg-amber-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-200">
-            Add code before simulating
+            Add code to start simulation
           </span>
         ) : null}
         {saveStatusText ? (

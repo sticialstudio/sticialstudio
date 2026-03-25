@@ -100,7 +100,7 @@ export default function DashboardPage() {
     const handleDeleteProject = async (e: React.MouseEvent, id: string) => {
         e.stopPropagation();
         if (!token) return;
-        if (!confirm('Delete this project permanently?')) return;
+        if (!confirm('Delete this project? This cannot be undone.')) return;
 
         try {
             const res = await apiFetch(`/api/projects/${id}`, {
@@ -169,7 +169,7 @@ export default function DashboardPage() {
                                     Welcome back, {user?.name || 'Builder'}
                                 </h1>
                                 <p className="max-w-2xl text-sm text-slate-400">
-                                    Pick up a saved project, start a new build, or jump into a guided course. If you are unsure where to start, choose Build Project for a fresh workflow or Study Course for step-by-step help.
+                                    Open a saved project, start a new one, or try a guided course. If you are not sure where to begin, start a project for the quickest path or open a course for step-by-step help.
                                 </p>
                             </div>
                             <div className="flex flex-wrap items-center gap-3">
@@ -179,7 +179,7 @@ export default function DashboardPage() {
                                     className="inline-flex items-center gap-2 rounded-xl border border-slate-600/80 bg-slate-950/70 px-4 py-2.5 text-sm font-semibold text-slate-200 transition-colors hover:border-cyan-400/50 hover:text-cyan-200"
                                 >
                                     <BookOpen size={16} />
-                                    Study Course
+                                    Try a Course
                                 </button>
                                 <button
                                     type="button"
@@ -187,7 +187,7 @@ export default function DashboardPage() {
                                     className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/60 bg-cyan-400/10 px-4 py-2.5 text-sm font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/20"
                                 >
                                     <Plus size={16} />
-                                    Build Project
+                                    Start Project
                                 </button>
                             </div>
                         </div>
@@ -214,30 +214,30 @@ export default function DashboardPage() {
                                     onClick={handleStartBuild}
                                     className="inline-flex items-center gap-2 rounded-lg border border-slate-700 px-3 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-cyan-400/60 hover:text-cyan-200"
                                 >
-                                    New Build <ArrowRight size={15} />
+                                    Start Project <ArrowRight size={15} />
                                 </button>
                             </div>
 
                             {isLoading ? (
-                                <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/60 p-10 text-center text-slate-400">Loading projects...</div>
+                                <div className="mt-5 rounded-2xl border border-slate-800 bg-slate-950/60 p-10 text-center text-slate-400">Loading your projects...</div>
                             ) : recentProjects.length === 0 ? (
                                 <div className="mt-5 rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-10 text-center">
                                     <p className="text-lg font-semibold text-slate-100">No saved projects yet</p>
-                                    <p className="mt-2 text-sm text-slate-400">Start with the guided build flow and your workspace will be ready to save and reopen later.</p>
+                                    <p className="mt-2 text-sm text-slate-400">Start a project once, then you can save it and reopen it here any time.</p>
                                     <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
                                         <button
                                             type="button"
                                             onClick={handleStartBuild}
                                             className="rounded-xl border border-cyan-400/60 bg-cyan-400/10 px-4 py-2 text-sm font-semibold text-cyan-200 transition-colors hover:bg-cyan-400/20"
                                         >
-                                            Start First Build
+                                            Start Your First Project
                                         </button>
                                         <button
                                             type="button"
                                             onClick={() => router.push('/courses')}
                                             className="rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-cyan-400/50 hover:text-cyan-200"
                                         >
-                                            Try a Guided Course
+                                            Try a Course
                                         </button>
                                     </div>
                                 </div>
@@ -324,12 +324,12 @@ export default function DashboardPage() {
                             <h2 className="mt-1 text-xl font-semibold text-slate-100">Keep momentum</h2>
                             <div className="mt-5 space-y-4 text-sm text-slate-300">
                                 <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                                    <p className="font-semibold text-slate-100">Start here if you want a quick win</p>
-                                    <p className="mt-1 text-slate-400">Use Build Project, choose a virtual Arduino, place a few parts, then move straight into code and simulation.</p>
+                                    <p className="font-semibold text-slate-100">Start here for the quickest first project</p>
+                                    <p className="mt-1 text-slate-400">Use the Start Project button, pick a virtual Arduino, place a few parts, then move into code and simulation.</p>
                                 </div>
                                 <div className="rounded-xl border border-slate-800 bg-slate-950/50 p-4">
-                                    <p className="font-semibold text-slate-100">Try a guided lesson if you want structure</p>
-                                    <p className="mt-1 text-slate-400">Open Study Course to follow CODER, AIDER, or ROVA lessons and launch matching builds from there.</p>
+                                    <p className="font-semibold text-slate-100">Choose a course if you want guided steps</p>
+                                    <p className="mt-1 text-slate-400">Use Try a Course to follow CODER, AIDER, or ROVA lessons and open matching projects from there.</p>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
                                     <button
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                                         onClick={() => router.push('/courses')}
                                         className="rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-2 text-sm font-semibold text-slate-200 transition-colors hover:border-cyan-400/50 hover:text-cyan-200"
                                     >
-                                        Open Courses
+                                        Browse Courses
                                     </button>
                                 </div>
                             </div>

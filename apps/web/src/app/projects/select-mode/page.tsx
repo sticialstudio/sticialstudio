@@ -1,16 +1,21 @@
-"use client";
+﻿"use client";
 
 import MainLayout from '@/components/layout/MainLayout';
 import { useRouter } from 'next/navigation';
 import { Blocks, ArrowLeft, Code2 } from 'lucide-react';
 import { useBoard } from '@/contexts/BoardContext';
+import { useProject } from '@/contexts/ProjectContext';
 import LanguageCard from '@/components/ui/LanguageCard';
+import { writePendingProjectIntent } from '@/lib/projects/projectFlow';
 
 export default function SelectModePage() {
     const router = useRouter();
     const { setCodingMode } = useBoard();
+    const { setProjectId } = useProject();
 
     const handleSelection = (mode: 'block' | 'text') => {
+        setProjectId(null);
+        writePendingProjectIntent({ source: 'wizard' });
         setCodingMode(mode);
         if (mode === 'block') {
             router.push('/projects/select-board');
@@ -33,10 +38,12 @@ export default function SelectModePage() {
 
                 <div className="w-full max-w-5xl space-y-8 sm:space-y-9">
                     <header className="ui-fade-up space-y-3 text-center">
-                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-300 sm:text-base">Build Project</p>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl">Choose Coding Mode</h1>
+                        <div className="space-y-2">
+                            <p className="text-sm font-semibold uppercase tracking-[0.2em] text-accent sm:text-base">Start Project</p>
+                            <h1 className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl">Choose How You Want to Code</h1>
+                        </div>
                         <p className="mx-auto max-w-2xl text-sm leading-7 text-slate-400 md:text-base">
-                            Pick how you want to create your project. You can keep learning with visual blocks or write code directly.
+                            Start a new project by choosing how you want to build it. We will set up the next steps for you automatically.
                         </p>
                     </header>
 
@@ -44,16 +51,16 @@ export default function SelectModePage() {
                         <LanguageCard
                             icon={Blocks}
                             title="Block Coding"
-                            description="Build programs using visual blocks."
-                            subtitle="Beginner Friendly"
+                            description="Build with blocks, then simulate and save everything in one workspace."
+                            subtitle="Best for beginners"
                             onClick={() => handleSelection('block')}
                             delayMs={100}
                         />
                         <LanguageCard
                             icon={Code2}
                             title="Text Coding"
-                            description="Write programs using Arduino C++ or MicroPython."
-                            subtitle="Advanced Control"
+                            description="Write Arduino C++ or MicroPython with full code editing and board setup."
+                            subtitle="Best for typed coding"
                             onClick={() => handleSelection('text')}
                             delayMs={170}
                         />
@@ -63,6 +70,4 @@ export default function SelectModePage() {
         </MainLayout>
     );
 }
-
-
 

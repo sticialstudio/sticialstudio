@@ -51,7 +51,7 @@ export default function TopBar({
         : "border-slate-700/70 bg-slate-900/70 text-slate-300";
 
   const handleClearCanvas = () => {
-    if (window.confirm('Are you sure you want to clear the entire circuit canvas? You can undo this action.')) {
+    if (window.confirm('Clear the whole circuit? You can undo this after it happens.')) {
       clearCircuit();
     }
   };
@@ -67,7 +67,7 @@ export default function TopBar({
               Mode: Circuit
             </span>
             <span className={`${modeChipClass} border-slate-800 bg-slate-900/80 text-slate-400`}>
-              Step 1: Build Circuit
+              Step 1: Build
             </span>
           </div>
           <div className="mt-1 flex min-w-0 items-center gap-2">
@@ -106,7 +106,7 @@ export default function TopBar({
 
       <div className="flex flex-wrap items-center gap-2">
         <span className="hidden rounded-full border border-slate-800 bg-slate-900/80 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500 xl:inline-flex">
-          1. Build components and wiring  2. Open Coding Environment  3. Simulate there
+          1. Add parts and wiring  2. Open Code Studio  3. Simulate
         </span>
         <button
           type="button"
@@ -115,7 +115,7 @@ export default function TopBar({
         >
           <div className="absolute inset-0 translate-x-[-100%] bg-gradient-to-r from-transparent via-cyan-400/10 to-transparent transition-transform duration-500 ease-out group-hover:translate-x-[100%]" />
           <Code2 size={15} />
-          <span>Go to Code -&gt;</span>
+          <span>Open Code Studio</span>
         </button>
       </div>
 
@@ -137,7 +137,7 @@ export default function TopBar({
 
         <button type="button" onClick={onOpenProject} className={buttonClass}>
           <FolderOpen size={15} />
-          <span>My Projects</span>
+          <span>Open Projects</span>
         </button>
 
         <div className="ml-2 h-4 w-[1px] bg-slate-800" />
@@ -147,7 +147,7 @@ export default function TopBar({
           className={`${buttonClass} border-transparent text-rose-400 hover:bg-rose-500/10 hover:text-rose-300`}
         >
           <Trash2 size={15} />
-          <span>Clear Canvas</span>
+          <span>Clear Circuit</span>
         </button>
       </div>
     </header>
