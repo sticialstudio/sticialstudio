@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -35,12 +35,22 @@ export default function DashboardPage() {
     const [projects, setProjects] = useState<ProjectData[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [apiError, setApiError] = useState<string | null>(null);
+    const [workspaceNotice, setWorkspaceNotice] = useState<string | null>(null);
 
     const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
     const [editName, setEditName] = useState('');
 
     const recentProjects = useMemo(() => projects.slice(0, 6), [projects]);
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const nextNotice = window.sessionStorage.getItem('workspaceNotice');
+        if (nextNotice) {
+            setWorkspaceNotice(nextNotice);
+            window.sessionStorage.removeItem('workspaceNotice');
+        }
+    }, []);
     useEffect(() => {
         if (!token) {
             router.push('/login');
@@ -192,6 +202,12 @@ export default function DashboardPage() {
                             </div>
                         </div>
                     </header>
+
+                    {workspaceNotice ? (
+                        <div className="rounded-2xl border border-cyan-400/25 bg-cyan-400/10 p-4 text-sm text-cyan-100">
+                            {workspaceNotice}
+                        </div>
+                    ) : null}
 
                     {apiError ? (
                         <div className="rounded-2xl border border-rose-500/30 bg-rose-500/10 p-4 text-sm text-rose-200">

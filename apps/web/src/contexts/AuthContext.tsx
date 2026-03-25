@@ -1,5 +1,5 @@
 "use client";
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { apiFetch, safeJson } from '@/lib/api';
 
@@ -19,6 +19,22 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
+function persistToken(token: string) {
+    localStorage.setItem('token', token);
+    document.cookie = `token=${token}; path=/; SameSite=Lax`;
+}
+
+function clearPersistedAuth() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('activeProjectId');
+    document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
+}
+
+function stashAuthNotice(message: string) {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem('authNotice', message);
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [token, setToken] = useState<string | null>(null);
@@ -28,10 +44,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const publicRoutes = ['/', '/login', '/register'];
 
+    const clearAuthState = useCallback(() => {
+        clearPersistedAuth();
+        setToken(null);
+        setUser(null);
+    }, []);
+
     useEffect(() => {
         const initAuth = async () => {
             const storedToken = localStorage.getItem('token');
             if (!storedToken) {
+                clearAuthState();
                 setIsLoading(false);
                 return;
             }
@@ -47,63 +70,55 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (res.ok) {
                     const data = await safeJson<{ user: User }>(res);
                     if (data?.user) {
+                        persistToken(storedToken);
                         setUser(data.user);
                         setToken(storedToken);
                     } else {
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('activeProjectId');
-                        setToken(null);
-                        setUser(null);
+                        stashAuthNotice('Your session ended. Sign in again to keep working.');
+                        clearAuthState();
                     }
                 } else {
-                    // Token invalid/expired
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('activeProjectId');
-                    setToken(null);
-                    setUser(null);
+                    stashAuthNotice(
+                        res.status === 401 || res.status === 403
+                            ? 'Your session ended. Sign in again to keep working.'
+                            : 'We could not reconnect to your session. Sign in again to continue.'
+                    );
+                    clearAuthState();
                 }
             } catch (e) {
                 console.error('Failed to verify token', e);
-                // Avoid blocking UI if auth server is unreachable
-                localStorage.removeItem('token');
-                localStorage.removeItem('activeProjectId');
-                setToken(null);
-                setUser(null);
+                stashAuthNotice('We could not reconnect to your session. Sign in again to continue.');
+                clearAuthState();
             } finally {
                 window.clearTimeout(timeoutId);
                 setIsLoading(false);
             }
         };
 
-        // Don't verify on server
         if (typeof window !== 'undefined') {
             initAuth();
         }
-    }, [pathname]);
+    }, [clearAuthState, pathname]);
 
-    // Route Protection
     useEffect(() => {
         if (!isLoading) {
             if (!user && !publicRoutes.includes(pathname)) {
                 router.push('/login');
             } else if (user && (pathname === '/login' || pathname === '/register')) {
-                router.push('/'); // Or wherever a logged-in user should go by default
+                router.push('/');
             }
         }
     }, [isLoading, user, pathname, router]);
 
     const login = (newToken: string, userData: User) => {
-        localStorage.setItem('token', newToken);
+        persistToken(newToken);
         setToken(newToken);
         setUser(userData);
         router.push('/');
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('activeProjectId');
-        setToken(null);
-        setUser(null);
+        clearAuthState();
         router.push('/login');
     };
 
@@ -115,7 +130,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout
     };
 
-    // Render loading state while calculating auth to prevent flash of content
     if (isLoading) {
         return (
             <div className="flex h-screen w-screen items-center justify-center bg-[#0f111a]">
@@ -138,7 +152,3 @@ export function useAuth() {
     }
     return context;
 }
-
-
-
-

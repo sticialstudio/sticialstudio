@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Mail, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
@@ -9,11 +9,21 @@ export default function LoginPage() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [infoMessage, setInfoMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const { login } = useAuth();
     const apiHealthUrl = API_BASE_URL + '/api/health';
     const showApiHelp = error.toLowerCase().includes('authentication server') || error.toLowerCase().includes('api');
 
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+
+        const nextNotice = window.sessionStorage.getItem('authNotice');
+        if (nextNotice) {
+            setInfoMessage(nextNotice);
+            window.sessionStorage.removeItem('authNotice');
+        }
+    }, []);
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -50,6 +60,12 @@ export default function LoginPage() {
                     <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">Welcome Back</h1>
                     <p className="text-slate-400 text-sm">Sign in to EdTech OS to continue</p>
                 </div>
+
+                {infoMessage && (
+                    <div className="mb-4 rounded-lg border border-cyan-400/20 bg-cyan-400/10 p-3 text-center text-sm text-cyan-100">
+                        {infoMessage}
+                    </div>
+                )}
 
                 {error && (
                     <div className="mb-6 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400 text-sm text-center">

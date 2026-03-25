@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useBoard } from '@/contexts/BoardContext';
 import { useProject } from '@/contexts/ProjectContext';
@@ -8,80 +8,114 @@ import { useAuth } from '@/contexts/AuthContext';
 import { apiFetch, API_BASE_URL, safeJson } from '@/lib/api';
 import MainLayout from '@/components/layout/MainLayout';
 import SplitView from '@/components/ide/SplitView';
+import { clearPendingProjectIntent, readPendingProjectIntent } from '@/lib/projects/projectFlow';
+import { serializeProjectMeta } from '@/lib/projects/projectMeta';
+
+function stashWorkspaceNotice(message: string) {
+    if (typeof window === 'undefined') return;
+    window.sessionStorage.setItem('workspaceNotice', message);
+}
 
 export default function Workspace() {
     const router = useRouter();
-    const { codingMode, currentBoard } = useBoard();
+    const { codingMode, currentBoard, language, generator, environment } = useBoard();
     const { projectId, setProjectId } = useProject();
     const { token } = useAuth();
     const [apiError, setApiError] = useState<string | null>(null);
+    const [isCreatingProject, setIsCreatingProject] = useState(false);
+    const createAttemptedRef = useRef(false);
 
     useEffect(() => {
-        if (!codingMode || !currentBoard) {
-            router.push('/');
+        if (!projectId && !codingMode) {
+            router.replace('/projects/select-mode');
+            return;
         }
-    }, [codingMode, currentBoard, router]);
+
+        if (!projectId && !currentBoard) {
+            router.replace('/projects/select-board');
+            return;
+        }
+
+        if (!projectId && !environment) {
+            router.replace('/projects/select-environment');
+        }
+    }, [codingMode, currentBoard, environment, projectId, router]);
 
     useEffect(() => {
         const initProject = async () => {
-            try {
-                if (!token || projectId) return;
+            const pendingIntent = readPendingProjectIntent();
 
-                const res = await apiFetch('/api/projects', {
-                    headers: { Authorization: `Bearer ${token}` }
+            if (!token || projectId || !codingMode || !currentBoard || !environment || createAttemptedRef.current) {
+                return;
+            }
+
+            if (!pendingIntent) {
+                stashWorkspaceNotice('Start a project from the dashboard or build wizard, then the workspace will open here.');
+                router.replace('/dashboard');
+                return;
+            }
+
+            createAttemptedRef.current = true;
+            setIsCreatingProject(true);
+
+            try {
+                const projectName = pendingIntent.projectName?.trim() || `${currentBoard} ${codingMode === 'block' ? 'Block' : 'Code'} Project`;
+                const createRes = await apiFetch('/api/projects', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        Authorization: `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        name: projectName,
+                        description: serializeProjectMeta({
+                            board: currentBoard,
+                            mode: codingMode,
+                            language,
+                            generator,
+                            environment
+                        })
+                    })
                 });
 
-                if (res.ok) {
-                    const projects = await safeJson<any>(res);
-                    if (Array.isArray(projects) && projects.length > 0) {
-                        const storedProjectId = typeof window !== 'undefined' ? localStorage.getItem('activeProjectId') : null;
-                        const preferredProject = storedProjectId
-                            ? projects.find((project: { id: string }) => project.id === storedProjectId)
-                            : null;
-
-                        setProjectId(preferredProject ? preferredProject.id : projects[0].id);
+                if (createRes.ok) {
+                    const newProject = await safeJson<any>(createRes);
+                    if (newProject?.id) {
+                        setProjectId(newProject.id);
+                        clearPendingProjectIntent();
                         setApiError(null);
-                    } else if (Array.isArray(projects)) {
-                        const modeForMeta = codingMode || 'block';
-                        const createRes = await apiFetch('/api/projects', {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                Authorization: `Bearer ${token}`
-                            },
-                            body: JSON.stringify({
-                                name: 'My First Journey',
-                                description: `Board: ${currentBoard} | Mode: ${modeForMeta}`
-                            })
-                        });
-
-                        if (createRes.ok) {
-                            const newProject = await safeJson<any>(createRes);
-                            if (newProject?.id) {
-                                setProjectId(newProject.id);
-                                setApiError(null);
-                            } else {
-                                setApiError('Unexpected response from the API.');
-                            }
-                        } else {
-                            setApiError(`Failed to create project (status ${createRes.status}).`);
-                        }
                     } else {
                         setApiError('Unexpected response from the API.');
                     }
                 } else {
-                    setApiError(`Failed to load projects (status ${res.status}).`);
+                    setApiError(`Failed to create project (status ${createRes.status}).`);
                 }
             } catch (error) {
                 setApiError(`Could not reach the API at ${API_BASE_URL}.`);
                 console.error('Failed to initialize project API:', error);
+            } finally {
+                setIsCreatingProject(false);
             }
         };
 
-        initProject();
-    }, [projectId, setProjectId, token, codingMode, currentBoard]);
+        void initProject();
+    }, [codingMode, currentBoard, environment, generator, language, projectId, router, setProjectId, token]);
 
-    if (!codingMode || !currentBoard) return null;
+    if ((!projectId && !codingMode) || !currentBoard || (!projectId && !environment)) {
+        return (
+            <MainLayout>
+                <div className="flex h-full min-h-0 flex-col bg-background">
+                    <div className="flex min-h-0 flex-1 items-center justify-center px-6">
+                        <div className="rounded-3xl border border-slate-700/80 bg-slate-900/70 px-8 py-10 text-center shadow-[0_24px_60px_-36px_rgba(8,47,73,0.95)]">
+                            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-cyan-400/60 border-t-transparent" />
+                            <h2 className="mt-4 text-lg font-semibold text-slate-100">Taking you to the right setup step</h2>
+                            <p className="mt-2 text-sm text-slate-400">Checking your project, board, and environment so the workspace opens with the right context.</p>
+                        </div>
+                    </div>
+                </div>
+            </MainLayout>
+        );
+    }
 
     return (
         <MainLayout>
@@ -94,10 +128,22 @@ export default function Workspace() {
                         </div>
                     </div>
                 ) : null}
-                <div className="min-h-0 flex-1">
-                    <SplitView />
-                </div>
+                {isCreatingProject ? (
+                    <div className="flex min-h-0 flex-1 items-center justify-center px-6">
+                        <div className="rounded-3xl border border-slate-700/80 bg-slate-900/70 px-8 py-10 text-center shadow-[0_24px_60px_-36px_rgba(8,47,73,0.95)]">
+                            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-cyan-400/60 border-t-transparent" />
+                            <h2 className="mt-4 text-lg font-semibold text-slate-100">Preparing your workspace</h2>
+                            <p className="mt-2 text-sm text-slate-400">Loading the right board, editor, and simulator setup so you can start immediately.</p>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="min-h-0 flex-1">
+                        <SplitView />
+                    </div>
+                )}
             </div>
         </MainLayout>
     );
 }
+
+

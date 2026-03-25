@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Workspace, WorkspaceSvg } from "blockly";
@@ -448,8 +448,9 @@ export default function SplitView() {
         setSaveStatusText(null);
       }, 3200);
     } catch (error) {
-      webSerial.addMessage("error", `Failed to save project: ${(error as Error).message}`);
-      setSaveStatusText("Save failed");
+      const message = error instanceof Error ? error.message : "Could not save the project right now.";
+      webSerial.addMessage("error", `Failed to save project: ${message}`);
+      setSaveStatusText(message);
       setSaveStatusTone("error");
       saveStatusTimeoutRef.current = setTimeout(() => {
         setSaveStatusText(null);
