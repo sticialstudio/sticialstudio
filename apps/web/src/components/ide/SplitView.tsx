@@ -1,528 +1,971 @@
-"use client";
+﻿"use client";
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import dynamic from 'next/dynamic';
-import { useRouter } from 'next/navigation';
-import TopToolbar from './TopToolbar';
-import BlocklyWorkspace from './BlocklyWorkspace';
-import CodeViewer from './CodeViewer';
-import TerminalPanel from './TerminalPanel';
-import { useWebSerial } from '../../hooks/useWebSerial';
-import { useBoard } from '@/contexts/BoardContext';
-import { useProject } from '@/contexts/ProjectContext';
-import { apiFetch, API_BASE_URL, safeJson } from '@/lib/api';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { Workspace, WorkspaceSvg } from "blockly";
+import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
+import { CircuitBoard, Code2, PlayCircle, Save } from "lucide-react";
+import TopToolbar, { StudioView } from "./TopToolbar";
+import CircuitLabTopBar from "./circuit-lab/TopBar";
+import CanvasWorkspace from "./circuit-lab/CanvasWorkspace";
+import CodingEnvironmentTopBar from "./coding-environment/TopBar";
+import CodingEnvironmentSummary from "./coding-environment/CircuitSummary";
+import type { SimulationCanvasControls, SimulationCanvasStatus } from "./SimulationCanvas";
+import BlocklyWorkspace from "./BlocklyWorkspace";
+import CodeViewer from "./CodeViewer";
+import TerminalPanel from "./TerminalPanel";
+import FileExplorer from "./FileExplorer";
+import WorkspaceSidebar from "./WorkspaceSidebar";
+import WorkspaceGuidance from "./WorkspaceGuidance";
+import IdeShellFrame from "./IdeShellFrame";
+import IdeLeftRail, { IdeLeftRailView } from "./IdeLeftRail";
+import IdeRightContextPanel, { IdeRightContextView } from "./IdeRightContextPanel";
+import IdeBottomDock from "./IdeBottomDock";
+import DeviceFiles from "./DeviceFiles";
+import BoardStatusPanel from "./BoardStatusPanel";
+import { useWebSerial } from "../../hooks/useWebSerial";
+import { useBoard } from "@/contexts/BoardContext";
+import { useProject } from "@/contexts/ProjectContext";
+import { apiFetch, API_BASE_URL, safeJson } from "@/lib/api";
+import { BOARD_CONFIG } from "@/lib/boards/boardConfig";
+import { getGenerator } from "@/lib/blockly/generator";
+import { useCircuitStore } from "@/stores/circuitStore";
+import { serializeCircuit, deserializeCircuit, CIRCUIT_FILE_NAME } from "@/lib/circuit/circuitSerializer";
+import { generateArduinoTemplate, generateMicroPythonTemplate } from "@/templates/codeTemplates";
 
-const TextEditor = dynamic(() => import('./TextEditor'), { ssr: false });
-
-const BLOCK_CATEGORIES = [
-    'Basic',
-    'Digital I/O',
-    'Analog I/O',
-    'Timing',
-    'Communication',
-    'Sensors',
-    'Displays',
-    'Lights',
-    'Motors',
-    'Logic',
-    'Loops',
-    'Math',
-    'Text'
-];
-
-const SENSOR_GROUP_CATEGORIES = [
-    { id: 'Sensors: Motion & Presence', label: 'Motion & Presence' },
-    { id: 'Sensors: Water, Soil & Rain', label: 'Water / Soil / Rain' },
-    { id: 'Sensors: Environment', label: 'Environment' },
-    { id: 'Sensors: IR & Keypad', label: 'IR & Keypad' },
-    { id: 'Sensors: Actuators', label: 'Actuators' }
-];
+const TextEditor = dynamic(() => import("./TextEditor"), { ssr: false });
+const SimulationCanvas = dynamic(() => import("./SimulationCanvas"), { ssr: false, loading: () => null });
 
 const DEFAULT_BLOCKLY_XML = '<xml xmlns="https://developers.google.com/blockly/xml"></xml>';
 
-function getPreferredSourceFileName(language: string | null, generator: string | null) {
-    if (language === 'python' || generator === 'micropython') {
-        return 'main.py';
+interface CompileResponse {
+  success?: boolean;
+  log?: string;
+  hex?: string;
+}
+
+interface BlocklyGeneratorLike {
+  init: (workspace: Workspace) => void;
+  blockToCode?: (block: unknown) => unknown;
+  setups_?: Record<string, string | undefined>;
+  getImports?: () => string[];
+}
+
+function buildSourceCodeFromBlocklyWorkspace(workspace: WorkspaceSvg, generatorType: string) {
+  const generator = getGenerator(generatorType) as unknown as BlocklyGeneratorLike;
+  generator.init(workspace);
+
+  const rootBlocks = workspace.getBlocksByType('arduino_setup_loop');
+  const rootBlock = rootBlocks.length > 0 ? rootBlocks[0] : null;
+
+  if (rootBlock) {
+    generator.blockToCode?.(rootBlock);
+  }
+
+  const setupsDict = generator.setups_ || {};
+  const loopCode = setupsDict['__loop_code__'] || '';
+  const manualSetupCode = setupsDict['__setup_code__'] || '';
+
+  const setupEntries: string[] = [];
+  const globalEntries: string[] = [];
+
+  if (manualSetupCode.trim()) {
+    setupEntries.push(manualSetupCode);
+  }
+
+  for (const name in setupsDict) {
+    if (name === '__loop_code__' || name === '__setup_code__') continue;
+
+    const snippet = setupsDict[name];
+    if (typeof snippet !== 'string' || snippet.trim().length === 0) continue;
+
+    if (generatorType === 'arduino') {
+      const trimmed = snippet.trimStart();
+      const isGlobalSnippet =
+        trimmed.startsWith('#include') ||
+        trimmed.startsWith('Servo ') ||
+        trimmed.startsWith('Adafruit_') ||
+        trimmed.startsWith('long readUltrasonicDistance') ||
+        /^[A-Za-z_][\w:<>&*\s]*\([^)]*\)\s*\{/.test(trimmed);
+
+      if (isGlobalSnippet) {
+        globalEntries.push(snippet);
+      } else {
+        setupEntries.push(snippet);
+      }
+    } else {
+      setupEntries.push(snippet);
     }
-    return 'main.cpp';
+  }
+
+  const setupCode = setupEntries.join('\n');
+
+  if (generatorType === 'micropython') {
+    const indentedLoop = loopCode
+      .split('\n')
+      .map((line) => (line ? `    ${line}` : line))
+      .join('\n');
+    const importLines = typeof generator.getImports === 'function' ? generator.getImports() : [];
+    return generateMicroPythonTemplate(importLines, setupCode, indentedLoop);
+  }
+
+  return generateArduinoTemplate(globalEntries.join('\n'), setupCode, loopCode);
+}
+
+function getPreferredSourceFileName(language: string | null, generator: string | null) {
+  if (language === "python" || generator === "micropython") {
+    return "main.py";
+  }
+  return "main.cpp";
 }
 
 function isLikelyBlocklyXml(content: string | null | undefined) {
-    if (typeof content !== 'string') return false;
+  if (typeof content !== "string") return false;
 
-    const trimmed = content.trim();
-    if (!trimmed) return true;
+  const trimmed = content.trim();
+  if (!trimmed) return true;
 
-    const withoutDeclaration = trimmed.replace(/^<\?xml[\s\S]*?\?>\s*/i, '');
-    return /^<xml(\s|>)/i.test(withoutDeclaration);
+  const withoutDeclaration = trimmed.replace(/^<\?xml[\s\S]*?\?>\s*/i, "");
+  return /^<xml(\s|>)/i.test(withoutDeclaration);
+}
+
+function getInitialStudioView(environment: string): StudioView {
+  return environment === "virtual" ? "circuit" : "code";
 }
 
 export default function SplitView() {
-    const router = useRouter();
-    const webSerial = useWebSerial();
+  const router = useRouter();
+  const webSerial = useWebSerial();
 
-    const [leftPanelWidth, setLeftPanelWidth] = useState(224);
-    const [rightPanelWidth, setRightPanelWidth] = useState(380);
-    const [terminalHeight, setTerminalHeight] = useState(220);
+  const [terminalHeight, setTerminalHeight] = useState(220);
+  const [leftCollapsed, setLeftCollapsed] = useState(false);
+  const [rightCollapsed, setRightCollapsed] = useState(false);
+  const [bottomCollapsed, setBottomCollapsed] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+  const [isCompiling, setIsCompiling] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveStatusText, setSaveStatusText] = useState<string | null>(null);
+  const [saveStatusTone, setSaveStatusTone] = useState<"neutral" | "success" | "error">("neutral");
+  const saveStatusTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [leftRailView, setLeftRailView] = useState("files");
+  const [rightPanelView, setRightPanelView] = useState("status");
+  const [selectedBlocklyCategory, setSelectedBlocklyCategory] = useState("Input/Output");
+  const [simulationControls, setSimulationControls] = useState<SimulationCanvasControls | null>(null);
+  const [simulationStatus, setSimulationStatus] = useState<SimulationCanvasStatus | null>(null);
+  const blocklyWorkspaceRef = useRef<WorkspaceSvg | null>(null);
+  const hasVisitedCodingEnvRef = useRef(false);
 
-    const [leftCollapsed, setLeftCollapsed] = useState(false);
-    const [rightCollapsed, setRightCollapsed] = useState(false);
-    const [bottomCollapsed, setBottomCollapsed] = useState(false);
-    const [isCompact, setIsCompact] = useState(false);
+  const {
+    currentBoard,
+    codingMode,
+    language: currentLanguage,
+    generator: currentGenerator,
+    compileStrategy,
+    environment: rawEnvironment,
+    setCodingMode,
+  } = useBoard();
 
-    const [isCompiling, setIsCompiling] = useState(false);
-    const [isSaving, setIsSaving] = useState(false);
-    const [selectedBlocklyCategory, setSelectedBlocklyCategory] = useState(BLOCK_CATEGORIES[0]);
-    const [selectedSensorGroup, setSelectedSensorGroup] = useState<string | null>(null);
+  const environment = rawEnvironment ?? "virtual";
+  const boardConfig = BOARD_CONFIG[currentBoard];
+  const supportsSimulation = compileStrategy === "arduino-cli" && Boolean(boardConfig?.supportsBrowserSimulation);
+  const supportsDeviceFiles = boardConfig?.uploadTransport === "micropython-raw-repl";
+  const boardSupportNote = boardConfig?.supportNote;
+  const isBlockMode = codingMode === "block";
+  const [activeView, setActiveView] = useState<StudioView>(() => getInitialStudioView(environment));
 
-    const {
-        currentBoard,
-        codingMode,
-        language: currentLanguage,
-        generator: currentGenerator,
-        compileStrategy
-    } = useBoard();
+  const handleSetActiveView = useCallback((view: StudioView) => {
+    if (view === activeView) return;
+    if (!document.startViewTransition) {
+      setActiveView(view);
+      return;
+    }
+    // Smooth transition using the native View Transitions API
+    document.startViewTransition(() => {
+      // Must use flushSync or just setting state is enough for React 18 in modern browsers,
+      // but wrapping it ensures the DOM updates happen inside the transition measurement.
+      setActiveView(view);
+    });
+  }, [activeView]);
 
-    const {
-        files,
-        updateFileContent,
-        projectId,
-        saveProject,
-        hasUnsavedChanges,
-        setActiveFileId
-    } = useProject();
+  useEffect(() => {
+    setActiveView(getInitialStudioView(environment));
+  }, [environment]);
 
-    const preferredSourceFileName = useMemo(
-        () => getPreferredSourceFileName(currentLanguage, currentGenerator),
-        [currentLanguage, currentGenerator]
-    );
-
-    const blocklyFile = useMemo(
-        () =>
-            files.find((file) => file.name === 'main.blockly') ||
-            files.find((file) => file.type === 'blockly') ||
-            null,
-        [files]
-    );
-
-    const sourceFile = useMemo(() => {
-        const byPreferredName = files.find((file) => file.name === preferredSourceFileName);
-        if (byPreferredName) return byPreferredName;
-
-        const byExpectedType = files.find((file) =>
-            preferredSourceFileName === 'main.py' ? file.type === 'python' : file.type === 'cpp'
-        );
-        if (byExpectedType) return byExpectedType;
-
-        return (
-            files.find((file) => file.type !== 'folder' && file.id !== blocklyFile?.id) ||
-            files.find((file) => file.type !== 'folder') ||
-            null
-        );
-    }, [files, preferredSourceFileName, blocklyFile?.id]);
-
-    const sourceCode = sourceFile ? sourceFile.content : '';
-    const rawBlocklyContent = blocklyFile?.content || '';
-    const blocklyXmlIsValid = isLikelyBlocklyXml(rawBlocklyContent);
-    const blocklyXml = blocklyXmlIsValid && rawBlocklyContent.trim().length > 0
-        ? rawBlocklyContent
-        : DEFAULT_BLOCKLY_XML;
-    const effectiveBlocklyCategory =
-        selectedBlocklyCategory === 'Sensors' && selectedSensorGroup
-            ? selectedSensorGroup
-            : selectedBlocklyCategory;
-
-    useEffect(() => {
-        if (sourceFile?.id) {
-            setActiveFileId(sourceFile.id);
-        }
-    }, [sourceFile?.id, setActiveFileId]);
-
-    useEffect(() => {
-        if (!blocklyFile?.id || blocklyXmlIsValid) return;
-
-        const legacyContent = blocklyFile.content || '';
-
-        // Recover projects affected by old save behavior where generated code was written into main.blockly.
-        if (sourceFile?.id && sourceFile.id !== blocklyFile.id && sourceFile.content !== legacyContent) {
-            updateFileContent(sourceFile.id, legacyContent);
-        }
-
-        updateFileContent(blocklyFile.id, DEFAULT_BLOCKLY_XML);
-    }, [
-        blocklyFile?.id,
-        blocklyFile?.content,
-        blocklyXmlIsValid,
-        sourceFile?.id,
-        sourceFile?.content,
-        updateFileContent
-    ]);
-
-    useEffect(() => {
-        const updateViewportMode = () => {
-            const compact = window.innerWidth < 1280;
-            setIsCompact(compact);
-
-            if (compact) {
-                setLeftCollapsed(true);
-                setRightCollapsed(true);
-                if (window.innerHeight < 820) {
-                    setBottomCollapsed(true);
-                }
-            }
-        };
-
-        updateViewportMode();
-        window.addEventListener('resize', updateViewportMode);
-        return () => window.removeEventListener('resize', updateViewportMode);
-    }, []);
-
-    const handleSourceCodeChange = useCallback(
-        (newCode: string) => {
-            if (sourceFile?.id) {
-                updateFileContent(sourceFile.id, newCode);
-            }
-        },
-        [sourceFile?.id, updateFileContent]
-    );
-
-    const handleBlocklyXmlChange = useCallback(
-        (xml: string) => {
-            if (blocklyFile?.id) {
-                updateFileContent(blocklyFile.id, xml);
-            }
-        },
-        [blocklyFile?.id, updateFileContent]
-    );
-
-    const handleSaveProject = useCallback(async () => {
-        if (!projectId) {
-            webSerial.addMessage('error', 'No active project selected.');
-            return;
-        }
-
-        setIsSaving(true);
-        try {
-            await saveProject();
-            webSerial.addMessage('system', 'Project saved.');
-        } catch (error) {
-            webSerial.addMessage('error', `Failed to save project: ${(error as Error).message}`);
-        } finally {
-            setIsSaving(false);
-        }
-    }, [projectId, saveProject, webSerial]);
-
-    const handleVerify = useCallback(async () => {
-        if (compileStrategy === 'micropython-flash') {
-            webSerial.addMessage('system', 'MicroPython code is validated on device upload. Use Upload.');
-            return;
-        }
-
-        setIsCompiling(true);
-        webSerial.addMessage('system', `Compiling sketch for ${currentBoard}...`);
-
-        try {
-            const res = await apiFetch('/api/compile/arduino', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sourceCode })
-            });
-            const data = await safeJson<any>(res);
-
-            if (res.ok && data?.success) {
-                webSerial.addMessage('system', 'Compilation successful.');
-                const lines = (data?.log || '').split('\n').filter((line: string) => line.trim().length > 0);
-                lines.forEach((line: string) => webSerial.addMessage('app', line));
-            } else {
-                const message = res.ok ? 'Compilation failed.' : `Compiler API error (status ${res.status}).`;
-                webSerial.addMessage('error', message);
-                const lines = (data?.log || '').split('\n').filter((line: string) => line.trim().length > 0);
-                lines.forEach((line: string) => webSerial.addMessage('error', line));
-            }
-        } catch (error) {
-            webSerial.addMessage('error', `Compiler API offline at ${API_BASE_URL}: ${(error as Error).message}`);
-        } finally {
-            setIsCompiling(false);
-        }
-    }, [compileStrategy, currentBoard, sourceCode, webSerial]);
-
-    const handleUploadToBoard = useCallback(async () => {
-        if (!webSerial.isConnected) {
-            webSerial.addMessage('error', 'Device not connected. Click Connect Device first.');
-            return;
-        }
-
-        if (compileStrategy === 'micropython-flash') {
-            webSerial.executeMicroPythonRaw(sourceCode);
-            return;
-        }
-
-        setIsCompiling(true);
-        webSerial.addMessage('system', `Compiling sketch for ${currentBoard} before upload...`);
-
-        try {
-            const res = await apiFetch('/api/compile/arduino', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sourceCode })
-            });
-            const data = await safeJson<any>(res);
-
-            if (res.ok && data?.success && data?.hex) {
-                webSerial.addMessage('system', 'Compilation successful. Starting upload...');
-                await webSerial.flashArduino(data.hex);
-            } else {
-                const message = res.ok ? 'Compilation failed. Upload aborted.' : `Compiler API error (status ${res.status}).`;
-                webSerial.addMessage('error', message);
-                const lines = (data?.log || '').split('\n').filter((line: string) => line.trim().length > 0);
-                lines.forEach((line: string) => webSerial.addMessage('error', line));
-            }
-        } catch (error) {
-            webSerial.addMessage('error', `Compiler API offline at ${API_BASE_URL}: ${(error as Error).message}`);
-        } finally {
-            setIsCompiling(false);
-        }
-    }, [compileStrategy, currentBoard, sourceCode, webSerial]);
-
-    const handleConnectDevice = useCallback(() => {
-        if (webSerial.isConnected) {
-            webSerial.disconnect();
-        } else {
-            webSerial.connect(115200);
-        }
-    }, [webSerial]);
-
-    const handleLeftResize = (event: React.MouseEvent<HTMLDivElement>) => {
-        event.preventDefault();
-        const startX = event.clientX;
-        const startWidth = leftPanelWidth;
-
-        const onMove = (moveEvent: MouseEvent) => {
-            const delta = moveEvent.clientX - startX;
-            setLeftPanelWidth(Math.max(180, Math.min(360, startWidth + delta)));
-        };
-
-        const onUp = () => {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-        };
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
+  useEffect(() => {
+    return () => {
+      if (saveStatusTimeoutRef.current) {
+        clearTimeout(saveStatusTimeoutRef.current);
+      }
     };
+  }, []);
 
-    const handleRightResize = (event: React.MouseEvent<HTMLDivElement>) => {
-        event.preventDefault();
-        const startX = event.clientX;
-        const startWidth = rightPanelWidth;
+  // Mark that the user has visited the coding environment at least once
+  // so we only boot the AVR simulation worker when actually needed.
+  useEffect(() => {
+    if (activeView === 'code') {
+      hasVisitedCodingEnvRef.current = true;
+    }
+  }, [activeView]);
 
-        const onMove = (moveEvent: MouseEvent) => {
-            const delta = startX - moveEvent.clientX;
-            setRightPanelWidth(Math.max(280, Math.min(620, startWidth + delta)));
-        };
+  const leftPanelWidth = 272;
+  const rightPanelWidth = 360;
+  const virtualComponentCount = useCircuitStore((state) => state.components.length);
+  const virtualMappedPinCount = useCircuitStore((state) => state.codingSnapshot.usedSignalPins.length);
 
-        const onUp = () => {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-        };
+  const {
+    files,
+    projectId,
+    projectName,
+    setProjectName,
+    updateFileContent,
+    createFile,
+    saveProject,
+    hasUnsavedChanges,
+    setActiveFileId,
+    bootstrapOfflineFiles,
+  } = useProject();
 
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-    };
+  const preferredSourceFileName = useMemo(
+    () => getPreferredSourceFileName(currentLanguage, currentGenerator),
+    [currentLanguage, currentGenerator]
+  );
 
-    const handleTerminalResize = (event: React.MouseEvent<HTMLDivElement>) => {
-        event.preventDefault();
-        const startY = event.clientY;
-        const startHeight = terminalHeight;
+  const blocklyFile = useMemo(
+    () =>
+      files.find((file) => file.name === "main.blockly") ||
+      files.find((file) => file.type === "blockly") ||
+      null,
+    [files]
+  );
 
-        const onMove = (moveEvent: MouseEvent) => {
-            const delta = startY - moveEvent.clientY;
-            setTerminalHeight(Math.max(140, Math.min(420, startHeight + delta)));
-        };
+  const sourceFile = useMemo(() => {
+    const byPreferredName = files.find((file) => file.name === preferredSourceFileName);
+    if (byPreferredName) return byPreferredName;
 
-        const onUp = () => {
-            document.removeEventListener('mousemove', onMove);
-            document.removeEventListener('mouseup', onUp);
-        };
-
-        document.addEventListener('mousemove', onMove);
-        document.addEventListener('mouseup', onUp);
-    };
-
-    const showCodeViewer = codingMode === 'block' && !rightCollapsed;
-
-    const leftPanelContent = useMemo(() => {
-        if (codingMode !== 'block') {
-            return (
-                <div className="space-y-4 p-4 text-sm text-muted">
-                    <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Workspace</h3>
-                    <p className="rounded-xl border border-panel-border bg-panel p-3 leading-6 text-muted">
-                        Text coding mode is active. Use the center editor to write code and the terminal panel for upload logs.
-                    </p>
-                </div>
-            );
-        }
-
-        return (
-            <div className="space-y-3 p-4">
-                <h3 className="text-xs font-semibold uppercase tracking-[0.18em] text-accent">Blockly Categories</h3>
-                <ul className="space-y-2">
-                    {BLOCK_CATEGORIES.map((category, index) => {
-                        const isActive = selectedBlocklyCategory === category;
-                        return (
-                            <li key={category}>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setSelectedBlocklyCategory(category);
-                                        if (category !== 'Sensors') {
-                                            setSelectedSensorGroup(null);
-                                        }
-                                    }}
-                                    className={`ui-fade-up w-full rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors ${
-                                        isActive
-                                            ? 'border-cyan-400/70 bg-cyan-400/10 text-cyan-200'
-                                            : 'border-panel-border bg-panel text-muted hover:border-cyan-400/40 hover:text-foreground'
-                                    }`}
-                                    style={{ animationDelay: `${80 + index * 24}ms` }}
-                                    aria-pressed={isActive}
-                                >
-                                    {category}
-                                </button>
-                            </li>
-                        );
-                    })}
-                </ul>
-                {selectedBlocklyCategory === 'Sensors' ? (
-                    <div className="space-y-2 rounded-xl border border-panel-border bg-panel p-3">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-cyan-300">Sensor Groups</p>
-                        <ul className="space-y-2">
-                            {SENSOR_GROUP_CATEGORIES.map((group) => {
-                                const isGroupActive = selectedSensorGroup === group.id;
-                                return (
-                                    <li key={group.id}>
-                                        <button
-                                            type="button"
-                                            onClick={() => setSelectedSensorGroup(group.id)}
-                                            className={`w-full rounded-lg border px-3 py-2 text-left text-xs font-medium transition-colors ${
-                                                isGroupActive
-                                                    ? 'border-emerald-400/70 bg-emerald-400/10 text-emerald-200'
-                                                    : 'border-panel-border bg-slate-900/50 text-muted hover:border-emerald-400/40 hover:text-foreground'
-                                            }`}
-                                            aria-pressed={isGroupActive}
-                                        >
-                                            {group.label}
-                                        </button>
-                                    </li>
-                                );
-                            })}
-                        </ul>
-                    </div>
-                ) : null}
-            </div>
-        );
-    }, [codingMode, selectedBlocklyCategory, selectedSensorGroup]);
+    const byExpectedType = files.find((file) =>
+      preferredSourceFileName === "main.py" ? file.type === "python" : file.type === "cpp"
+    );
+    if (byExpectedType) return byExpectedType;
 
     return (
-        <div className="flex h-full min-h-0 flex-col bg-background p-2 sm:p-3">
-            <div className="flex min-h-0 flex-1 flex-col gap-2 sm:gap-3">
-                <TopToolbar
-                    boardName={currentBoard}
-                    isConnected={webSerial.isConnected}
-                    isCompiling={isCompiling}
-                    isSaving={isSaving}
-                    hasUnsavedChanges={hasUnsavedChanges}
-                    leftCollapsed={leftCollapsed}
-                    rightCollapsed={rightCollapsed}
-                    bottomCollapsed={bottomCollapsed}
-                    onVerify={handleVerify}
-                    onUpload={handleUploadToBoard}
-                    onConnectDevice={handleConnectDevice}
-                    onSelectBoard={() => router.push('/projects/select-board')}
-                    onSaveProject={handleSaveProject}
-                    onOpenProject={() => router.push('/dashboard')}
-                    onToggleLeft={() => setLeftCollapsed((prev) => !prev)}
-                    onToggleRight={() => setRightCollapsed((prev) => !prev)}
-                    onToggleBottom={() => setBottomCollapsed((prev) => !prev)}
-                />
-
-                <div className="flex min-h-0 flex-1 gap-2">
-                    {!leftCollapsed ? (
-                        <>
-                            <aside
-                                style={{ width: leftPanelWidth }}
-                                className="min-h-0 overflow-y-auto rounded-2xl border border-panel-border bg-panel transition-[width,opacity] duration-200"
-                            >
-                                {leftPanelContent}
-                            </aside>
-                            {!isCompact ? (
-                                <div
-                                    className="w-1.5 cursor-col-resize rounded-full bg-panel-border transition-colors hover:bg-cyan-400"
-                                    onMouseDown={handleLeftResize}
-                                    role="separator"
-                                    aria-orientation="vertical"
-                                    aria-label="Resize left panel"
-                                />
-                            ) : null}
-                        </>
-                    ) : null}
-
-                    <section className="min-w-0 flex-1 transition-all duration-200">
-                        {codingMode === 'block' ? (
-                            <BlocklyWorkspace
-                                generatorType={currentGenerator || 'arduino'}
-                                initialXml={blocklyXml}
-                                onCodeChange={handleSourceCodeChange}
-                                onXmlChange={handleBlocklyXmlChange}
-                                selectedCategoryName={effectiveBlocklyCategory}
-                            />
-                        ) : (
-                            <section className="h-full overflow-hidden rounded-2xl border border-panel-border bg-panel">
-                                <TextEditor code={sourceCode} language={currentLanguage || 'cpp'} onChange={handleSourceCodeChange} />
-                            </section>
-                        )}
-                    </section>
-
-                    {showCodeViewer ? (
-                        <>
-                            {!isCompact ? (
-                                <div
-                                    className="w-1.5 cursor-col-resize rounded-full bg-panel-border transition-colors hover:bg-cyan-400"
-                                    onMouseDown={handleRightResize}
-                                    role="separator"
-                                    aria-orientation="vertical"
-                                    aria-label="Resize right panel"
-                                />
-                            ) : null}
-                            <aside style={{ width: rightPanelWidth }} className="min-h-0 transition-[width,opacity] duration-200">
-                                <CodeViewer code={sourceCode} language={currentLanguage || 'cpp'} />
-                            </aside>
-                        </>
-                    ) : null}
-                </div>
-
-                {!bottomCollapsed ? (
-                    <>
-                        {!isCompact ? (
-                            <div
-                                className="h-1.5 cursor-row-resize rounded-full bg-panel-border transition-colors hover:bg-cyan-400"
-                                onMouseDown={handleTerminalResize}
-                                role="separator"
-                                aria-orientation="horizontal"
-                                aria-label="Resize terminal panel"
-                            />
-                        ) : null}
-                        <div style={{ height: terminalHeight }} className="min-h-[140px] transition-[height] duration-200">
-                            <TerminalPanel webSerial={webSerial} />
-                        </div>
-                    </>
-                ) : (
-                    <TerminalPanel webSerial={webSerial} collapsed />
-                )}
-            </div>
-        </div>
+      files.find((file) => file.type !== "folder" && file.id !== blocklyFile?.id) ||
+      files.find((file) => file.type !== "folder") ||
+      null
     );
+  }, [files, preferredSourceFileName, blocklyFile?.id]);
+
+  const sourceCode = sourceFile ? sourceFile.content : "";
+  const rawBlocklyContent = blocklyFile?.content || "";
+  const blocklyXmlIsValid = isLikelyBlocklyXml(rawBlocklyContent);
+  const blocklyXml =
+    blocklyXmlIsValid && rawBlocklyContent.trim().length > 0 ? rawBlocklyContent : DEFAULT_BLOCKLY_XML;
+  const hasRunnableSimulationCode = isBlockMode
+    ? blocklyXml.trim().length > 0 || sourceCode.trim().length > 0
+    : sourceCode.trim().length > 0;
+  const isBlocklyWorkspaceEmpty = blocklyXml.trim() === DEFAULT_BLOCKLY_XML && sourceCode.trim().length === 0;
+  const showCircuitEmptyGuidance = environment === "virtual" && activeView === "circuit" && virtualComponentCount === 0;
+  const showCodeEmptyGuidance = sourceCode.trim().length === 0 && (!isBlockMode || isBlocklyWorkspaceEmpty);
+  const shouldShowCodeGuidance = showCodeEmptyGuidance || (environment === "virtual" && virtualComponentCount === 0);
+  const visibleSaveStatusText = saveStatusText ?? (hasUnsavedChanges ? "Unsaved changes" : null);
+  const visibleSaveStatusTone = saveStatusText ? saveStatusTone : "neutral";
+
+
+  useEffect(() => {
+    if (sourceFile?.id) {
+      setActiveFileId(sourceFile.id);
+    }
+  }, [sourceFile?.id, setActiveFileId]);
+
+  const bootstrappedRef = React.useRef(false);
+  useEffect(() => {
+    if (bootstrappedRef.current || files.length > 0) return;
+    bootstrappedRef.current = true;
+    bootstrapOfflineFiles(preferredSourceFileName, currentLanguage || "cpp");
+  }, [files.length, preferredSourceFileName, currentLanguage, bootstrapOfflineFiles]);
+
+  useEffect(() => {
+    if (!blocklyFile?.id || blocklyXmlIsValid) return;
+
+    const legacyContent = blocklyFile.content || "";
+
+    if (sourceFile?.id && sourceFile.id !== blocklyFile.id && sourceFile.content !== legacyContent) {
+      updateFileContent(sourceFile.id, legacyContent);
+    }
+
+    updateFileContent(blocklyFile.id, DEFAULT_BLOCKLY_XML);
+  }, [
+    blocklyFile?.id,
+    blocklyFile?.content,
+    blocklyXmlIsValid,
+    sourceFile?.id,
+    sourceFile?.content,
+    updateFileContent,
+  ]);
+
+  // --- Circuit Lab Persistence ---
+  const loadedCircuitProjectRef = useRef<string | null>(null);
+
+  // Keep a ref to project context methods so the store subscriber can access
+  // them without causing the useEffect to tear down on every render.
+  const projectRef = useRef({ files, updateFileContent, createFile });
+  useEffect(() => {
+    projectRef.current = { files, updateFileContent, createFile };
+  }, [files, updateFileContent, createFile]);
+
+  // 1. Restore circuit on load
+  useEffect(() => {
+    if (!projectId || files.length === 0 || loadedCircuitProjectRef.current === projectId) {
+      return;
+    }
+
+    const circuitFile = files.find((f) => f.name === CIRCUIT_FILE_NAME);
+    if (circuitFile?.content) {
+      const restored = deserializeCircuit(circuitFile.content);
+      useCircuitStore.getState().setCircuitData(restored, true);
+    } else {
+      useCircuitStore.getState().clearCircuit();
+    }
+
+    loadedCircuitProjectRef.current = projectId;
+  }, [projectId, files]);
+
+  // 2. Auto-save circuit on change (debounced)
+  useEffect(() => {
+    if (!projectId || loadedCircuitProjectRef.current !== projectId) return;
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+    const unsubscribe = useCircuitStore.subscribe((state, prevState) => {
+      // Only trigger save if components or nets arrays changed reference
+      if (state.components === prevState.components && state.nets === prevState.nets) {
+        return;
+      }
+
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        const { files: currentFiles, updateFileContent: updateFn, createFile: createProjectFile } = projectRef.current;
+        const circuitFile = currentFiles.find((f) => f.name === CIRCUIT_FILE_NAME);
+        const json = serializeCircuit({ components: state.components, nets: state.nets });
+
+        if (circuitFile) {
+          if (circuitFile.content !== json) {
+            updateFn(circuitFile.id, json);
+          }
+        } else {
+          void createProjectFile(CIRCUIT_FILE_NAME, "json", null, json);
+        }
+      }, 1000); // 1s debounce
+    });
+
+    return () => {
+      unsubscribe();
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [projectId]);
+
+  useEffect(() => {
+    const updateViewportMode = () => {
+      const compact = window.innerWidth < 1280;
+      setIsCompact(compact);
+
+      if (compact) {
+        setLeftCollapsed(true);
+        setRightCollapsed(true);
+        if (window.innerHeight < 820) {
+          setBottomCollapsed(true);
+        }
+      }
+    };
+
+    updateViewportMode();
+    window.addEventListener("resize", updateViewportMode);
+    return () => window.removeEventListener("resize", updateViewportMode);
+  }, []);
+
+  const handleSourceCodeChange = useCallback(
+    (newCode: string) => {
+      if (sourceFile?.id) {
+        updateFileContent(sourceFile.id, newCode);
+      }
+    },
+    [sourceFile?.id, updateFileContent]
+  );
+
+  const handleBlocklyXmlChange = useCallback(
+    (xml: string) => {
+      if (blocklyFile?.id) {
+        updateFileContent(blocklyFile.id, xml);
+      }
+    },
+    [blocklyFile?.id, updateFileContent]
+  );
+
+  const handleBlocklyWorkspaceReady = useCallback((workspace: WorkspaceSvg | null) => {
+    blocklyWorkspaceRef.current = workspace;
+  }, []);
+
+  const syncBlocklySourceCode = useCallback(() => {
+    if (!isBlockMode || !blocklyWorkspaceRef.current) {
+      return sourceCode;
+    }
+
+    const nextCode = buildSourceCodeFromBlocklyWorkspace(blocklyWorkspaceRef.current, currentGenerator || "arduino");
+    if (sourceFile?.id && nextCode !== sourceCode) {
+      updateFileContent(sourceFile.id, nextCode);
+    }
+
+    return nextCode;
+  }, [currentGenerator, isBlockMode, sourceCode, sourceFile?.id, updateFileContent]);
+
+  const reportUnsupportedBoardAction = useCallback(
+    (action: string) => {
+      const detail = boardSupportNote ? ` ${boardSupportNote}` : "";
+      webSerial.addMessage("error", `${action} is not available for ${currentBoard}.${detail}`.trim());
+    },
+    [boardSupportNote, currentBoard, webSerial]
+  );
+
+  const handleSaveProject = useCallback(async () => {
+    if (!projectId) {
+      webSerial.addMessage("error", "No active project selected.");
+      setSaveStatusText("No active project");
+      setSaveStatusTone("error");
+      return;
+    }
+
+    if (saveStatusTimeoutRef.current) {
+      clearTimeout(saveStatusTimeoutRef.current);
+      saveStatusTimeoutRef.current = null;
+    }
+
+    setIsSaving(true);
+    try {
+      await saveProject();
+      webSerial.addMessage("system", "Project saved.");
+      setSaveStatusText("Saved just now");
+      setSaveStatusTone("success");
+      saveStatusTimeoutRef.current = setTimeout(() => {
+        setSaveStatusText(null);
+      }, 3200);
+    } catch (error) {
+      webSerial.addMessage("error", `Failed to save project: ${(error as Error).message}`);
+      setSaveStatusText("Save failed");
+      setSaveStatusTone("error");
+      saveStatusTimeoutRef.current = setTimeout(() => {
+        setSaveStatusText(null);
+      }, 4200);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [projectId, saveProject, webSerial]);
+
+  const handleVerify = useCallback(async () => {
+    if (compileStrategy === "unsupported") {
+      reportUnsupportedBoardAction("Compilation");
+      return;
+    }
+
+    if (supportsDeviceFiles) {
+      webSerial.addMessage("system", "MicroPython code is validated on device upload. Use Upload.");
+      return;
+    }
+
+    setIsCompiling(true);
+    webSerial.addMessage("system", `Compiling sketch for ${currentBoard}...`);
+
+    try {
+      const res = await apiFetch("/api/compile/arduino", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceCode, board: currentBoard }),
+      });
+      const data = await safeJson<CompileResponse>(res);
+
+      if (res.ok && data?.success) {
+        webSerial.addMessage("system", "Compilation successful.");
+        const lines = (data?.log || "").split("\n").filter((line: string) => line.trim().length > 0);
+        lines.forEach((line: string) => webSerial.addMessage("app", line));
+      } else {
+        const message = res.ok ? "Compilation failed." : `Compiler API error (status ${res.status}).`;
+        webSerial.addMessage("error", message);
+        const lines = (data?.log || "").split("\n").filter((line: string) => line.trim().length > 0);
+        lines.forEach((line: string) => webSerial.addMessage("error", line));
+      }
+    } catch (error) {
+      webSerial.addMessage("error", `Compiler API offline at ${API_BASE_URL}: ${(error as Error).message}`);
+    } finally {
+      setIsCompiling(false);
+    }
+  }, [compileStrategy, currentBoard, reportUnsupportedBoardAction, sourceCode, supportsDeviceFiles, webSerial]);
+
+  const handleUploadToBoard = useCallback(async () => {
+    if (compileStrategy === "unsupported" || boardConfig?.uploadTransport === "unsupported") {
+      reportUnsupportedBoardAction("Upload");
+      return;
+    }
+
+    if (!webSerial.isConnected) {
+      webSerial.addMessage("error", "Device not connected. Click Connect Device first.");
+      return;
+    }
+
+    if (supportsDeviceFiles) {
+      webSerial.executeMicroPythonRaw(sourceCode);
+      return;
+    }
+
+    setIsCompiling(true);
+    webSerial.addMessage("system", `Compiling sketch for ${currentBoard} before upload...`);
+
+    try {
+      const res = await apiFetch("/api/compile/arduino", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sourceCode, board: currentBoard }),
+      });
+      const data = await safeJson<CompileResponse>(res);
+
+      if (res.ok && data?.success && data?.hex) {
+        webSerial.addMessage("system", "Compilation successful. Starting upload...");
+        await webSerial.flashArduino(data.hex);
+      } else {
+        const message = res.ok ? "Compilation failed. Upload aborted." : `Compiler API error (status ${res.status}).`;
+        webSerial.addMessage("error", message);
+        const lines = (data?.log || "").split("\n").filter((line: string) => line.trim().length > 0);
+        lines.forEach((line: string) => webSerial.addMessage("error", line));
+      }
+    } catch (error) {
+      webSerial.addMessage("error", `Compiler API offline at ${API_BASE_URL}: ${(error as Error).message}`);
+    } finally {
+      setIsCompiling(false);
+    }
+  }, [boardConfig?.uploadTransport, compileStrategy, currentBoard, reportUnsupportedBoardAction, sourceCode, supportsDeviceFiles, webSerial]);
+
+  const handleConnectDevice = useCallback(() => {
+    if (webSerial.isConnected) {
+      webSerial.disconnect();
+    } else {
+      webSerial.connect(115200);
+    }
+  }, [webSerial]);
+
+  const isSimulationActive = Boolean(simulationStatus && (simulationStatus.isRunning || simulationStatus.isReady));
+
+  const handleUploadAndSimulate = useCallback(async () => {
+    if (!supportsSimulation || !simulationControls || activeView !== "code") {
+      return;
+    }
+
+    if (isSimulationActive) {
+      simulationControls.stop();
+      return;
+    }
+
+    let latestSourceCode = sourceCode;
+    if (isBlockMode) {
+      latestSourceCode = syncBlocklySourceCode();
+      if (latestSourceCode !== sourceCode) {
+        await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      }
+    }
+
+    if (!latestSourceCode.trim()) {
+      return;
+    }
+
+    await simulationControls.start();
+  }, [activeView, isBlockMode, isSimulationActive, simulationControls, sourceCode, supportsSimulation, syncBlocklySourceCode]);
+
+  const handleTerminalResize = (event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = terminalHeight;
+
+    const onMove = (moveEvent: MouseEvent) => {
+      const delta = startY - moveEvent.clientY;
+      setTerminalHeight(Math.max(160, Math.min(420, startHeight + delta)));
+    };
+
+    const onUp = () => {
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+    };
+
+    document.addEventListener("mousemove", onMove);
+    document.addEventListener("mouseup", onUp);
+  };
+
+  const defaultRightView = useMemo(() => {
+    if (supportsDeviceFiles) return "device";
+    return "status";
+  }, [supportsDeviceFiles]);
+
+  useEffect(() => {
+    if (!isBlockMode) {
+      setRightPanelView(defaultRightView);
+      if (!isCompact) {
+        setBottomCollapsed(environment === "virtual");
+      }
+    }
+  }, [defaultRightView, environment, isBlockMode, isCompact]);
+
+  const leftViews = useMemo<IdeLeftRailView[]>(
+    () => [{ id: "files", label: "Files", content: <FileExplorer /> }],
+    []
+  );
+
+  const leftSubtitle = "Keep project files close while the editor stays in focus.";
+
+  const textCenterStage = (
+    <div className="relative flex h-full w-full min-h-0 min-w-0 flex-1 overflow-hidden rounded-2xl glass-panel">
+      <TextEditor code={sourceCode} language={currentLanguage || "cpp"} onChange={handleSourceCodeChange} />
+    </div>
+  );
+
+  const leftStage = (
+    <IdeLeftRail
+      title="Project Rail"
+      subtitle={leftSubtitle}
+      views={leftViews}
+      activeView={leftRailView}
+      onChangeView={setLeftRailView}
+    />
+  );
+
+  const bottomStage = (
+    <IdeBottomDock
+      collapsed={bottomCollapsed}
+      height={terminalHeight}
+      isCompact={isCompact}
+      onResizeStart={handleTerminalResize}
+    >
+      <TerminalPanel webSerial={webSerial} collapsed={bottomCollapsed} />
+    </IdeBottomDock>
+  );
+
+  const codeStudioStage = (
+    <div className="mt-3 grid min-h-0 flex-1 gap-3 xl:grid-cols-[220px_minmax(0,1fr)_400px]">
+      <aside className="min-h-0 overflow-hidden">
+        <WorkspaceSidebar
+          codingMode="block"
+          selectedBlocklyCategory={selectedBlocklyCategory}
+          onSelectCategory={setSelectedBlocklyCategory}
+        />
+      </aside>
+      <div className="min-h-0 min-w-0">
+        <BlocklyWorkspace
+          generatorType={currentGenerator || "arduino"}
+          initialXml={blocklyXml}
+          onCodeChange={handleSourceCodeChange}
+          onXmlChange={handleBlocklyXmlChange}
+          onWorkspaceReady={handleBlocklyWorkspaceReady}
+          selectedCategoryName={selectedBlocklyCategory}
+        />
+      </div>
+      <aside className="min-h-[280px] min-w-0 overflow-hidden xl:min-h-0">
+        <CodeViewer code={sourceCode} language={currentLanguage || "cpp"} />
+      </aside>
+    </div>
+  );
+
+  const virtualCodingStage = (
+    <div className="mt-3 flex min-h-0 flex-1 flex-col gap-3">
+      {renderCodeGuidanceCard()}
+      <CodingEnvironmentSummary
+        simulationError={simulationStatus?.errorText ?? null}
+        onBackToCircuitLab={() => handleSetActiveView("circuit")}
+      />
+      <div className="min-h-0 flex-1">
+        {isBlockMode ? (
+          <div className="grid h-full min-h-0 gap-3 xl:grid-cols-[220px_minmax(0,1fr)_400px]">
+            <aside className="min-h-0 overflow-hidden">
+              <WorkspaceSidebar
+                codingMode="block"
+                selectedBlocklyCategory={selectedBlocklyCategory}
+                onSelectCategory={setSelectedBlocklyCategory}
+              />
+            </aside>
+            <div className="min-h-0 min-w-0">
+              <BlocklyWorkspace
+                generatorType={currentGenerator || "arduino"}
+                initialXml={blocklyXml}
+                onCodeChange={handleSourceCodeChange}
+                onXmlChange={handleBlocklyXmlChange}
+                onWorkspaceReady={handleBlocklyWorkspaceReady}
+                selectedCategoryName={selectedBlocklyCategory}
+              />
+            </div>
+            <aside className="min-h-[260px] min-w-0 overflow-hidden xl:min-h-0">
+              <CodeViewer code={sourceCode} language={currentLanguage || "cpp"} />
+            </aside>
+          </div>
+        ) : (
+          <div className="h-full min-h-0 min-w-0">{textCenterStage}</div>
+        )}
+      </div>
+    </div>
+  );
+  const hiddenCircuitSimulation = supportsSimulation ? (
+    <div className="hidden" aria-hidden="true">
+      {/* Only mount once the user has visited Coding Environment GÃƒÆ’Ã¢â‚¬Â¡ÃƒÆ’Ã‚Â¶ avoids booting
+          the AVR worker while the user is still on Circuit Lab. */}
+      {hasVisitedCodingEnvRef.current || activeView === 'code' ? (
+        <SimulationCanvas
+          sourceCode={sourceCode}
+          boardName={currentBoard}
+          showHeader={false}
+          showInternalControls={false}
+          onRegisterControls={setSimulationControls}
+          onStatusChange={setSimulationStatus}
+          showBoard={false}
+        />
+      ) : null}
+    </div>
+  ) : null;
+
+  const rightViews = useMemo<IdeRightContextView[]>(() => {
+    const views: IdeRightContextView[] = [
+      {
+        id: "status",
+        label: "Status",
+        tone: "slate",
+        content: (
+          <BoardStatusPanel
+            boardName={currentBoard}
+            codingMode={codingMode}
+            environment={environment}
+            isConnected={webSerial.isConnected}
+          />
+        ),
+      },
+    ];
+
+    if (supportsDeviceFiles) {
+      views.unshift({
+        id: "device",
+        label: "Device",
+        tone: "cyan",
+        content: <DeviceFiles webSerial={webSerial} />,
+      });
+    }
+
+    return views;
+  }, [codingMode, currentBoard, environment, supportsDeviceFiles, webSerial]);
+
+  useEffect(() => {
+    if (!rightViews.some((view) => view.id === rightPanelView)) {
+      setRightPanelView(defaultRightView);
+    }
+  }, [defaultRightView, rightPanelView, rightViews]);
+
+  const rightSubtitle =
+    supportsDeviceFiles
+      ? "Keep device context and runtime tools one click away."
+      : "Use this dock for generated output and board context.";
+
+  function renderCodeGuidanceCard() {
+    if (!shouldShowCodeGuidance) {
+      return null;
+    }
+
+    return (
+      <WorkspaceGuidance
+        eyebrow="Next Step"
+        title={
+          environment === "virtual" && virtualComponentCount === 0
+            ? "Build the circuit, then add code"
+            : isBlockMode
+              ? "Start with blocks or switch to text"
+              : "Start writing code to bring this project to life"
+        }
+        description={
+          environment === "virtual" && virtualComponentCount === 0
+            ? "Place a board and a few components in Circuit Lab first, then come back here to generate logic, simulate behavior, and save the full project."
+            : isBlockMode
+              ? "Choose a block category on the left, drag logic into the workspace, and use the generated code panel to follow what is happening."
+              : "Begin with setup and loop logic for Arduino C++, or write your MicroPython script before you upload or simulate."
+        }
+        chips={
+          environment === "virtual" && virtualComponentCount === 0
+            ? ["Step 1: Build circuit", "Step 2: Add code", "Step 3: Simulate"]
+            : isBlockMode
+              ? ["Open blocks", "Generate code", "Save when ready"]
+              : ["Write code", "Save project", "Run or upload"]
+        }
+        icon={environment === "virtual" && virtualComponentCount === 0 ? <CircuitBoard size={18} /> : <Code2 size={18} />}
+        compact
+        actions={
+          environment === "virtual" && virtualComponentCount === 0
+            ? [
+                { label: "Back to Circuit Lab", onClick: () => handleSetActiveView("circuit") },
+                { label: "Try a Course", onClick: () => router.push("/courses"), tone: "secondary" },
+              ]
+            : []
+        }
+      />
+    );
+  }
+
+  const circuitEmptyOverlay = showCircuitEmptyGuidance ? (
+    <div className="pointer-events-none absolute inset-0 flex items-center justify-center p-5 sm:p-8">
+      <div className="pointer-events-auto max-w-xl">
+        <WorkspaceGuidance
+          eyebrow="Start Project"
+          title="Begin with a board and a few parts"
+          description="Place an Arduino, breadboard, and the first components on the canvas. Once the circuit exists, you can wire it, move into code, and simulate the full project."
+          chips={["Add components", "Wire pins", "Then open code"]}
+          icon={<PlayCircle size={18} />}
+          actions={[
+            { label: "Try a Course", onClick: () => router.push("/courses") },
+            { label: "Go to Code Anyway", onClick: () => handleSetActiveView("code"), tone: "secondary" },
+          ]}
+        />
+      </div>
+    </div>
+  ) : null;
+
+  if (environment === "virtual") {
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-background p-2 sm:p-3">
+        {activeView === "circuit" ? (
+          <>
+            <CircuitLabTopBar
+              projectName={projectName}
+              boardName={currentBoard}
+              hasUnsavedChanges={hasUnsavedChanges}
+              isSaving={isSaving}
+              isConnected={webSerial.isConnected}
+
+              onProjectNameChange={setProjectName}
+              onUpload={handleUploadToBoard}
+              onConnectDevice={handleConnectDevice}
+              onSaveProject={() => void handleSaveProject()}
+              onOpenProject={() => router.push("/dashboard")}
+              onOpenCodingEnvironment={() => handleSetActiveView("code")}
+              saveStatusText={visibleSaveStatusText}
+              saveStatusTone={visibleSaveStatusTone}
+            />
+
+            <div className="mt-3 min-h-0 flex-1">
+              <div className="relative h-full min-h-0">
+                <CanvasWorkspace />
+                {circuitEmptyOverlay}
+              </div>
+            </div>
+          </>
+        ) : (
+          <>
+            <CodingEnvironmentTopBar
+              projectName={projectName}
+              boardName={currentBoard}
+              codingMode={codingMode}
+              isSimulationActive={isSimulationActive}
+              isSimulationBusy={Boolean(simulationStatus?.isCompiling)}
+              supportsSimulation={supportsSimulation && Boolean(simulationControls)}
+              canUploadAndSimulate={hasRunnableSimulationCode}
+              canResetSimulation={Boolean(simulationControls)}
+              componentCount={virtualComponentCount}
+              mappedPinCount={virtualMappedPinCount}
+              hasUnsavedChanges={hasUnsavedChanges}
+              isSaving={isSaving}
+              onBackToCircuitLab={() => handleSetActiveView("circuit")}
+              onChangeCodingMode={setCodingMode}
+              onUploadAndSimulate={() => void handleUploadAndSimulate()}
+              onStopSimulation={() => simulationControls?.stop()}
+              onResetSimulation={() => simulationControls?.reset()}
+              onSaveProject={() => void handleSaveProject()}
+              saveStatusText={visibleSaveStatusText}
+              saveStatusTone={visibleSaveStatusTone}
+            />
+
+            {virtualCodingStage}
+          </>
+        )}
+
+        {hiddenCircuitSimulation}
+      </div>
+    );
+  }
+  const blockModeStage = codeStudioStage;
+
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-background p-2 sm:p-3">
+      <TopToolbar
+        boardName={currentBoard}
+        codingMode={codingMode}
+        environment={environment}
+        isConnected={webSerial.isConnected}
+        isCompiling={isCompiling}
+        isSaving={isSaving}
+        hasUnsavedChanges={hasUnsavedChanges}
+        leftCollapsed={leftCollapsed}
+
+        rightCollapsed={rightCollapsed}
+        bottomCollapsed={bottomCollapsed}
+        showPanelControls={!isBlockMode}
+        showStudioToggle={isBlockMode}
+        activeStudioView={activeView}
+        onChangeStudioView={handleSetActiveView}
+        onVerify={handleVerify}
+        onUpload={handleUploadToBoard}
+        onConnectDevice={handleConnectDevice}
+        onSelectBoard={() => router.push("/projects/select-board")}
+        onSaveProject={handleSaveProject}
+        onOpenProject={() => router.push("/dashboard")}
+        onToggleLeft={() => setLeftCollapsed((prev) => !prev)}
+        onToggleRight={() => setRightCollapsed((prev) => !prev)}
+        onToggleBottom={() => setBottomCollapsed((prev) => !prev)}
+        saveStatusText={visibleSaveStatusText}
+        saveStatusTone={visibleSaveStatusTone}
+
+      />
+
+      {isBlockMode ? (
+        <div className="flex min-h-0 flex-1 flex-col gap-3">
+          {renderCodeGuidanceCard()}
+          <div className="min-h-0 flex-1">{blockModeStage}</div>
+          <div className="shrink-0 px-0.5">{bottomStage}</div>
+        </div>
+      ) : (
+        <>
+          {shouldShowCodeGuidance ? <div className="mt-3">{renderCodeGuidanceCard()}</div> : null}
+          <IdeShellFrame
+            left={leftStage}
+            center={textCenterStage}
+            right={
+            <IdeRightContextPanel
+              title="Context"
+              subtitle={rightSubtitle}
+              views={rightViews}
+              activeView={rightPanelView}
+              onChangeView={setRightPanelView}
+            />
+          }
+            bottom={bottomStage}
+            leftCollapsed={leftCollapsed}
+
+            rightCollapsed={rightCollapsed}
+            leftWidth={leftPanelWidth}
+            rightWidth={rightPanelWidth}
+          />
+        </>
+      )}
+    </div>
+  );
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
