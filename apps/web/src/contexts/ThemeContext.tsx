@@ -2,7 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-export type ThemeMode = 'dark' | 'light';
+export type ThemeMode = 'light' | 'dark' | 'magma';
 
 interface ThemeContextValue {
   theme: ThemeMode;
@@ -17,10 +17,15 @@ const ThemeContext = createContext<ThemeContextValue | undefined>(undefined);
 
 function resolveInitialTheme(): ThemeMode {
   if (typeof window === 'undefined') {
-    return 'dark';
+    return 'light';
   }
 
-  return window.localStorage.getItem(STORAGE_KEY) === 'light' ? 'light' : 'dark';
+  const savedTheme = window.localStorage.getItem(STORAGE_KEY);
+  if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'magma') {
+    return savedTheme;
+  }
+
+  return 'light';
 }
 
 function applyTheme(theme: ThemeMode) {
@@ -44,7 +49,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
+    setTheme(theme === 'light' ? 'dark' : theme === 'dark' ? 'magma' : 'light');
   }, [setTheme, theme]);
 
   const value = useMemo<ThemeContextValue>(() => ({

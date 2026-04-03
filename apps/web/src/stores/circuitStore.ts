@@ -5,7 +5,13 @@ import {
   EMPTY_CODING_CIRCUIT_SNAPSHOT,
   type CodingCircuitSnapshot,
 } from '@/lib/blockly/circuitAwareness';
-import type { ComponentData, NetData, CircuitData, CircuitSimulationState } from '@/contexts/CircuitContext';
+import {
+  type ComponentData,
+  type NetData,
+  type CircuitData,
+  type CircuitSimulationState,
+} from '@/contexts/CircuitContext';
+import { getNetFromNodeId, getNetToNodeId } from '@/lib/circuit/netData';
 import type { MountedPlacement } from '@/lib/wiring/mountingTypes';
 import { createMountedPlacement, getBreadboardMountPreview } from '@/lib/wiring/breadboardMounting';
 
@@ -55,6 +61,13 @@ const defaultSimulationState: CircuitSimulationState = {
   digitalPins: {},
   pulseWidths: {},
   analogPins: {},
+  netStates: {},
+  electricalPins: {},
+  pinDetails: {},
+  busEvents: [],
+  traceEvents: [],
+  warnings: [],
+  capabilities: null,
 };
 
 function deriveCircuit(components: ComponentData[], nets: NetData[]) {
@@ -100,6 +113,10 @@ function mountedPlacementsEqual(left?: MountedPlacement | null, right?: MountedP
   });
 }
 
+function isComponentOwnedNode(nodeId: string, componentId: string) {
+  return nodeId.startsWith(`${componentId}.`);
+}
+
 export const useCircuitStore = create<CircuitStore>((set) => ({
   components: [],
   nets: [],
@@ -125,9 +142,11 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
   removeComponent: (id) =>
     set((state) => {
       const components = state.components.filter((component) => component.id !== id);
-      const nets = state.nets.filter(
-        (net) => !net.from.startsWith(`${id}.`) && !net.to.startsWith(`${id}.`)
-      );
+      const nets = state.nets.filter((net) => {
+        const fromNodeId = getNetFromNodeId(net);
+        const toNodeId = getNetToNodeId(net);
+        return !isComponentOwnedNode(fromNodeId, id) && !isComponentOwnedNode(toNodeId, id);
+      });
       return {
         components,
         nets,
@@ -312,6 +331,13 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
         digitalPins: patch.digitalPins ?? state.simulationState.digitalPins,
         pulseWidths: patch.pulseWidths ?? state.simulationState.pulseWidths,
         analogPins: patch.analogPins ?? state.simulationState.analogPins,
+        netStates: patch.netStates ?? state.simulationState.netStates,
+        electricalPins: patch.electricalPins ?? state.simulationState.electricalPins,
+        pinDetails: patch.pinDetails ?? state.simulationState.pinDetails,
+        busEvents: patch.busEvents ?? state.simulationState.busEvents,
+        traceEvents: patch.traceEvents ?? state.simulationState.traceEvents,
+        warnings: patch.warnings ?? state.simulationState.warnings,
+        capabilities: patch.capabilities ?? state.simulationState.capabilities,
       },
     })),
 
@@ -352,3 +378,6 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
       };
     }),
 }));
+
+
+

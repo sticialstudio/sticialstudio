@@ -1,146 +1,185 @@
 "use client";
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Mail, Lock, ArrowRight, User } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { apiFetch, API_BASE_URL, safeJson } from '@/lib/api';
+
+import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Lock, Mail, User } from "lucide-react";
+import AuthPageShell from "@/components/auth/AuthPageShell";
+import { Button } from "@/components/ui/Button";
+import { StatusBanner } from "@/components/ui/StatusBanner";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch, API_BASE_URL, safeJson } from "@/lib/api";
 
 export default function RegisterPage() {
-    const [name, setName] = useState('');
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const { login } = useAuth();
-    const apiHealthUrl = API_BASE_URL + '/api/health';
-    const showApiHelp = error.toLowerCase().includes('authentication server') || error.toLowerCase().includes('api');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const { login } = useAuth();
+  const apiHealthUrl = `${API_BASE_URL}/api/health`;
+  const normalizedError = error.toLowerCase();
+  const showApiHelp =
+    normalizedError.includes("authentication") ||
+    normalizedError.includes("server") ||
+    normalizedError.includes("service") ||
+    normalizedError.includes("api");
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setIsLoading(true);
+  const passwordMismatch = useMemo(
+    () => confirmPassword.length > 0 && password !== confirmPassword,
+    [confirmPassword, password]
+  );
 
-        try {
-            const res = await apiFetch('/api/auth/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, email, password })
-            });
-            const data = await safeJson<any>(res);
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
 
-            if (res.ok && data?.token && data?.user) {
-                login(data.token, data.user);
-            } else {
-                setError(data?.error || 'Registration failed');
+    if (passwordMismatch) {
+      setError("Your passwords do not match yet. Check both fields, then try again.");
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      const res = await apiFetch("/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, password }),
+      });
+      const data = await safeJson<any>(res);
+
+      if (res.ok && data?.token && data?.user) {
+        login(data.token, data.user);
+      } else {
+        setError(data?.error || "Registration failed. Review your details and try again.");
+      }
+    } catch (err) {
+      setError("Could not reach the account service right now. Try again in a moment.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <AuthPageShell
+      title="Create your workspace."
+      subtitle="Start with one account for guided lessons, saved builds, and the full simulator flow."
+      formTitle="Create account"
+      formSubtitle="Start building today"
+      helperTitle="Quick start"
+      helperDescription="Create your account, pick a board, and open the right workspace for blocks, text, or simulation."
+      helperChips={["Choose a mode", "Pick a board", "Start building"]}
+      footer={
+        <p>
+          Already have an account?{" "}
+          <Link href="/login" className="font-semibold text-white transition-colors hover:text-sky-300">
+            Sign in
+          </Link>
+        </p>
+      }
+    >
+      <div className="space-y-4">
+        {error ? (
+          <StatusBanner
+            tone="error"
+            appearance="immersive"
+            title="We could not create your account"
+            action={
+              showApiHelp ? (
+                <a
+                  href={apiHealthUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center rounded-full border border-white/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-white/72 transition-colors hover:border-white/20 hover:text-white"
+                >
+                  View API health
+                </a>
+              ) : null
             }
-        } catch (err) {
-            setError(`Could not connect to the authentication server at ${API_BASE_URL}.`);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+          >
+            {error}
+          </StatusBanner>
+        ) : null}
 
-    return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-background relative overflow-hidden">
-            {/* Background Glows */}
-            <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-accent/20 blur-[100px] rounded-full -z-10 animate-pulse"></div>
-            <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-500/20 blur-[100px] rounded-full -z-10 animate-pulse delay-700"></div>
-
-            <div className="w-full max-w-md p-8 bg-panel border border-panel-border rounded-2xl shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-8 duration-500">
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">Create Account</h1>
-                    <p className="text-slate-400 text-sm">Join EdTech OS to start building</p>
-                </div>
-
-                {error && (
-                    <div className="mb-6 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400 text-sm text-center">
-                        {error}
-                        {showApiHelp && (
-                            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-rose-300">
-                                <span>Check API:</span>
-                                <a
-                                    href={apiHealthUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="rounded-md border border-rose-400/40 px-2 py-0.5 text-rose-200 transition hover:border-rose-300 hover:text-rose-100"
-                                >
-                                    Open /api/health
-                                </a>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Full Name</label>
-                        <div className="relative group">
-                            <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-accent transition-colors" size={18} />
-                            <input
-                                type="text"
-                                required
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                className="w-full bg-slate-900/50 border border-panel-border rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-                                placeholder="Steve Jobs"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Email Address</label>
-                        <div className="relative group">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-accent transition-colors" size={18} />
-                            <input
-                                type="email"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-slate-900/50 border border-panel-border rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-                                placeholder="you@edtech.local"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Password</label>
-                        <div className="relative group">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-accent transition-colors" size={18} />
-                            <input
-                                type="password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-slate-900/50 border border-panel-border rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-                                placeholder="********"
-                            />
-                        </div>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className={`w-full py-3 px-4 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)] transition-all flex items-center justify-center space-x-2 group mt-2 ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
-                    >
-                        <span>{isLoading ? 'Creating Account...' : 'Sign Up'}</span>
-                        {!isLoading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
-                    </button>
-                </form>
-
-                <div className="mt-6 text-center text-xs text-slate-500">
-                    API endpoint: <span className="font-mono text-slate-400">{API_BASE_URL}</span>
-                </div>
-
-
-                <div className="mt-8 text-center text-sm text-slate-400">
-                    Already have an account?{' '}
-                    <Link href="/login" className="text-accent hover:text-indigo-300 font-semibold transition-colors">
-                        Sign In
-                    </Link>
-                </div>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/48">Full name</label>
+            <div className="relative">
+              <User className="absolute left-4 top-1/2 -translate-y-1/2 text-white/34" size={18} />
+              <input
+                type="text"
+                required
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                className="h-[56px] w-full rounded-[20px] border border-white/10 bg-white/[0.04] pl-12 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/26 focus:border-sky-300/36 focus:bg-white/[0.06]"
+                placeholder="Your name"
+              />
             </div>
-        </div>
-    );
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/48">Email address</label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-white/34" size={18} />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="h-[56px] w-full rounded-[20px] border border-white/10 bg-white/[0.04] pl-12 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/26 focus:border-sky-300/36 focus:bg-white/[0.06]"
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/48">Password</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/34" size={18} />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="h-[56px] w-full rounded-[20px] border border-white/10 bg-white/[0.04] pl-12 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/26 focus:border-sky-300/36 focus:bg-white/[0.06]"
+                placeholder="Create a password"
+              />
+            </div>
+            <p className="text-xs leading-5 text-white/42">Use at least 8 characters.</p>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-white/48">Confirm password</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-white/34" size={18} />
+              <input
+                type="password"
+                required
+                value={confirmPassword}
+                onChange={(event) => setConfirmPassword(event.target.value)}
+                className={`h-[56px] w-full rounded-[20px] border bg-white/[0.04] pl-12 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/26 ${
+                  passwordMismatch
+                    ? "border-rose-300/28 focus:border-rose-300/46"
+                    : "border-white/10 focus:border-sky-300/36 focus:bg-white/[0.06]"
+                }`}
+                placeholder="Repeat your password"
+              />
+            </div>
+            {passwordMismatch ? <p className="text-xs leading-5 text-rose-200">These passwords do not match yet.</p> : null}
+          </div>
+
+          <Button
+            type="submit"
+            icon={<ArrowRight size={18} />}
+            disabled={isLoading || passwordMismatch}
+            fullWidth
+            className="min-h-[58px] rounded-[20px] bg-[linear-gradient(135deg,#5cb2ff,#7b61ff)] text-white hover:bg-[linear-gradient(135deg,#56a7f0,#7157f5)]"
+          >
+            {isLoading ? "Creating account..." : "Create account"}
+          </Button>
+        </form>
+      </div>
+    </AuthPageShell>
+  );
 }
-
-

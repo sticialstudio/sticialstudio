@@ -1,4 +1,4 @@
 /** Minimal Next.js configuration to enable App Router with TS */
-module.exports = {
+export default {
   reactStrictMode: true,
 }

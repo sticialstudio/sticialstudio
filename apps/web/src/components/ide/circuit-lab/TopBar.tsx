@@ -1,16 +1,17 @@
-﻿"use client";
+"use client";
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Code2, FolderOpen, Link2, Link2Off, Rocket, Save, Sparkles, Trash2, Wrench } from 'lucide-react';
+import { Blocks, CircuitBoard, Code2, FolderOpen, Save, Settings2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { fadeInUp } from '@/components/ui/motion';
-import WorkspaceStageRail from '../WorkspaceStageRail';
 import { useCircuit } from '@/contexts/CircuitContext';
 
 interface CircuitLabTopBarProps {
   projectName: string;
   boardName: string;
+  codingMode: 'block' | 'text' | null;
   hasUnsavedChanges: boolean;
   isSaving: boolean;
   isConnected: boolean;
@@ -19,17 +20,27 @@ interface CircuitLabTopBarProps {
   onConnectDevice: () => void;
   onSaveProject: () => void;
   onOpenProject: () => void;
+  onOpenPreferences: () => void;
   onOpenCodingEnvironment: () => void;
   saveStatusText?: string | null;
   saveStatusTone?: 'neutral' | 'success' | 'error';
 }
 
-const chipBaseClass =
-  'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]';
+function getStatusToneClass(tone: 'neutral' | 'success' | 'error') {
+  switch (tone) {
+    case 'success':
+      return 'text-emerald-300';
+    case 'error':
+      return 'text-rose-300';
+    default:
+      return 'text-slate-400';
+  }
+}
 
 export default function TopBar({
   projectName,
   boardName,
+  codingMode,
   hasUnsavedChanges,
   isSaving,
   isConnected,
@@ -38,131 +49,131 @@ export default function TopBar({
   onConnectDevice,
   onSaveProject,
   onOpenProject,
+  onOpenPreferences,
   onOpenCodingEnvironment,
   saveStatusText,
   saveStatusTone = 'neutral',
 }: CircuitLabTopBarProps) {
   const { clearCircuit } = useCircuit();
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const saveStatusClass =
-    saveStatusTone === 'success'
-      ? 'border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]'
-      : saveStatusTone === 'error'
-        ? 'border-rose-300 bg-rose-50 text-rose-600'
-        : 'border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]';
+  const nextWorkspaceLabel = useMemo(() => (codingMode === 'block' ? 'Open Blocks' : 'Open Code'), [codingMode]);
+  const nextWorkspaceIcon = codingMode === 'block' ? <Blocks size={15} /> : <Code2 size={15} />;
+  const saveStatusClass = getStatusToneClass(saveStatusTone);
 
-  const handleClearCanvas = () => {
-    if (window.confirm('Clear the whole circuit? You can undo this after it happens.')) {
-      clearCircuit();
-    }
-  };
+  void onUpload;
+  void onConnectDevice;
 
   return (
-    <motion.header
-      className='ui-foundation-panel overflow-hidden px-4 py-4 sm:px-5 sm:py-5'
-      variants={fadeInUp}
-      initial='hidden'
-      animate='visible'
-    >
-      <div className='grid gap-5 xl:grid-cols-[minmax(0,1.2fr)_auto_minmax(0,1fr)] xl:items-center'>
-        <div className='min-w-0 space-y-4'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
-              <Sparkles size={13} className='text-[var(--ui-color-accent)]' />
-              Circuit Lab
-            </span>
-            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
-              {boardName}
-            </span>
-            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
-              Build mode
-            </span>
-          </div>
-
-          <div className='space-y-2'>
-            <div className='flex flex-wrap items-center gap-3'>
-              <input
-                type='text'
-                value={projectName}
-                onChange={(event) => onProjectNameChange(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === 'Enter') {
-                    event.currentTarget.blur();
-                    onSaveProject();
-                  }
-                }}
-                placeholder='Untitled Project'
-                className='min-w-[14rem] max-w-[24rem] rounded-[18px] border border-transparent bg-white/65 px-4 py-3 text-xl font-bold tracking-[-0.03em] text-[var(--ui-color-text)] outline-none transition-all placeholder:text-[var(--ui-color-text-soft)] focus:border-[color:var(--ui-border-strong)] focus:bg-white'
-              />
-              {hasUnsavedChanges ? (
-                <span className='inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ui-color-warning)]'>
-                  <span className='h-2 w-2 rounded-full bg-amber-400' />
-                  Unsaved
-                </span>
-              ) : null}
+    <>
+      <motion.header
+        className="overflow-hidden rounded-[22px] border border-white/6 bg-[#0a1017] shadow-[0_24px_54px_-42px_rgba(0,0,0,0.95)]"
+        variants={fadeInUp}
+        initial="hidden"
+        animate="visible"
+      >
+        <div className="flex flex-col gap-3 px-4 py-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-white/8 bg-white/[0.04] text-slate-200">
+                <CircuitBoard size={17} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400">
+                  <span className="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 text-slate-300">Circuit Lab</span>
+                  <span>{boardName}</span>
+                  <span className="text-slate-600">&middot;</span>
+                  <span className={isConnected ? 'text-emerald-300' : 'text-slate-500'}>
+                    {isConnected ? 'Device connected' : 'Virtual build stage'}
+                  </span>
+                  {hasUnsavedChanges ? (
+                    <>
+                      <span className="text-slate-600">&middot;</span>
+                      <span className="text-amber-300">Unsaved</span>
+                    </>
+                  ) : null}
+                  {saveStatusText ? (
+                    <>
+                      <span className="text-slate-600">&middot;</span>
+                      <span className={saveStatusClass}>{saveStatusText}</span>
+                    </>
+                  ) : null}
+                </div>
+                <input
+                  type="text"
+                  value={projectName}
+                  onChange={(event) => onProjectNameChange(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.currentTarget.blur();
+                      onSaveProject();
+                    }
+                  }}
+                  placeholder="Untitled Project"
+                  className="mt-2 w-full bg-transparent text-[1.05rem] font-semibold tracking-[-0.04em] text-white outline-none placeholder:text-slate-500"
+                />
+              </div>
             </div>
-            <p className='max-w-2xl text-sm leading-6 text-[var(--ui-color-text-muted)]'>
-              Build the circuit visually first, then move into code when the board and wiring are ready.
-            </p>
           </div>
-        </div>
 
-        <div className='flex flex-col items-start gap-3 xl:items-center'>
-          <WorkspaceStageRail
-            items={[
-              { label: 'Build', active: true, icon: <Wrench size={14} /> },
-              { label: 'Code', icon: <Code2 size={14} />, onClick: onOpenCodingEnvironment },
-              { label: 'Run ready', subtle: true, icon: <Rocket size={14} /> },
-            ]}
-          />
-          <div className='flex flex-wrap items-center gap-2'>
-            <span
-              className={`${chipBaseClass} ${
-                isConnected
-                  ? 'border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]'
-                  : 'border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]'
-              }`}
+          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+            <Button
+              icon={nextWorkspaceIcon}
+              onClick={onOpenCodingEnvironment}
+              className="min-h-10 rounded-full border border-cyan-300/16 bg-[linear-gradient(180deg,#4257c7_0%,#3446a4_100%)] px-4 text-sm text-white shadow-[0_16px_32px_-24px_rgba(66,87,199,0.82)] hover:bg-[linear-gradient(180deg,#4c62d6_0%,#3b50bc_100%)]"
             >
-              {isConnected ? <Link2Off size={13} /> : <Link2 size={13} />}
-              {isConnected ? 'Board connected' : 'Board not connected'}
-            </span>
-            {saveStatusText ? <span className={`${chipBaseClass} ${saveStatusClass}`}>{saveStatusText}</span> : null}
-          </div>
-        </div>
-
-        <div className='flex flex-col gap-3 xl:items-end'>
-          <div className='flex flex-wrap items-center justify-start gap-2 xl:justify-end'>
-            <Button icon={<Code2 size={16} />} onClick={onOpenCodingEnvironment} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
-              Open Code
+              {nextWorkspaceLabel}
             </Button>
             <Button
-              variant='secondary'
-              icon={isConnected ? <Link2Off size={16} /> : <Link2 size={16} />}
-              onClick={onConnectDevice}
-              className='min-h-10 rounded-[16px] px-4 py-2 text-sm'
+              variant="inverse"
+              icon={<Save size={15} />}
+              onClick={onSaveProject}
+              disabled={isSaving}
+              className="min-h-10 rounded-full px-4 text-sm"
             >
-              {isConnected ? 'Disconnect' : 'Connect Board'}
-            </Button>
-            <Button variant='secondary' icon={<Rocket size={16} />} onClick={onUpload} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
-              Upload
-            </Button>
-            <Button variant='secondary' icon={<Save size={16} />} onClick={onSaveProject} disabled={isSaving} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
-              {isSaving ? 'Saving...' : 'Save Project'}
-            </Button>
-            <Button variant='secondary' icon={<FolderOpen size={16} />} onClick={onOpenProject} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
-              Open Projects
+              {isSaving ? 'Saving...' : 'Save'}
             </Button>
             <Button
-              variant='secondary'
-              icon={<Trash2 size={16} />}
-              onClick={handleClearCanvas}
-              className='min-h-10 rounded-[16px] border-rose-200 px-4 py-2 text-sm text-rose-600 hover:border-rose-300 hover:text-rose-700'
+              variant="ghost"
+              icon={<FolderOpen size={15} />}
+              onClick={onOpenProject}
+              className="min-h-10 rounded-full border border-white/8 bg-white/[0.03] px-4 text-sm text-slate-300 hover:border-white/14 hover:bg-white/[0.06] hover:text-white"
             >
-              Clear Circuit
+              Projects
             </Button>
+            <Button
+              variant="ghost"
+              icon={<Settings2 size={15} />}
+              onClick={onOpenPreferences}
+              className="min-h-10 rounded-full border border-white/8 bg-white/[0.03] px-4 text-sm text-slate-300 hover:border-white/14 hover:bg-white/[0.06] hover:text-white"
+            >
+              Preferences
+            </Button>
+            <button
+              type="button"
+              onClick={() => setConfirmOpen(true)}
+              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-rose-400/16 bg-rose-400/8 px-4 py-2 text-sm font-semibold text-rose-100 transition-all hover:-translate-y-0.5 hover:border-rose-300/26 hover:bg-rose-400/12"
+            >
+              <Trash2 size={15} />
+              Clear
+            </button>
           </div>
         </div>
-      </div>
-    </motion.header>
+      </motion.header>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        title="Clear the whole circuit?"
+        description="This removes all placed parts and wires from the current circuit canvas."
+        confirmLabel="Clear circuit"
+        confirmTone="danger"
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={() => {
+          clearCircuit();
+          setConfirmOpen(false);
+        }}
+      />
+    </>
   );
 }
+

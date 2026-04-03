@@ -43,6 +43,38 @@ function sanitizeMountedPlacement(value: unknown, componentId: string): MountedP
   };
 }
 
+function sanitizeNet(value: unknown): NetData | null {
+  if (typeof value !== 'object' || value === null) {
+    return null;
+  }
+
+  const candidate = value as NetData;
+  if (
+    typeof candidate.id !== 'string' ||
+    typeof candidate.from !== 'string' ||
+    typeof candidate.to !== 'string'
+  ) {
+    return null;
+  }
+
+  const fromNodeId = typeof candidate.fromNodeId === 'string' ? candidate.fromNodeId : candidate.from;
+  const toNodeId = typeof candidate.toNodeId === 'string' ? candidate.toNodeId : candidate.to;
+
+  return {
+    ...candidate,
+    fromNodeId,
+    toNodeId,
+    fromAnchorId: typeof candidate.fromAnchorId === 'string' ? candidate.fromAnchorId : null,
+    toAnchorId: typeof candidate.toAnchorId === 'string' ? candidate.toAnchorId : null,
+    color: typeof candidate.color === 'string' ? candidate.color : '#3b82f6',
+    waypoints: Array.isArray(candidate.waypoints)
+      ? candidate.waypoints.filter(
+          (point) => typeof point?.x === 'number' && typeof point?.y === 'number'
+        )
+      : undefined,
+  };
+}
+
 export function serializeCircuit(data: CircuitData): string {
   const payload: PersistedCircuit = {
     version: CIRCUIT_FORMAT_VERSION,
@@ -67,7 +99,6 @@ export function deserializeCircuit(json: string): CircuitData {
 
     const { components, nets } = parsed as PersistedCircuit;
 
-    // Validate component shape minimally
     const safeComponents: ComponentData[] = components
       .filter(
         (c) =>
@@ -85,20 +116,9 @@ export function deserializeCircuit(json: string): CircuitData {
         mountedPlacement: sanitizeMountedPlacement((c as ComponentData).mountedPlacement, c.id),
       }));
 
-    // Validate net shape minimally
     const safeNets: NetData[] = nets
-      .filter(
-        (n) =>
-          typeof n === 'object' &&
-          n !== null &&
-          typeof n.id === 'string' &&
-          typeof n.from === 'string' &&
-          typeof n.to === 'string'
-      )
-      .map((n) => ({
-        ...n,
-        color: typeof n.color === 'string' ? n.color : '#3b82f6',
-      }));
+      .map((net) => sanitizeNet(net))
+      .filter((net): net is NetData => Boolean(net));
 
     return { components: safeComponents, nets: safeNets };
   } catch {

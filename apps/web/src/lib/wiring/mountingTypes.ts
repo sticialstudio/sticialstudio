@@ -1,4 +1,5 @@
-export type BreadboardZone = 'strip-top' | 'strip-bottom' | 'rail-top' | 'rail-bottom';
+﻿export type BreadboardZone = 'strip-top' | 'strip-bottom' | 'rail-top' | 'rail-bottom';
+export type BreadboardSegment = 'left' | 'right' | 'full';
 
 export type MountFootprintClass = 'breadboard-mountable' | 'freeform' | 'board' | 'module';
 
@@ -23,6 +24,19 @@ export interface ComponentFootprint {
 export interface MountedPinAssignment {
   pinId: string;
   nodeId: string;
+}
+
+export interface BreadboardContinuityHighlight {
+  id: string;
+  kind: 'rail' | 'strip';
+  zone: BreadboardZone;
+  segment: BreadboardSegment;
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 export interface MountedPlacement {

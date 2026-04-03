@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import React from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Bell, LayoutDashboard, LogOut, Maximize, Cpu } from 'lucide-react';
+import { LayoutDashboard, LogOut, Maximize, Cpu } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBoard } from '@/contexts/BoardContext';
 import { useProject } from '@/contexts/ProjectContext';
@@ -12,10 +12,15 @@ export default function Navbar() {
     const router = useRouter();
     const pathname = usePathname();
     const isDashboard = pathname === '/dashboard';
+    const isIdeRoute = pathname === '/projects/ide' || pathname.startsWith('/projects/ide/');
 
     const { user, logout } = useAuth();
     const { codingMode, currentBoard, setIsFullScreen } = useBoard();
     const { projectId } = useProject();
+
+    if (isIdeRoute) {
+        return null;
+    }
 
     return (
         <header className="flex h-14 items-center justify-between border-b border-panel-border bg-panel px-4 text-foreground backdrop-blur-xl transition-colors">
@@ -25,7 +30,7 @@ export default function Navbar() {
                     onClick={() => router.push('/')}
                     className="text-lg font-bold tracking-tight text-foreground transition-colors hover:text-accent"
                 >
-                    EdTech Studio
+                    Sticial Studio
                 </button>
 
                 {!isDashboard ? (
@@ -78,14 +83,6 @@ export default function Navbar() {
                         <Maximize size={14} />
                     </button>
                 ) : null}
-
-                <button
-                    type="button"
-                    className="rounded-lg border border-panel-border bg-panel p-2 text-muted transition-colors hover:border-accent/50 hover:text-accent"
-                    title="Notifications"
-                >
-                    <Bell size={14} />
-                </button>
 
                 <button
                     type="button"

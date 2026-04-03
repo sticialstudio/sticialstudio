@@ -1,12 +1,12 @@
-﻿"use client";
+"use client";
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Blocks, Code2, Play, RotateCcw, Rocket, Save, Square } from 'lucide-react';
+import { ArrowLeft, Blocks, CheckCircle2, Code2, Play, Rocket, RotateCcw, Save, Settings2, Square } from 'lucide-react';
 import type { CodingMode } from '@/contexts/BoardContext';
 import { Button } from '@/components/ui/Button';
 import { fadeInUp } from '@/components/ui/motion';
-import WorkspaceStageRail from '../WorkspaceStageRail';
+import ThemeToggle from '@/components/layout/ThemeToggle';
 
 interface CodingEnvironmentTopBarProps {
   projectName: string;
@@ -21,18 +21,19 @@ interface CodingEnvironmentTopBarProps {
   mappedPinCount: number;
   hasUnsavedChanges: boolean;
   isSaving: boolean;
+  isCompiling?: boolean;
   onBackToCircuitLab: () => void;
   onChangeCodingMode: (mode: Exclude<CodingMode, null>) => void;
   onUploadAndSimulate: () => void;
   onStopSimulation: () => void;
   onResetSimulation: () => void;
   onSaveProject: () => void;
+  onOpenPreferences: () => void;
+  onVerify?: () => void;
+  onUpload?: () => void;
   saveStatusText?: string | null;
   saveStatusTone?: 'neutral' | 'success' | 'error';
 }
-
-const chipBaseClass =
-  'inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.16em]';
 
 export default function CodingEnvironmentTopBar({
   projectName,
@@ -47,12 +48,16 @@ export default function CodingEnvironmentTopBar({
   mappedPinCount,
   hasUnsavedChanges,
   isSaving,
+  isCompiling = false,
   onBackToCircuitLab,
   onChangeCodingMode,
   onUploadAndSimulate,
   onStopSimulation,
   onResetSimulation,
   onSaveProject,
+  onOpenPreferences,
+  onVerify,
+  onUpload,
   saveStatusText,
   saveStatusTone = 'neutral',
 }: CodingEnvironmentTopBarProps) {
@@ -60,109 +65,79 @@ export default function CodingEnvironmentTopBar({
   const simulationDisabled = !supportsSimulation || isSimulationBusy || (!isSimulationActive && !canUploadAndSimulate);
   const saveStatusClass =
     saveStatusTone === 'success'
-      ? 'border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]'
+      ? 'border-emerald-400/20 bg-emerald-400/12 text-emerald-200'
       : saveStatusTone === 'error'
-        ? 'border-rose-300 bg-rose-50 text-rose-600'
-        : 'border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]';
+        ? 'border-rose-400/24 bg-rose-400/12 text-rose-100'
+        : 'border-white/10 bg-white/[0.04] text-slate-300';
 
-  return (
-    <motion.header
-      className='ui-foundation-panel overflow-hidden px-4 py-4 sm:px-5 sm:py-5'
-      variants={fadeInUp}
-      initial='hidden'
-      animate='visible'
-    >
-      <div className='grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_auto_minmax(0,1fr)] xl:items-center'>
-        <div className='min-w-0 space-y-4'>
-          <div className='flex flex-wrap items-center gap-2'>
-            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
-              Code Studio
-            </span>
-            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
+  if (activeMode === 'block') {
+    return (
+      <motion.header
+        className='overflow-hidden rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,#15121f_0%,#111019_100%)] shadow-[0_24px_64px_-44px_rgba(0,0,0,1)]'
+        variants={fadeInUp}
+        initial='hidden'
+        animate='visible'
+      >
+        <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5'>
+          <div className='flex min-w-0 flex-wrap items-center gap-2'>
+            <div className='inline-flex items-center gap-1 rounded-[16px] border border-white/10 bg-white/[0.04] p-1.5'>
+              <button
+                type='button'
+                onClick={() => onChangeCodingMode('block')}
+                className='inline-flex items-center gap-2 rounded-[12px] bg-[linear-gradient(180deg,#656cf8_0%,#4f56e8_100%)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white shadow-[0_16px_32px_-22px_rgba(101,108,248,0.8)] transition-all'
+              >
+                <Blocks size={14} />
+                Blocks
+              </button>
+              <button
+                type='button'
+                onClick={() => onChangeCodingMode('text')}
+                className='inline-flex items-center gap-2 rounded-[12px] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300 transition-all hover:bg-white/[0.06] hover:text-white'
+              >
+                <Code2 size={14} />
+                Text
+              </button>
+            </div>
+            <span className='rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300'>
               {boardName}
             </span>
-            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
-              {componentCount} parts
-            </span>
-            <span className={`${chipBaseClass} border-[color:var(--ui-border-soft)] bg-white/80 text-[var(--ui-color-text-soft)]`}>
-              {mappedPinCount} linked pins
-            </span>
+            {saveStatusText ? <span className={`rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${saveStatusClass}`}>{saveStatusText}</span> : null}
           </div>
 
-          <div className='space-y-2'>
-            <div className='flex flex-wrap items-center gap-3'>
-              <h1 className='truncate text-2xl font-bold tracking-[-0.04em] text-[var(--ui-color-text)] sm:text-[2rem]'>
-                {projectName || 'Untitled Project'}
-              </h1>
-              {hasUnsavedChanges ? (
-                <span className='inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ui-color-warning)]'>
-                  <span className='h-2 w-2 rounded-full bg-amber-400' />
-                  Unsaved
-                </span>
-              ) : null}
-            </div>
-            <p className='max-w-2xl text-sm leading-6 text-[var(--ui-color-text-muted)]'>
-              Write blocks or text, then run the current circuit in simulation without leaving the workspace.
-            </p>
-          </div>
-        </div>
-
-        <div className='flex flex-col items-start gap-3 xl:items-center'>
-          <WorkspaceStageRail
-            items={[
-              { label: 'Build', icon: <ArrowLeft size={14} />, onClick: onBackToCircuitLab },
-              { label: 'Code', active: true, icon: <Code2 size={14} /> },
-              { label: isSimulationActive ? 'Run live' : 'Run ready', subtle: !isSimulationActive, active: isSimulationActive, icon: <Rocket size={14} /> },
-            ]}
-          />
           <div className='flex flex-wrap items-center gap-2'>
-            <span
-              className={`${chipBaseClass} ${
-                isSimulationActive
-                  ? 'border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]'
-                  : 'border-[color:var(--ui-border-soft)] bg-white/82 text-[var(--ui-color-text-soft)]'
-              }`}
+            <Button
+              variant='secondary'
+              icon={<ArrowLeft size={16} />}
+              onClick={onBackToCircuitLab}
+              className='min-h-11 rounded-[16px] border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
             >
-              {isSimulationActive ? 'Simulation live' : supportsSimulation ? 'Simulation ready' : 'Simulation unavailable'}
-            </span>
-            {saveStatusText ? <span className={`${chipBaseClass} ${saveStatusClass}`}>{saveStatusText}</span> : null}
-          </div>
-        </div>
-
-        <div className='flex flex-col gap-3 xl:items-end'>
-          <div className='inline-flex items-center gap-1 rounded-[20px] border border-[color:var(--ui-border-soft)] bg-white/70 p-1.5 shadow-[0_18px_40px_-30px_rgba(26,41,72,0.18)]'>
-            <button
-              type='button'
-              onClick={() => onChangeCodingMode('block')}
-              className={`inline-flex items-center gap-2 rounded-[16px] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-all ${
-                activeMode === 'block'
-                  ? 'bg-[var(--ui-color-primary)] text-white shadow-[var(--ui-shadow-button)]'
-                  : 'text-[var(--ui-color-text-muted)] hover:bg-white/75 hover:text-[var(--ui-color-text)]'
-              }`}
-            >
-              <Blocks size={14} />
-              Blocks
-            </button>
-            <button
-              type='button'
-              onClick={() => onChangeCodingMode('text')}
-              className={`inline-flex items-center gap-2 rounded-[16px] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-all ${
-                activeMode === 'text'
-                  ? 'bg-[var(--ui-color-primary)] text-white shadow-[var(--ui-shadow-button)]'
-                  : 'text-[var(--ui-color-text-muted)] hover:bg-white/75 hover:text-[var(--ui-color-text)]'
-              }`}
-            >
-              <Code2 size={14} />
-              Text
-            </button>
-          </div>
-
-          <div className='flex flex-wrap items-center justify-start gap-2 xl:justify-end'>
-            <Button variant='secondary' icon={<Save size={16} />} onClick={onSaveProject} disabled={isSaving} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
-              {isSaving ? 'Saving...' : 'Save Project'}
+              Back to Circuit
             </Button>
-            <Button variant='secondary' icon={<RotateCcw size={16} />} onClick={onResetSimulation} disabled={!canResetSimulation} className='min-h-10 rounded-[16px] px-4 py-2 text-sm'>
+            <Button
+              variant='secondary'
+              icon={<Save size={16} />}
+              onClick={onSaveProject}
+              disabled={isSaving}
+              className='min-h-11 rounded-[16px] border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+            >
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button
+              variant='secondary'
+              icon={<RotateCcw size={16} />}
+              onClick={onResetSimulation}
+              disabled={!canResetSimulation}
+              className='min-h-11 rounded-[16px] border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+            >
               Reset
+            </Button>
+            <Button
+              variant='secondary'
+              icon={<Settings2 size={16} />}
+              onClick={onOpenPreferences}
+              className='min-h-11 rounded-[16px] border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+            >
+              Preferences
             </Button>
             <Button
               icon={isSimulationActive ? <Square size={16} /> : <Play size={16} />}
@@ -174,19 +149,161 @@ export default function CodingEnvironmentTopBar({
                 }
               }}
               disabled={simulationDisabled}
-              className={`min-h-10 rounded-[16px] px-4 py-2 text-sm ${
-                isSimulationActive ? 'bg-rose-500 hover:bg-rose-600' : ''
+              className={`min-h-11 rounded-[16px] px-4 py-2 text-sm text-white ${
+                isSimulationActive
+                  ? 'border border-rose-300/24 bg-[linear-gradient(180deg,#e2567b_0%,#cc466c_100%)] hover:bg-[linear-gradient(180deg,#eb5e83_0%,#d54d73_100%)]'
+                  : 'border border-indigo-300/24 bg-[linear-gradient(180deg,#656cf8_0%,#4f56e8_100%)] hover:bg-[linear-gradient(180deg,#7278ff_0%,#5a61ef_100%)]'
               }`}
             >
               {isSimulationBusy && !isSimulationActive
                 ? 'Preparing...'
                 : isSimulationActive
                   ? 'Stop Simulation'
-                  : 'Upload & Simulate'}
+                  : 'Upload to Simulate'}
             </Button>
           </div>
+        </div>
+      </motion.header>
+    );
+  }
+
+  return (
+    <motion.header
+      className='flex-shrink-0 overflow-hidden rounded-[24px] border border-white/8 bg-[linear-gradient(180deg,#15121f_0%,#111019_100%)] shadow-[0_24px_64px_-44px_rgba(0,0,0,1)]'
+      variants={fadeInUp}
+      initial='hidden'
+      animate='visible'
+    >
+      <div className='flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 sm:px-5'>
+        {/* ── Left: mode switcher + board chip + status ──────────── */}
+        <div className='flex min-w-0 flex-wrap items-center gap-2'>
+
+          {/* Verify button */}
+          {onVerify ? (
+            <button
+              type='button'
+              onClick={onVerify}
+              disabled={isCompiling}
+              title='Verify sketch'
+              className='flex h-9 items-center gap-2 rounded-[8px] border px-3.5 text-xs font-semibold transition-all disabled:opacity-50'
+              style={{ background: '#1c3030', borderColor: '#2a5555', color: '#52b8c8' }}
+            >
+              <CheckCircle2 size={14} strokeWidth={2.2} className={isCompiling ? 'animate-pulse' : ''} />
+              <span>{isCompiling ? 'Verifying…' : 'Verify'}</span>
+            </button>
+          ) : null}
+
+          {/* Upload button */}
+          {onUpload ? (
+            <button
+              type='button'
+              onClick={onUpload}
+              disabled={isCompiling}
+              title='Upload to board'
+              className='flex h-9 items-center gap-2 rounded-[8px] border px-3.5 text-xs font-semibold transition-all disabled:opacity-50'
+              style={{ background: '#22224a', borderColor: '#3a3a88', color: '#a6afff' }}
+            >
+              <Rocket size={14} strokeWidth={2.2} />
+              <span>{isCompiling ? 'Uploading…' : 'Upload'}</span>
+            </button>
+          ) : null}
+
+          {/* Divider */}
+          {(onVerify || onUpload) ? (
+            <div className='h-5 w-px' style={{ background: '#2a3550' }} />
+          ) : null}
+
+          {/* Block / Text mode switcher */}
+          <div className='inline-flex items-center gap-1 rounded-[10px] border border-white/10 bg-[#0d1320]/80 p-0.5 shadow-inner backdrop-blur-md'>
+            <button
+              type='button'
+              onClick={() => onChangeCodingMode('block')}
+              className='relative flex items-center gap-1.5 rounded-[8px] px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-400 transition-all hover:bg-white/[0.04] hover:text-white'
+            >
+              <Blocks size={11} className='text-indigo-400' />
+              Blocks
+            </button>
+            <button
+              type='button'
+              onClick={() => onChangeCodingMode('text')}
+              className='relative flex items-center gap-1.5 rounded-[8px] bg-cyan-500 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-white shadow-md shadow-cyan-500/20 transition-all'
+            >
+              <Code2 size={11} className='text-white' />
+              Text
+            </button>
+          </div>
+
+          <span className='inline-flex items-center gap-2 text-[12px] font-medium text-sky-200/90'>
+            {boardName}
+          </span>
+
+          {hasUnsavedChanges ? (
+            <span className='inline-flex items-center gap-1.5 rounded-full border border-amber-300/24 bg-amber-300/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-100'>
+              <span className='h-1.5 w-1.5 rounded-full bg-amber-300' />
+              Unsaved
+            </span>
+          ) : null}
+
+          {saveStatusText ? (
+            <span className={`inline-flex rounded-full border px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ${saveStatusClass}`}>
+              {saveStatusText}
+            </span>
+          ) : null}
+        </div>
+
+        {/* ── Right: action buttons ──────────────────────────────── */}
+        <div className='flex flex-wrap items-center gap-2'>
+          <Button
+            variant='secondary'
+            icon={<ArrowLeft size={14} />}
+            onClick={onBackToCircuitLab}
+            className='min-h-9 rounded-[12px] border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+          >
+            Circuit
+          </Button>
+          <Button
+            variant='secondary'
+            icon={<Save size={14} />}
+            onClick={onSaveProject}
+            disabled={isSaving}
+            className='min-h-9 rounded-[12px] border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+          >
+            {isSaving ? 'Saving…' : 'Save'}
+          </Button>
+          <Button
+            icon={isSimulationActive ? <Square size={14} /> : <Play size={14} />}
+            onClick={() => {
+              if (isSimulationActive) {
+                onStopSimulation();
+              } else {
+                onUploadAndSimulate();
+              }
+            }}
+            disabled={simulationDisabled}
+            className={`min-h-9 rounded-[12px] border px-3 py-2 text-xs text-white transition-opacity ${
+              isSimulationActive
+                ? 'border-rose-400/30 bg-[linear-gradient(135deg,#e2567b_0%,#cc466c_100%)] hover:opacity-90'
+                : 'border-indigo-400/30 bg-[linear-gradient(135deg,#656cf8,#4f56e8)] hover:opacity-90'
+            }`}
+          >
+            {isSimulationBusy && !isSimulationActive
+              ? 'Preparing…'
+              : isSimulationActive
+                ? 'Stop'
+                : 'Simulate'}
+          </Button>
+          <Button
+            variant='secondary'
+            icon={<Settings2 size={14} />}
+            onClick={onOpenPreferences}
+            className='min-h-9 rounded-[12px] border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+          >
+            Preferences
+          </Button>
+          <ThemeToggle className='h-9 rounded-[12px] border-white/10 bg-white/[0.04] px-2.5 text-white hover:border-white/16 hover:bg-white/[0.08]' />
         </div>
       </div>
     </motion.header>
   );
 }
+

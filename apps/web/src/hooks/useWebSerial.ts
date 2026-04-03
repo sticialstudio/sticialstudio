@@ -255,8 +255,6 @@ export function useWebSerial() {
         if (!isConnected) throw new Error('Board not connected.');
 
         return new Promise<string>(async (resolve, reject) => {
-            let timeoutId: NodeJS.Timeout;
-
             outputCaptureRef.current = {
                 active: true,
                 buffer: '',
@@ -274,7 +272,7 @@ export function useWebSerial() {
                 }
             };
 
-            timeoutId = setTimeout(() => {
+            const timeoutId = setTimeout(() => {
                 outputCaptureRef.current.active = false;
                 reject(new Error('Command timeout'));
             }, timeoutMs);
@@ -297,7 +295,7 @@ export function useWebSerial() {
     }, [isConnected, writeBytes]);
 
     const flashArduino = useCallback(async (hexData: string) => {
-        if (!process.browser || !('serial' in navigator)) return;
+        if (typeof window === 'undefined' || !('serial' in navigator)) return;
         if (!portRef.current) {
             addMessage('error', 'Cannot flash Arduino: Board not connected.');
             return;
@@ -406,7 +404,7 @@ export function useWebSerial() {
                 }
             });
 
-            addMessage('system', '✅ Flash Complete. Restarting board...');
+            addMessage('system', 'ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Flash Complete. Restarting board...');
 
             // Tear down bridge safely
             keepReadingBridge = false;
@@ -479,3 +477,4 @@ export function useWebSerial() {
         addMessage
     };
 }
+

@@ -1,39 +1,47 @@
 {
-  "name": "web",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "dev:full": "powershell -NoProfile -ExecutionPolicy Bypass -File ../../scripts/dev-all.ps1",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint",
-    "validate:blockly-generators": "node scripts/validate-blockly-generators.mjs",
-    "test": "npm run validate:blockly-generators"
-  },
-  "dependencies": {
-    "@monaco-editor/react": "^4.7.0",
-    "blockly": "^12.4.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^0.576.0",
-    "next": "16.1.6",
-    "react": "19.2.3",
-    "react-dom": "19.2.3",
-    "stk500-esm": "^1.4.3",
-    "stream-browserify": "^3.0.0",
-    "tailwind-merge": "^3.5.0"
-  },
-  "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/dom-serial": "^1.0.6",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "eslint": "^9",
-    "eslint-config-next": "16.1.6",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+    "name": "web",
+    "version": "0.1.0",
+    "private": true,
+    "scripts": {
+        "dev": "next dev",
+        "dev:fast": "next dev --turbopack",
+        "dev:full": "powershell -NoProfile -ExecutionPolicy Bypass -File ../../scripts/dev-all.ps1",
+        "build": "next build",
+        "start": "next start",
+        "lint": "eslint",
+        "validate:blockly-generators": "node scripts/validate-blockly-generators.mjs",
+        "test": "npm run validate:blockly-generators",
+        "start:stable": "npm run build && next start"
+    },
+    "dependencies": {
+        "@monaco-editor/react": "^4.7.0",
+        "@supabase/supabase-js": "^2.101.1",
+        "@wokwi/elements": "^1.9.2",
+        "avr8js": "^0.21.0",
+        "blockly": "^12.4.1",
+        "clsx": "^2.1.1",
+        "firebase": "^12.11.0",
+        "framer-motion": "^12.38.0",
+        "jose": "^6.2.2",
+        "lucide-react": "^0.576.0",
+        "monaco-editor": "^0.55.1",
+        "next": "16.1.6",
+        "react": "19.2.3",
+        "react-dom": "19.2.3",
+        "stk500-esm": "^1.4.3",
+        "stream-browserify": "^3.0.0",
+        "tailwind-merge": "^3.5.0",
+        "zustand": "^5.0.12"
+    },
+    "devDependencies": {
+        "@tailwindcss/postcss": "^4",
+        "@types/dom-serial": "^1.0.6",
+        "@types/node": "^20",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "eslint": "^9",
+        "eslint-config-next": "16.1.6",
+        "tailwindcss": "^4",
+        "typescript": "^5"
+    }
 }
-
-

@@ -13,7 +13,7 @@ interface AuthContextValue {
     user: User | null;
     token: string | null;
     isLoading: boolean;
-    login: (token: string, user: User) => void;
+    login: (token: string, user: User, options?: { redirectTo?: string }) => void;
     logout: () => void;
 }
 
@@ -25,9 +25,11 @@ function persistToken(token: string) {
 }
 
 function clearPersistedAuth() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('activeProjectId');
-    document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
+    try {
+        localStorage.removeItem('token');
+        localStorage.removeItem('activeProjectId');
+        document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
+    } catch {}
 }
 
 function stashAuthNotice(message: string) {
@@ -42,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const router = useRouter();
     const pathname = usePathname();
 
-    const publicRoutes = ['/', '/login', '/register'];
+    const publicRoutes = ['/', '/login', '/register', '/auth/callback'];
 
     const clearAuthState = useCallback(() => {
         clearPersistedAuth();
@@ -52,9 +54,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     useEffect(() => {
         const initAuth = async () => {
-            const storedToken = localStorage.getItem('token');
+            let storedToken: string | null = null;
+            try {
+                storedToken = localStorage.getItem('token');
+            } catch (e) {
+                console.warn('Local storage access denied or unavailable.');
+            }
+
             if (!storedToken) {
-                clearAuthState();
+                try { clearAuthState(); } catch (e) {}
                 setIsLoading(false);
                 return;
             }
@@ -105,16 +113,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (!user && !publicRoutes.includes(pathname)) {
                 router.push('/login');
             } else if (user && (pathname === '/login' || pathname === '/register')) {
-                router.push('/');
+                router.push('/dashboard');
             }
         }
     }, [isLoading, user, pathname, router]);
 
-    const login = (newToken: string, userData: User) => {
+    const login = (newToken: string, userData: User, options?: { redirectTo?: string }) => {
         persistToken(newToken);
         setToken(newToken);
         setUser(userData);
-        router.push('/');
+        router.push(options?.redirectTo ?? '/dashboard');
     };
 
     const logout = () => {
@@ -132,8 +140,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (isLoading) {
         return (
-            <div className="flex h-screen w-screen items-center justify-center bg-[#0f111a]">
-                <div className="w-10 h-10 border-4 border-accent border-t-transparent rounded-full animate-spin"></div>
+            <div className="ui-foundation-shell flex min-h-screen items-center justify-center px-6 py-8">
+                <div className="ui-foundation-panel w-full max-w-md px-8 py-10 text-center">
+                    <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[color:var(--ui-color-primary)]/55 border-t-transparent" />
+                    <h2 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[var(--ui-color-text)]">Restoring your workspace</h2>
+                    <p className="mt-2 text-sm leading-6 text-[var(--ui-color-text-muted)]">
+                        Checking your session so Sticial Studio can reopen the right project and learning flow.
+                    </p>
+                </div>
             </div>
         );
     }

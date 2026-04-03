@@ -10,10 +10,33 @@ import MainLayout from '@/components/layout/MainLayout';
 import SplitView from '@/components/ide/SplitView';
 import { clearPendingProjectIntent, readPendingProjectIntent } from '@/lib/projects/projectFlow';
 import { serializeProjectMeta } from '@/lib/projects/projectMeta';
+import { Button } from '@/components/ui/Button';
+import { StatusBanner } from '@/components/ui/StatusBanner';
 
 function stashWorkspaceNotice(message: string) {
     if (typeof window === 'undefined') return;
     window.sessionStorage.setItem('workspaceNotice', message);
+}
+
+function LoadingWorkspaceCard({ title, description, actionLabel, onAction }: { title: string; description: string; actionLabel?: string; onAction?: () => void }) {
+    return (
+        <div className="ui-foundation-shell flex h-full min-h-0 flex-col">
+            <div className="flex min-h-0 flex-1 items-center justify-center px-6 py-8">
+                <div className="ui-foundation-panel w-full max-w-xl px-8 py-10 text-center">
+                    <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-[color:var(--ui-color-primary)]/55 border-t-transparent" />
+                    <h2 className="mt-4 text-xl font-bold tracking-[-0.03em] text-[var(--ui-color-text)]">{title}</h2>
+                    <p className="mt-2 text-sm leading-6 text-[var(--ui-color-text-muted)]">{description}</p>
+                    {actionLabel && onAction ? (
+                        <div className="mt-5">
+                            <Button variant="secondary" onClick={onAction}>
+                                {actionLabel}
+                            </Button>
+                        </div>
+                    ) : null}
+                </div>
+            </div>
+        </div>
+    );
 }
 
 export default function Workspace() {
@@ -24,6 +47,7 @@ export default function Workspace() {
     const [apiError, setApiError] = useState<string | null>(null);
     const [isCreatingProject, setIsCreatingProject] = useState(false);
     const createAttemptedRef = useRef(false);
+    const apiHealthUrl = `${API_BASE_URL}/api/health`;
 
     useEffect(() => {
         if (!projectId && !codingMode) {
@@ -104,38 +128,44 @@ export default function Workspace() {
     if ((!projectId && !codingMode) || !currentBoard || (!projectId && !environment)) {
         return (
             <MainLayout>
-                <div className="flex h-full min-h-0 flex-col bg-background">
-                    <div className="flex min-h-0 flex-1 items-center justify-center px-6">
-                        <div className="rounded-3xl border border-slate-700/80 bg-slate-900/70 px-8 py-10 text-center shadow-[0_24px_60px_-36px_rgba(8,47,73,0.95)]">
-                            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-cyan-400/60 border-t-transparent" />
-                            <h2 className="mt-4 text-lg font-semibold text-slate-100">Taking you to the right setup step</h2>
-                            <p className="mt-2 text-sm text-slate-400">Checking your project, board, and environment so the workspace opens with the right context.</p>
-                        </div>
-                    </div>
-                </div>
+                <LoadingWorkspaceCard
+                    title="Taking you to the right setup step"
+                    description="Checking your project, board, and environment so the workspace opens with the right context."
+                />
             </MainLayout>
         );
     }
 
     return (
         <MainLayout>
-            <div className="flex h-full min-h-0 flex-col bg-background">
+            <div className={environment === 'virtual' ? 'circuit-lab-page flex h-full min-h-0 flex-col' : 'ui-foundation-shell flex h-full min-h-0 flex-col'}>
                 {apiError ? (
-                    <div className="mx-3 mt-3 rounded-2xl border border-rose-500/30 bg-rose-500/10 p-3 text-sm text-rose-200">
-                        {apiError}
-                        <div className="mt-2 text-xs text-rose-300/80">
-                            API: <span className="font-mono text-rose-100/80">{API_BASE_URL}</span>
-                        </div>
+                    <div className="px-3 pt-3 sm:px-4 sm:pt-4">
+                        <StatusBanner
+                            tone="warning"
+                            title="We could not finish preparing the workspace"
+                            action={
+                                <a
+                                    href={apiHealthUrl}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="inline-flex items-center rounded-full border border-[color:var(--ui-border-strong)] px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--ui-color-primary)] transition-colors hover:border-[color:var(--ui-color-primary)]"
+                                >
+                                    View API health
+                                </a>
+                            }
+                        >
+                            {apiError}
+                        </StatusBanner>
                     </div>
                 ) : null}
                 {isCreatingProject ? (
-                    <div className="flex min-h-0 flex-1 items-center justify-center px-6">
-                        <div className="rounded-3xl border border-slate-700/80 bg-slate-900/70 px-8 py-10 text-center shadow-[0_24px_60px_-36px_rgba(8,47,73,0.95)]">
-                            <div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-cyan-400/60 border-t-transparent" />
-                            <h2 className="mt-4 text-lg font-semibold text-slate-100">Preparing your workspace</h2>
-                            <p className="mt-2 text-sm text-slate-400">Loading the right board, editor, and simulator setup so you can start immediately.</p>
-                        </div>
-                    </div>
+                    <LoadingWorkspaceCard
+                        title="Preparing your workspace"
+                        description="Loading the right board, editor, and simulator setup so you can start immediately."
+                        actionLabel="Back to dashboard"
+                        onAction={() => router.push('/dashboard')}
+                    />
                 ) : (
                     <div className="min-h-0 flex-1">
                         <SplitView />
@@ -145,5 +175,3 @@ export default function Workspace() {
         </MainLayout>
     );
 }
-
-

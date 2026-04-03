@@ -1,121 +1,223 @@
+export type BoardFamily = 'arduino' | 'esp' | 'raspberry';
+export type BoardLanguage = 'cpp' | 'python';
+export type BoardGenerator = 'arduino' | 'micropython';
+export type CompileStrategy = 'arduino-cli' | 'micropython-flash' | 'unsupported';
+export type UploadTransport = 'arduino-stk500' | 'micropython-raw-repl' | 'unsupported';
+export type BoardSupportLevel = 'full' | 'partial' | 'planned';
+
 export interface BoardConfigItem {
-    family: 'arduino' | 'esp' | 'raspberry';
-    language: 'cpp' | 'python';
-    generator: 'arduino' | 'micropython';
-    compileStrategy: 'arduino-cli' | 'micropython-flash';
+    family: BoardFamily;
+    language: BoardLanguage;
+    generator: BoardGenerator;
+    compileStrategy: CompileStrategy;
+    uploadTransport: UploadTransport;
     chip: string;
     summary: string;
+    runtimeLabel: string;
+    image?: string;
+    fqbn: string | null;
+
+    supportsBrowserSimulation: boolean;
+    supportLevel: BoardSupportLevel;
+    supportNote?: string;
 }
 
 export const BOARD_CONFIG: Record<string, BoardConfigItem> = {
-    // Arduino Boards
     'Arduino Uno': {
         family: 'arduino',
         language: 'cpp',
         generator: 'arduino',
         compileStrategy: 'arduino-cli',
+        uploadTransport: 'arduino-stk500',
         chip: 'ATmega328P microcontroller',
-        summary: 'The classic starter board for sensors, LEDs, and beginner robotics projects.'
+        summary: 'The classic starter board for sensors, LEDs, and beginner robotics projects.',
+        runtimeLabel: 'Arduino C++',
+        image: '/boards/board_arduino_uno.png',
+        fqbn: 'arduino:avr:uno',
+        supportsBrowserSimulation: true,
+        supportLevel: 'full',
     },
     'Arduino Nano': {
         family: 'arduino',
         language: 'cpp',
         generator: 'arduino',
         compileStrategy: 'arduino-cli',
+        uploadTransport: 'arduino-stk500',
         chip: 'ATmega328P microcontroller',
-        summary: 'Compact Arduino board for breadboard prototypes and space-constrained builds.'
+        summary: 'Compact Arduino board for breadboard prototypes and space-constrained builds.',
+        runtimeLabel: 'Arduino C++',
+        image: '/boards/board_arduino_nano.png',
+        fqbn: 'arduino:avr:nano',
+        supportsBrowserSimulation: true,
+        supportLevel: 'partial',
+        supportNote: 'Compile and upload are supported. Circuit Lab visuals still use the Uno-style board layout.',
     },
     'Arduino Mega': {
         family: 'arduino',
         language: 'cpp',
         generator: 'arduino',
         compileStrategy: 'arduino-cli',
+        uploadTransport: 'arduino-stk500',
         chip: 'ATmega2560 microcontroller',
-        summary: 'High I/O count Arduino board for advanced hardware projects and larger circuits.'
+        summary: 'High I/O count Arduino board for advanced hardware projects and larger circuits.',
+        runtimeLabel: 'Arduino C++',
+        image: '/boards/board_arduino_mega.png',
+        fqbn: 'arduino:avr:mega',
+        supportsBrowserSimulation: false,
+        supportLevel: 'partial',
+        supportNote: 'Compilation is supported. Browser upload and simulation are not yet available for Mega-class AVR boards.',
     },
     'Arduino Leonardo': {
         family: 'arduino',
         language: 'cpp',
         generator: 'arduino',
         compileStrategy: 'arduino-cli',
+        uploadTransport: 'arduino-stk500',
         chip: 'ATmega32u4 microcontroller',
-        summary: 'USB-native Arduino board, useful for HID projects and keyboard/mouse emulation.'
+        summary: 'USB-native Arduino board, useful for HID projects and keyboard/mouse emulation.',
+        runtimeLabel: 'Arduino C++',
+        image: '/boards/board_arduino_leonardo.png',
+        fqbn: 'arduino:avr:leonardo',
+        supportsBrowserSimulation: false,
+        supportLevel: 'partial',
+        supportNote: 'Compilation is supported. Browser upload and Circuit Lab simulation are not yet available for ATmega32U4 boards.',
     },
 
-    // ESP Boards
     'ESP32': {
         family: 'esp',
         language: 'python',
         generator: 'micropython',
         compileStrategy: 'micropython-flash',
+        uploadTransport: 'micropython-raw-repl',
         chip: 'Xtensa dual-core SoC',
-        summary: 'WiFi + Bluetooth microcontroller ideal for IoT, connected sensors, and smart devices.'
+        summary: 'WiFi + Bluetooth microcontroller ideal for IoT, connected sensors, and smart devices.',
+        runtimeLabel: 'MicroPython',
+        image: '/boards/board_esp32.png',
+        fqbn: null,
+        supportsBrowserSimulation: false,
+        supportLevel: 'partial',
+        supportNote: 'Browser upload expects a board that already has MicroPython firmware installed.',
     },
     'ESP8266': {
         family: 'esp',
         language: 'python',
         generator: 'micropython',
         compileStrategy: 'micropython-flash',
+        uploadTransport: 'micropython-raw-repl',
         chip: 'Tensilica L106 SoC',
-        summary: 'Affordable WiFi microcontroller for lightweight networking and automation projects.'
+        summary: 'Affordable WiFi microcontroller for lightweight networking and automation projects.',
+        runtimeLabel: 'MicroPython',
+        image: '/boards/board_esp8266.png',
+        fqbn: null,
+        supportsBrowserSimulation: false,
+        supportLevel: 'partial',
+        supportNote: 'Browser upload expects a board that already has MicroPython firmware installed.',
     },
 
-    // Raspberry Pi Boards
     'Raspberry Pi Pico': {
         family: 'raspberry',
         language: 'python',
         generator: 'micropython',
         compileStrategy: 'micropython-flash',
+        uploadTransport: 'micropython-raw-repl',
         chip: 'RP2040 dual-core microcontroller',
-        summary: 'Reliable MicroPython board for education, control systems, and embedded fundamentals.'
+        summary: 'Reliable MicroPython board for education, control systems, and embedded fundamentals.',
+        runtimeLabel: 'MicroPython',
+        image: '/boards/Raspberry-Pi-Pico.jpg',
+        fqbn: null,
+        supportsBrowserSimulation: false,
+        supportLevel: 'partial',
+        supportNote: 'Upload is available through MicroPython raw REPL once the board is provisioned with MicroPython.',
     },
     'Raspberry Pi Pico W': {
         family: 'raspberry',
         language: 'python',
         generator: 'micropython',
         compileStrategy: 'micropython-flash',
+        uploadTransport: 'micropython-raw-repl',
         chip: 'RP2040 + wireless module',
-        summary: 'Pico with onboard wireless connectivity for cloud-ready classroom prototypes.'
-    },
-    'Raspberry Pi Zero': {
-        family: 'raspberry',
-        language: 'python',
-        generator: 'micropython',
-        compileStrategy: 'micropython-flash',
-        chip: 'Broadcom BCM2835',
-        summary: 'Linux-capable mini computer board for edge applications and multi-service projects.'
+        summary: 'Pico with onboard wireless connectivity for cloud-ready classroom prototypes.',
+        runtimeLabel: 'MicroPython',
+        image: '/boards/Raspberry-Pi-Pico.jpg',
+        fqbn: null,
+        supportsBrowserSimulation: false,
+        supportLevel: 'partial',
+        supportNote: 'Upload is available through MicroPython raw REPL once the board is provisioned with MicroPython.',
     },
     'Raspberry Pi Pico 2W': {
         family: 'raspberry',
         language: 'python',
         generator: 'micropython',
         compileStrategy: 'micropython-flash',
-        chip: 'Broadcom BCM2710A1',
-        summary: 'Wireless Raspberry Pi option for low-power connected applications and kiosks.'
+        uploadTransport: 'micropython-raw-repl',
+        chip: 'RP2350 + wireless module',
+        summary: 'Wireless RP2350 board for newer MicroPython projects and connected prototypes.',
+        runtimeLabel: 'MicroPython',
+        image: '/boards/Raspberry-Pi-Pico-2W.jpg',
+        fqbn: null,
+        supportsBrowserSimulation: false,
+        supportLevel: 'partial',
+        supportNote: 'Upload is available through MicroPython raw REPL once the board is provisioned with MicroPython.',
+    },
+    'Raspberry Pi Zero': {
+        family: 'raspberry',
+        language: 'python',
+        generator: 'micropython',
+        compileStrategy: 'unsupported',
+        uploadTransport: 'unsupported',
+        chip: 'Broadcom BCM2835',
+        summary: 'Linux-capable mini computer board for edge applications and multi-service projects.',
+        runtimeLabel: 'Python (planned)',
+        image: '/boards/Raspberry-Pi-Zero-2W.jpg',
+        fqbn: null,
+        supportsBrowserSimulation: false,
+        supportLevel: 'planned',
+        supportNote: 'Full Raspberry Pi Linux deployment is not yet supported in the browser workflow.',
     },
     'Raspberry Pi 3': {
         family: 'raspberry',
         language: 'python',
         generator: 'micropython',
-        compileStrategy: 'micropython-flash',
+        compileStrategy: 'unsupported',
+        uploadTransport: 'unsupported',
         chip: 'Broadcom BCM2837',
-        summary: 'Balanced Raspberry Pi board for mixed software + hardware integration work.'
+        summary: 'Balanced Raspberry Pi board for mixed software + hardware integration work.',
+        runtimeLabel: 'Python (planned)',
+        image: '/boards/Raspberry-Pi-3.jpg',
+        fqbn: null,
+        supportsBrowserSimulation: false,
+        supportLevel: 'planned',
+        supportNote: 'Full Raspberry Pi Linux deployment is not yet supported in the browser workflow.',
     },
     'Raspberry Pi 4': {
         family: 'raspberry',
         language: 'python',
         generator: 'micropython',
-        compileStrategy: 'micropython-flash',
+        compileStrategy: 'unsupported',
+        uploadTransport: 'unsupported',
         chip: 'Broadcom BCM2711',
-        summary: 'High-performance Raspberry Pi board for demanding maker and lab workloads.'
+        summary: 'High-performance Raspberry Pi board for demanding maker and lab workloads.',
+        runtimeLabel: 'Python (planned)',
+        image: '/boards/Raspberry-Pi-4.jpg',
+        fqbn: null,
+        supportsBrowserSimulation: false,
+        supportLevel: 'planned',
+        supportNote: 'Full Raspberry Pi Linux deployment is not yet supported in the browser workflow.',
     },
     'Raspberry Pi 5': {
         family: 'raspberry',
         language: 'python',
         generator: 'micropython',
-        compileStrategy: 'micropython-flash',
+        compileStrategy: 'unsupported',
+        uploadTransport: 'unsupported',
         chip: 'Broadcom BCM2712',
-        summary: 'Latest Raspberry Pi platform for advanced prototyping and compute-heavy tasks.'
+        summary: 'Latest Raspberry Pi platform for advanced prototyping and compute-heavy tasks.',
+        runtimeLabel: 'Python (planned)',
+        image: '/boards/Raspberry-Pi-5.png',
+        fqbn: null,
+        supportsBrowserSimulation: false,
+        supportLevel: 'planned',
+        supportNote: 'Full Raspberry Pi Linux deployment is not yet supported in the browser workflow.',
     }
 };
 

@@ -1,11 +1,9 @@
 import type { ComponentData, NetData } from '@/contexts/CircuitContext';
-import {
-  getBreadboardContinuityEdges,
-  getBreadboardNodeEntries,
-  isBreadboardNodeId,
-} from '@/lib/wiring/breadboardModel';
+import { getNetFromNodeId, getNetToNodeId } from '@/lib/circuit/netData';
+import { getBreadboardContinuityEdges, isBreadboardNodeId } from '@/lib/wiring/breadboardModel';
+import { getBreadboardMountPreview } from '@/lib/wiring/breadboardMounting';
 import { getComponentDefinition, normalizeComponentType } from '@/lib/wiring/componentDefinitions';
-import { GRID_PITCH, getWorldAnchor, type Point } from '@/lib/wiring/componentGeometry';
+import { getBoardPinFromNodeId, isBoardNodeId } from '@/lib/wiring/boardNodes';
 
 export interface PinConnection {
   netId: string | null;
@@ -28,25 +26,6 @@ export interface ResolvedNet {
 export interface CircuitNetlist {
   nets: ResolvedNet[];
 }
-
-interface BreadboardWorldNode {
-  nodeId: string;
-  position: Point;
-}
-
-interface ComponentWorldPin {
-  pinId: string;
-  nodeId: string;
-  position: Point;
-}
-
-interface PinCandidate {
-  pinIndex: number;
-  nodeId: string;
-  distance: number;
-}
-
-const BREADBOARD_MOUNT_THRESHOLD = GRID_PITCH * 0.25;
 
 function createEmptyConnection(nodeId: string): PinConnection {
   return {
@@ -74,33 +53,13 @@ export class NetlistEngine {
     return components.find((component) => normalizeComponentType(component.type) === 'BREADBOARD') || null;
   }
 
-  private static createBreadboardWorldNodes(breadboard: ComponentData): BreadboardWorldNode[] {
-    const breadboardDefinition = getComponentDefinition(breadboard.type);
-    if (!breadboardDefinition) {
-      return [];
-    }
-
-    return getBreadboardNodeEntries().map((entry) => ({
-      nodeId: entry.nodeId,
-      position: getWorldAnchor(breadboard, breadboardDefinition, { x: entry.x, y: entry.y }),
-    }));
-  }
-
-  private static getMountedComponentEdges(
-    components: ComponentData[],
-    breadboardNodes: BreadboardWorldNode[]
-  ): Array<[string, string]> {
-    if (breadboardNodes.length === 0) {
-      return [];
-    }
-
-    const breadboardNodeIds = new Set(breadboardNodes.map((node) => node.nodeId));
-
+  private static getMountedComponentEdges(components: ComponentData[]): Array<[string, string]> {
     return components.flatMap((component) => {
       if (component.mountedPlacement?.mounted) {
-        return component.mountedPlacement.pinMap
-          .filter((mapping) => breadboardNodeIds.has(mapping.nodeId))
-          .map((mapping) => [`${component.id}.${mapping.pinId}`, mapping.nodeId] as [string, string]);
+        return component.mountedPlacement.pinMap.map((mapping) => [
+          `${component.id}.${mapping.pinId}`,
+          mapping.nodeId,
+        ] as [string, string]);
       }
 
       const definition = getComponentDefinition(component.type);
@@ -108,83 +67,32 @@ export class NetlistEngine {
         return [];
       }
 
-      const pins: ComponentWorldPin[] = definition.pins.map((pin) => ({
-        pinId: pin.id,
-        nodeId: `${component.id}.${pin.id}`,
-        position: getWorldAnchor(component, definition, pin.position),
-      }));
+      const preview = getBreadboardMountPreview(
+        component,
+        {
+          x: component.x,
+          y: component.y,
+          rotation: component.rotation || 0,
+        },
+        components
+      );
 
-      const assignments = this.matchMountedPinsToBreadboardNodes(pins, breadboardNodes);
-      return assignments.map((assignment) => [pins[assignment.pinIndex].nodeId, assignment.nodeId] as [string, string]);
+      if (!preview?.isValid || !preview.mappedPins?.length) {
+        return [];
+      }
+
+      return preview.mappedPins.map((mapping) => [
+        `${component.id}.${mapping.pinId}`,
+        mapping.nodeId,
+      ] as [string, string]);
     });
-  }
-
-  private static matchMountedPinsToBreadboardNodes(
-    pins: ComponentWorldPin[],
-    breadboardNodes: BreadboardWorldNode[]
-  ): PinCandidate[] {
-    if (pins.length === 0) {
-      return [];
-    }
-
-    const candidateGroups = pins.map((pin, pinIndex) => ({
-      pinIndex,
-      candidates: breadboardNodes
-        .map((node) => ({
-          pinIndex,
-          nodeId: node.nodeId,
-          distance: Math.hypot(pin.position.x - node.position.x, pin.position.y - node.position.y),
-        }))
-        .filter((candidate) => candidate.distance <= BREADBOARD_MOUNT_THRESHOLD)
-        .sort((left, right) => left.distance - right.distance),
-    }));
-
-    if (candidateGroups.some((group) => group.candidates.length === 0)) {
-      return [];
-    }
-
-    candidateGroups.sort((left, right) => left.candidates.length - right.candidates.length);
-
-    let bestMatch: PinCandidate[] | null = null;
-    let bestDistance = Number.POSITIVE_INFINITY;
-    const usedNodeIds = new Set<string>();
-    const current: PinCandidate[] = [];
-
-    const visit = (groupIndex: number, totalDistance: number) => {
-      if (groupIndex === candidateGroups.length) {
-        if (totalDistance < bestDistance) {
-          bestDistance = totalDistance;
-          bestMatch = [...current];
-        }
-        return;
-      }
-
-      if (totalDistance >= bestDistance) {
-        return;
-      }
-
-      for (const candidate of candidateGroups[groupIndex].candidates) {
-        if (usedNodeIds.has(candidate.nodeId)) {
-          continue;
-        }
-
-        usedNodeIds.add(candidate.nodeId);
-        current.push(candidate);
-        visit(groupIndex + 1, totalDistance + candidate.distance);
-        current.pop();
-        usedNodeIds.delete(candidate.nodeId);
-      }
-    };
-
-    visit(0, 0);
-    return bestMatch || [];
   }
 
   private static buildGraph(components: ComponentData[], nets: NetData[]): Map<string, Set<string>> {
     const graph = new Map<string, Set<string>>();
 
     nets.forEach((net) => {
-      this.addEdge(graph, net.from, net.to);
+      this.addEdge(graph, getNetFromNodeId(net), getNetToNodeId(net));
     });
 
     const breadboard = this.getBreadboardComponent(components);
@@ -196,7 +104,7 @@ export class NetlistEngine {
       this.addEdge(graph, fromNodeId, toNodeId);
     });
 
-    const mountedEdges = this.getMountedComponentEdges(components, this.createBreadboardWorldNodes(breadboard));
+    const mountedEdges = this.getMountedComponentEdges(components);
     mountedEdges.forEach(([fromNodeId, toNodeId]) => {
       this.addEdge(graph, fromNodeId, toNodeId);
     });
@@ -230,7 +138,7 @@ export class NetlistEngine {
   public static generateNetlist(components: ComponentData[], nets: NetData[]): CircuitNetlist {
     const graph = this.buildGraph(components, nets);
     const visited = new Set<string>();
-    const explicitEndpoints = new Set(nets.flatMap((net) => [net.from, net.to]));
+    const explicitEndpoints = new Set(nets.flatMap((net) => [getNetFromNodeId(net), getNetToNodeId(net)]));
     const resolvedNets: ResolvedNet[] = [];
 
     for (const startNode of graph.keys()) {
@@ -260,7 +168,7 @@ export class NetlistEngine {
       const shouldInclude = nodes.some(
         (node) =>
           explicitEndpoints.has(node) ||
-          node.startsWith('UNO_') ||
+          isBoardNodeId(node) ||
           isBreadboardNodeId(node) ||
           node.includes('.')
       );
@@ -272,8 +180,9 @@ export class NetlistEngine {
       const sortedNodes = uniqueSorted(nodes);
       const boardPins = uniqueSorted(
         sortedNodes
-          .filter((node) => node.startsWith('UNO_'))
-          .map((node) => node.replace('UNO_', ''))
+          .filter((node) => isBoardNodeId(node))
+          .map((node) => getBoardPinFromNodeId(node) ?? '')
+          .filter(Boolean)
       );
       const breadboardNodes = uniqueSorted(sortedNodes.filter((node) => isBreadboardNodeId(node)));
 
@@ -362,4 +271,3 @@ export class NetlistEngine {
     return resolved;
   }
 }
-

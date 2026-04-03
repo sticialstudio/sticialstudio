@@ -1,7 +1,9 @@
-import type { ComponentData } from '@/contexts/CircuitContext';
+﻿import type { ComponentData } from '@/contexts/CircuitContext';
 import {
+  getBreadboardContinuityGroups,
   getBreadboardNodeEntries,
   getBreadboardZoneForEntry,
+  type BreadboardContinuityGroup,
   type BreadboardNodeEntry,
 } from '@/lib/wiring/breadboardModel';
 import {
@@ -15,6 +17,7 @@ import {
   type Point,
 } from '@/lib/wiring/componentGeometry';
 import type {
+  BreadboardContinuityHighlight,
   BreadboardOccupancy,
   ComponentFootprint,
   MountedPinAssignment,
@@ -24,8 +27,8 @@ import type {
 } from '@/lib/wiring/mountingTypes';
 
 const PIN_SNAP_THRESHOLD = GRID_PITCH * 0.55;
-const REFERENCE_NODE_SEARCH_RADIUS = GRID_PITCH * 1.5;
-const PREVIEW_ACTIVATION_RADIUS = GRID_PITCH * 3.25;
+const REFERENCE_NODE_SEARCH_RADIUS = GRID_PITCH * 2.15;
+const PREVIEW_ACTIVATION_RADIUS = GRID_PITCH * 4.25;
 const MAX_REFERENCE_CANDIDATES = 24;
 
 interface CandidatePlacement {
@@ -38,10 +41,21 @@ interface BreadboardWorldNode extends BreadboardNodeEntry {
   position: Point;
 }
 
+interface BreadboardWorldGroup extends Omit<BreadboardContinuityGroup, 'bounds'> {
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
+}
+
 export interface BreadboardState {
   breadboardId: string;
   nodes: BreadboardWorldNode[];
   nodeById: Record<string, BreadboardWorldNode>;
+  groups: BreadboardWorldGroup[];
+  groupById: Record<string, BreadboardWorldGroup>;
   occupancy: BreadboardOccupancy;
 }
 
@@ -50,6 +64,7 @@ export interface BreadboardMountPreview extends MountValidationResult {
   position: Point;
   rawPosition: Point;
   matchedAnchors: Point[];
+  groupHighlights: BreadboardContinuityHighlight[];
   totalError: number;
   isValid: boolean;
 }
@@ -57,6 +72,8 @@ export interface BreadboardMountPreview extends MountValidationResult {
 interface MountCandidateResult extends MountValidationResult {
   position: Point;
   matchedAnchors: Point[];
+  matchedNodes: BreadboardWorldNode[];
+  groupHighlights: BreadboardContinuityHighlight[];
   totalError: number;
   matchedCount: number;
 }
@@ -169,6 +186,38 @@ function buildNodeLookup(nodes: BreadboardWorldNode[]) {
   }, {});
 }
 
+function buildGroupLookup(groups: BreadboardWorldGroup[]) {
+  return groups.reduce<Record<string, BreadboardWorldGroup>>((lookup, group) => {
+    lookup[group.id] = group;
+    return lookup;
+  }, {});
+}
+
+function toWorldBounds(
+  breadboard: Pick<ComponentData, 'x' | 'y' | 'rotation'>,
+  definition: ComponentDefinition,
+  bounds: BreadboardContinuityGroup['bounds']
+) {
+  const corners = [
+    { x: bounds.x, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y },
+    { x: bounds.x + bounds.width, y: bounds.y + bounds.height },
+    { x: bounds.x, y: bounds.y + bounds.height },
+  ].map((point) => getWorldAnchor(breadboard, definition, point));
+
+  const minX = Math.min(...corners.map((point) => point.x));
+  const maxX = Math.max(...corners.map((point) => point.x));
+  const minY = Math.min(...corners.map((point) => point.y));
+  const maxY = Math.max(...corners.map((point) => point.y));
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  };
+}
+
 function createBreadboardWorldNodes(components: ComponentData[]) {
   const breadboard = components.find((component) => normalizeComponentType(component.type) === 'BREADBOARD');
   const definition = breadboard ? getComponentDefinition(breadboard.type) : null;
@@ -182,10 +231,17 @@ function createBreadboardWorldNodes(components: ComponentData[]) {
     position: getWorldAnchor(breadboard, definition, { x: entry.x, y: entry.y }),
   }));
 
+  const groups = getBreadboardContinuityGroups().map((group) => ({
+    ...group,
+    bounds: toWorldBounds(breadboard, definition, group.bounds),
+  }));
+
   return {
     breadboardId: breadboard.id,
     nodes,
     nodeById: buildNodeLookup(nodes),
+    groups,
+    groupById: buildGroupLookup(groups),
   };
 }
 
@@ -236,6 +292,58 @@ function scoreInvalidCandidate(left: MountCandidateResult | null, right: MountCa
   return right.totalError < left.totalError ? right : left;
 }
 
+function buildGroupHighlights(
+  breadboardState: BreadboardState,
+  matchedNodes: BreadboardWorldNode[]
+): BreadboardContinuityHighlight[] {
+  const seen = new Set<string>();
+
+  return matchedNodes.reduce<BreadboardContinuityHighlight[]>((highlights, node) => {
+    if (seen.has(node.continuityGroupId)) {
+      return highlights;
+    }
+
+    const group = breadboardState.groupById[node.continuityGroupId];
+    if (!group) {
+      return highlights;
+    }
+
+    seen.add(group.id);
+    highlights.push({
+      id: group.id,
+      kind: group.kind,
+      zone: group.zone,
+      segment: group.segment,
+      bounds: group.bounds,
+    });
+
+    return highlights;
+  }, []);
+}
+
+function createCandidateResult(
+  breadboardState: BreadboardState,
+  candidatePlacement: CandidatePlacement,
+  matchedNodes: BreadboardWorldNode[],
+  matchedAnchors: Point[],
+  totalError: number,
+  valid: boolean,
+  reason?: string,
+  mappedPins?: MountedPinAssignment[]
+): MountCandidateResult {
+  return {
+    valid,
+    reason,
+    mappedPins,
+    position: { x: candidatePlacement.x, y: candidatePlacement.y },
+    matchedAnchors,
+    matchedNodes,
+    groupHighlights: buildGroupHighlights(breadboardState, matchedNodes),
+    totalError,
+    matchedCount: matchedNodes.length,
+  };
+}
+
 function assessCandidate(
   component: Pick<ComponentData, 'id' | 'type'>,
   definition: ComponentDefinition,
@@ -253,125 +361,132 @@ function assessCandidate(
   const usedNodeIds = new Set<string>();
   const mappedPins: MountedPinAssignment[] = [];
   const matchedAnchors: Point[] = [];
+  const matchedNodes: BreadboardWorldNode[] = [];
   let totalError = 0;
 
   for (const footprintPin of footprint.pins) {
     const pinDefinition = definition.pins.find((pin) => pin.id === footprintPin.id);
     if (!pinDefinition) {
-      return {
-        valid: false,
-        reason: `Missing pin definition for ${footprintPin.id}`,
-        position: { x: candidatePlacement.x, y: candidatePlacement.y },
+      return createCandidateResult(
+        breadboardState,
+        candidatePlacement,
+        matchedNodes,
         matchedAnchors,
         totalError,
-        matchedCount: mappedPins.length,
-        mappedPins,
-      };
+        false,
+        `Missing pin definition for ${footprintPin.id}`,
+        mappedPins
+      );
     }
 
     const projectedWorldPoint = getWorldAnchor(componentFrame, definition, pinDefinition.position);
     const nearest = findNearestNode(projectedWorldPoint, breadboardState.nodes, footprint, footprintPin.id, usedNodeIds);
 
     if (!nearest || nearest.distance > PIN_SNAP_THRESHOLD) {
-      return {
-        valid: false,
-        reason: `Pin ${footprintPin.id} is not aligned to a valid breadboard hole`,
-        position: { x: candidatePlacement.x, y: candidatePlacement.y },
+      return createCandidateResult(
+        breadboardState,
+        candidatePlacement,
+        matchedNodes,
         matchedAnchors,
-        totalError: totalError + (nearest?.distance ?? PREVIEW_ACTIVATION_RADIUS),
-        matchedCount: mappedPins.length,
-        mappedPins,
-      };
+        totalError + (nearest?.distance ?? PREVIEW_ACTIVATION_RADIUS),
+        false,
+        `Pin ${footprintPin.id} is not aligned to a valid breadboard hole`,
+        mappedPins
+      );
     }
 
     const occupiedBy = breadboardState.occupancy[nearest.node.nodeId];
     if (occupiedBy && occupiedBy.componentId !== component.id) {
-      return {
-        valid: false,
-        reason: `Hole ${nearest.node.row}${nearest.node.column} is already occupied`,
-        position: { x: candidatePlacement.x, y: candidatePlacement.y },
-        matchedAnchors: [...matchedAnchors, nearest.node.position],
-        totalError: totalError + nearest.distance,
-        matchedCount: mappedPins.length,
-        mappedPins,
-      };
+      return createCandidateResult(
+        breadboardState,
+        candidatePlacement,
+        [...matchedNodes, nearest.node],
+        [...matchedAnchors, nearest.node.position],
+        totalError + nearest.distance,
+        false,
+        `Hole ${nearest.node.row}${nearest.node.column} is already occupied`,
+        mappedPins
+      );
     }
 
     if (usedNodeIds.has(nearest.node.nodeId) && !footprintPin.allowSharedNode) {
-      return {
-        valid: false,
-        reason: `Multiple pins cannot share hole ${nearest.node.row}${nearest.node.column}`,
-        position: { x: candidatePlacement.x, y: candidatePlacement.y },
-        matchedAnchors: [...matchedAnchors, nearest.node.position],
-        totalError: totalError + nearest.distance,
-        matchedCount: mappedPins.length,
-        mappedPins,
-      };
+      return createCandidateResult(
+        breadboardState,
+        candidatePlacement,
+        [...matchedNodes, nearest.node],
+        [...matchedAnchors, nearest.node.position],
+        totalError + nearest.distance,
+        false,
+        `Multiple pins cannot share hole ${nearest.node.row}${nearest.node.column}`,
+        mappedPins
+      );
     }
 
     usedNodeIds.add(nearest.node.nodeId);
     totalError += nearest.distance;
     matchedAnchors.push(nearest.node.position);
+    matchedNodes.push(nearest.node);
     mappedPins.push({
       pinId: footprintPin.id,
       nodeId: nearest.node.nodeId,
     });
   }
 
-  const mappedNodes = mappedPins
-    .map((mapping) => breadboardState.nodeById[mapping.nodeId])
-    .filter((node): node is BreadboardWorldNode => Boolean(node));
-
-  const minColumn = Math.min(...mappedNodes.map((node) => node.column));
-  const maxColumn = Math.max(...mappedNodes.map((node) => node.column));
-  const zones = new Set(mappedNodes.map((node) => node.zone));
+  const minColumn = Math.min(...matchedNodes.map((node) => node.column));
+  const maxColumn = Math.max(...matchedNodes.map((node) => node.column));
+  const zones = new Set(matchedNodes.map((node) => node.zone));
 
   if (footprint.minColumnSpan !== undefined && maxColumn - minColumn < footprint.minColumnSpan) {
-    return {
-      valid: false,
-      reason: `Component must span at least ${footprint.minColumnSpan + 1} holes`,
-      position: { x: candidatePlacement.x, y: candidatePlacement.y },
+    return createCandidateResult(
+      breadboardState,
+      candidatePlacement,
+      matchedNodes,
       matchedAnchors,
       totalError,
-      matchedCount: mappedPins.length,
-      mappedPins,
-    };
+      false,
+      `Component must span at least ${footprint.minColumnSpan + 1} holes`,
+      mappedPins
+    );
   }
 
   if (footprint.requiresTrenchCrossing) {
     if (zones.has('rail-top') || zones.has('rail-bottom')) {
-      return {
-        valid: false,
-        reason: 'This component must mount across the breadboard trench, not on the rails',
-        position: { x: candidatePlacement.x, y: candidatePlacement.y },
+      return createCandidateResult(
+        breadboardState,
+        candidatePlacement,
+        matchedNodes,
         matchedAnchors,
         totalError,
-        matchedCount: mappedPins.length,
-        mappedPins,
-      };
+        false,
+        'This component must mount across the breadboard trench, not on the rails',
+        mappedPins
+      );
     }
 
     if (!(zones.has('strip-top') && zones.has('strip-bottom'))) {
-      return {
-        valid: false,
-        reason: 'This component must bridge the top and bottom strips across the trench',
-        position: { x: candidatePlacement.x, y: candidatePlacement.y },
+      return createCandidateResult(
+        breadboardState,
+        candidatePlacement,
+        matchedNodes,
         matchedAnchors,
         totalError,
-        matchedCount: mappedPins.length,
-        mappedPins,
-      };
+        false,
+        'This component must bridge the top and bottom strips across the trench',
+        mappedPins
+      );
     }
   }
 
-  return {
-    valid: true,
-    position: { x: candidatePlacement.x, y: candidatePlacement.y },
+  return createCandidateResult(
+    breadboardState,
+    candidatePlacement,
+    matchedNodes,
     matchedAnchors,
     totalError,
-    matchedCount: mappedPins.length,
-    mappedPins,
-  };
+    true,
+    undefined,
+    mappedPins
+  );
 }
 
 function getReferenceNodes(
@@ -432,14 +547,15 @@ function resolveMountCandidate(
     return {
       definition,
       footprint,
-      candidate: {
-        valid: false,
-        reason: `Rotation ${normalizeRotation(candidatePlacement.rotation)} deg is not supported for ${definition.name}`,
-        position: { x: candidatePlacement.x, y: candidatePlacement.y },
-        matchedAnchors: [],
-        totalError: Number.POSITIVE_INFINITY,
-        matchedCount: 0,
-      },
+      candidate: createCandidateResult(
+        breadboardState,
+        candidatePlacement,
+        [],
+        [],
+        Number.POSITIVE_INFINITY,
+        false,
+        `Rotation ${normalizeRotation(candidatePlacement.rotation)} deg is not supported for ${definition.name}`
+      ),
     };
   }
 
@@ -547,6 +663,7 @@ export function getBreadboardMountPreview(
       position: { x: candidatePlacement.x, y: candidatePlacement.y },
       rawPosition: { x: candidatePlacement.x, y: candidatePlacement.y },
       matchedAnchors: [],
+      groupHighlights: [],
       totalError: closestDistance,
       valid: false,
       isValid: false,
@@ -566,6 +683,7 @@ export function getBreadboardMountPreview(
     position: resolved.candidate.position,
     rawPosition: { x: candidatePlacement.x, y: candidatePlacement.y },
     matchedAnchors: resolved.candidate.matchedAnchors,
+    groupHighlights: resolved.candidate.groupHighlights,
     totalError: resolved.candidate.totalError,
     valid: resolved.candidate.valid,
     isValid: resolved.candidate.valid,

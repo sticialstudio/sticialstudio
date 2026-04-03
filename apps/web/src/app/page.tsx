@@ -1,165 +1,131 @@
 ﻿"use client";
 
+import { motion } from "framer-motion";
 import Link from "next/link";
+import { ArrowRight, Blocks, BookOpen, CircuitBoard, Code2, LogIn } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
-import DashboardCard from "@/components/ui/DashboardCard";
-import {
-  BookOpen,
-  FolderGit2,
-  Cpu,
-  CircuitBoard,
-  Cable,
-  ArrowRight,
-  CheckCircle2,
-} from "lucide-react";
-
-const capabilities = [
+import OnboardingShell from "@/components/onboarding/OnboardingShell";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProject } from "@/contexts/ProjectContext";
+import { Button } from "@/components/ui/Button";
+import { staggerContainer, staggerItem } from "@/components/ui/motion";
+const platformPanels = [
   {
-    icon: CircuitBoard,
+    id: "circuit-lab",
     title: "Circuit Lab",
-    description: "Lay out boards, place components, wire connections, and move into code with the same project context.",
+    description: "Choose a coding mode first, then open the circuit workspace and build visually.",
+    image: "/home/circuit-lab-preview.png",
+    icon: <CircuitBoard size={18} />,
+    accent: "text-teal-300 border-teal-300/20 bg-teal-400/10",
   },
   {
-    icon: Cpu,
-    title: "Block + Text Coding",
-    description: "Switch between Blockly and source code while keeping generated files, board targeting, and project state synchronized.",
+    id: "block-coding",
+    title: "Block Coding",
+    description: "Choose a board and start directly in Blockly without opening Circuit Lab.",
+    image: "/home/block-coding-preview.png",
+    icon: <Blocks size={18} />,
+    accent: "text-violet-300 border-violet-300/20 bg-violet-400/10",
   },
   {
-    icon: Cable,
-    title: "Board Upload",
-    description: "Verify, upload, and connect to Arduino boards plus MicroPython targets such as ESP32 and Raspberry Pi Pico boards.",
+    id: "text-coding",
+    title: "Text Coding",
+    description: "Choose a board and open the editor. Arduino uses C++; ESP and Pico use MicroPython.",
+    image: "/home/text-coding-preview.png",
+    icon: <Code2 size={18} />,
+    accent: "text-sky-300 border-sky-300/20 bg-sky-400/10",
   },
-];
-
-const workflow = [
-  "Choose how you want to code, then pick your board.",
-  "Build the circuit and add code in the same project.",
-  "Simulate it or upload it when you are ready.",
-];
+] as const;
 
 export default function WelcomePage() {
+  const { user } = useAuth();
+  const { setProjectId } = useProject();
+
+  const panelHref: Record<(typeof platformPanels)[number]["id"], string> = {
+    "circuit-lab": "/projects/select-mode?entry=circuit-lab",
+    "block-coding": "/projects/select-board?entry=block-home",
+    "text-coding": "/projects/select-board?entry=text-home",
+  };
+
   return (
     <MainLayout>
-      <div className="relative flex flex-1 overflow-y-auto app-canvas px-4 py-8 text-foreground sm:px-6 sm:py-10">
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-8">
-          <section className="ui-fade-up overflow-hidden rounded-[32px] border border-slate-700/80 bg-slate-900/65 shadow-[0_28px_90px_-54px_rgba(34,211,238,0.35)]">
-            <div className="grid gap-8 px-6 py-7 lg:grid-cols-[minmax(0,1.2fr)_minmax(320px,0.8fr)] lg:px-8 lg:py-8">
-              <div className="space-y-5">
-                <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-slate-400">
-                  <span className="rounded-full border border-cyan-400/30 bg-cyan-400/10 px-3 py-1 text-cyan-200">Circuit Lab</span>
-                  <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-emerald-200">Blockly + Code</span>
-                  <span className="rounded-full border border-violet-400/30 bg-violet-400/10 px-3 py-1 text-violet-200">Board Upload</span>
-                </div>
-
-                <div className="space-y-3">
-                  <h1 className="max-w-3xl text-balance text-3xl font-bold tracking-tight text-slate-50 sm:text-4xl lg:text-5xl">
-                    Build circuits, generate code, and ship to hardware from one workspace.
-                  </h1>
-                  <p className="max-w-2xl text-sm leading-7 text-slate-300 sm:text-base">
-                    EdTech OS brings circuit building, coding, simulation, and board upload into one guided hardware workflow.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap gap-3">
-                  <Link
-                    href="/projects/select-mode"
-                    className="inline-flex items-center gap-2 rounded-xl border border-cyan-400/60 bg-cyan-400/10 px-4 py-3 text-sm font-semibold text-cyan-100 transition-colors hover:bg-cyan-400/20"
-                  >
-                    Start Project
-                    <ArrowRight size={16} />
-                  </Link>
-                  <Link
-                    href="/courses"
-                    className="inline-flex items-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/10 px-4 py-3 text-sm font-semibold text-emerald-100 transition-colors hover:bg-emerald-400/20"
-                  >
-                    Try a Course
-                  </Link>
-                  <Link
-                    href="/dashboard"
-                    className="inline-flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-950/70 px-4 py-3 text-sm font-semibold text-slate-200 transition-colors hover:border-slate-500"
-                  >
-                    Open Workspace Home
-                  </Link>
-                </div>
-              </div>
-
-              <div className="rounded-[28px] border border-slate-800 bg-slate-950/75 p-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">How It Works</p>
-                <div className="mt-4 space-y-3">
-                  {workflow.map((step, index) => (
-                    <div key={step} className="flex items-start gap-3 rounded-2xl border border-slate-800 bg-slate-900/65 px-4 py-3">
-                      <span className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-cyan-400/12 text-xs font-bold text-cyan-200">
-                        {index + 1}
-                      </span>
-                      <p className="text-sm leading-6 text-slate-300">{step}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="mt-4 rounded-2xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3 text-sm text-emerald-100">
-                  New here? Start with a virtual Arduino project for the fastest first win, or try a course if you want step-by-step help.
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-            {capabilities.map(({ icon: Icon, title, description }, index) => (
-              <article
-                key={title}
-                className="ui-fade-up rounded-[26px] border border-slate-700/80 bg-slate-900/60 p-5"
-                style={{ animationDelay: `${80 + index * 60}ms` }}
+      <OnboardingShell
+        headerActions={
+          user ? (
+            <Link href="/dashboard"><Button variant="inverse">Open Workspace</Button></Link>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                className="inline-flex min-h-11 items-center gap-2 rounded-[18px] px-3 text-sm font-semibold text-white/74 transition-colors hover:text-white"
               >
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-700 bg-slate-950/70 text-cyan-300">
-                  <Icon size={20} />
-                </div>
-                <h2 className="mt-4 text-lg font-semibold text-slate-100">{title}</h2>
-                <p className="mt-2 text-sm leading-6 text-slate-400">{description}</p>
-              </article>
-            ))}
-          </section>
-
-          <section className="grid gap-4 lg:grid-cols-2">
-            <DashboardCard
-              href="/courses"
-              icon={BookOpen}
-              title="Try a Course"
-              description="Follow guided lessons, learn the basics, and launch project setups that match each lesson."
-              delayMs={120}
-            />
-            <DashboardCard
-              href="/projects/select-mode"
-              icon={FolderGit2}
-              title="Start Project"
-              description="Start a project, choose a board, build the circuit, and move straight into blocks or code."
-              delayMs={190}
-            />
-          </section>
-
-          <section className="rounded-[28px] border border-slate-800 bg-slate-950/70 px-6 py-5">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Workspace Highlights</p>
-                <h2 className="mt-2 text-xl font-semibold text-slate-100">Everything stays connected</h2>
-              </div>
-              <div className="flex flex-wrap gap-3 text-sm text-slate-300">
-                <span className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-2">
-                  <CheckCircle2 size={14} className="text-emerald-300" />
-                  Persistent projects
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-2">
-                  <CheckCircle2 size={14} className="text-emerald-300" />
-                  Blockly to source sync
-                </span>
-                <span className="inline-flex items-center gap-2 rounded-full border border-slate-800 bg-slate-900/70 px-3 py-2">
-                  <CheckCircle2 size={14} className="text-emerald-300" />
-                  Upload logs and device tools
-                </span>
-              </div>
+                <LogIn size={16} />
+                Sign in
+              </Link>
+              <Link href="/register"><Button className="bg-[linear-gradient(135deg,#66a7ff,#7b61ff)] text-white hover:opacity-90">Get Started</Button></Link>
+            </>
+          )
+        }
+        contentClassName="pb-20 pt-8 lg:pt-12"
+      >
+        <motion.div
+          className="mx-auto flex w-full max-w-[1320px] flex-1 flex-col gap-16"
+          variants={staggerContainer}
+          initial="hidden"
+          animate="visible"
+        >
+          <motion.section variants={staggerItem} className="flex flex-col items-center gap-8 text-center">
+            <div className="inline-flex items-center gap-2 rounded-full border border-sky-300/16 bg-sky-400/10 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-sky-200">
+              <span className="h-2 w-2 rounded-full bg-sky-300/85" />
+              Virtual simulator and real hardware
             </div>
-          </section>
-        </div>
-      </div>
+
+            <h1 className="max-w-[14ch] bg-[linear-gradient(135deg,#68b0ff_0%,#7d6cff_38%,#b176ff_64%,#ff8ca1_100%)] bg-clip-text text-[3.2rem] font-bold leading-[1.02] tracking-[-0.06em] text-transparent sm:text-[4.4rem] lg:text-[5.5rem]">
+              Build circuits. Learn faster. Upload for real.
+            </h1>
+
+            <p className="max-w-[40rem] text-base leading-8 text-white/60 sm:text-lg">
+              Start from the workspace you need right now: Circuit Lab, Blockly, text coding, or a guided lesson path.
+            </p>
+
+            <div className="flex flex-wrap items-center justify-center gap-4">
+              <Link href="/courses"><Button className="min-w-[190px] bg-[linear-gradient(135deg,#66a7ff,#7b61ff)] text-white hover:opacity-90" icon={<BookOpen size={18} />}>Study a Course</Button></Link>
+            </div>
+          </motion.section>
+
+          <motion.section className="grid gap-5 lg:grid-cols-3" variants={staggerContainer} initial="hidden" animate="visible">
+            {platformPanels.map((panel) => (
+              <motion.div
+                key={panel.id}
+                variants={staggerItem}
+                className="group"
+              >
+                <Link
+                  href={panelHref[panel.id]}
+                  onClick={() => setProjectId(null)}
+                  className="block overflow-hidden rounded-[28px] border border-white/10 bg-white/[0.03] text-left backdrop-blur-xl transition-all duration-300 hover:-translate-y-1.5 hover:border-white/18 hover:shadow-[0_28px_72px_-40px_rgba(0,0,0,0.88)]"
+                >
+                <div className="aspect-[16/9] overflow-hidden border-b border-white/8 bg-[#0a0c18]">
+                  <img src={panel.image} alt={panel.title} className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]" />
+                </div>
+
+                <div className="flex items-center gap-3 px-6 py-5">
+                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border ${panel.accent}`}>
+                    {panel.icon}
+                  </span>
+                  <div>
+                    <h3 className="text-base font-semibold tracking-[-0.03em] text-white">{panel.title}</h3>
+                    <p className="text-sm text-white/50">{panel.description}</p>
+                  </div>
+                  <ArrowRight size={16} className="ml-auto text-white/20 transition-all duration-300 group-hover:translate-x-1 group-hover:text-white/60" />
+                </div>
+                              </Link>
+              </motion.div>
+            ))}
+          </motion.section>
+        </motion.div>
+      </OnboardingShell>
     </MainLayout>
   );
 }
+
 

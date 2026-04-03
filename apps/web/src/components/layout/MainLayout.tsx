@@ -1,22 +1,26 @@
-"use client";
+﻿"use client";
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
+import { ChevronDown } from 'lucide-react';
 import { useBoard } from '@/contexts/BoardContext';
 import Sidebar from './Sidebar';
 import Navbar from './Navbar';
 import ThemeToggle from './ThemeToggle';
-import { ChevronDown } from 'lucide-react';
+
+function matchesRoute(pathname: string, routes: string[]) {
+    return routes.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
     const pathname = usePathname();
     const { isFullScreen, setIsFullScreen } = useBoard();
 
-    const hideNavigationRoutes = ['/', '/projects/select-mode', '/projects/select-language', '/projects/select-board'];
-    const hideSidebarRoutes = [...hideNavigationRoutes, '/dashboard', '/projects/ide'];
-
-    const shouldHideNavbar = hideNavigationRoutes.includes(pathname) || isFullScreen;
-    const shouldHideSidebar = hideSidebarRoutes.includes(pathname) || isFullScreen;
+    const immersiveShellRoutes = ['/', '/projects/select-mode', '/projects/select-language', '/projects/select-board', '/projects/select-environment'];
+    const workspaceOwnedShellRoutes = [...immersiveShellRoutes, '/projects/ide'];
+    const shouldHideNavbar = matchesRoute(pathname, workspaceOwnedShellRoutes) || isFullScreen;
+    const shouldHideSidebar = matchesRoute(pathname, [...workspaceOwnedShellRoutes, '/dashboard']) || isFullScreen;
+    const managesOwnShellChrome = matchesRoute(pathname, workspaceOwnedShellRoutes);
 
     return (
         <div className="relative flex h-screen w-screen overflow-hidden bg-background text-foreground transition-colors">
@@ -24,7 +28,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
             <div className="relative flex h-full flex-1 flex-col overflow-hidden">
                 {!shouldHideNavbar && <Navbar />}
 
-                {shouldHideNavbar ? (
+                {shouldHideNavbar && pathname !== '/' && !managesOwnShellChrome ? (
                     <div className="absolute right-4 top-4 z-[120]">
                         <ThemeToggle showLabel />
                     </div>

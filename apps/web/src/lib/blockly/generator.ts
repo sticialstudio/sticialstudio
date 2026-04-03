@@ -1,4 +1,59 @@
 import * as Blockly from 'blockly';
+import type { CodingCircuitSnapshot } from '@/lib/blockly/circuitAwareness';
+
+function getCircuitSnapshot(): CodingCircuitSnapshot | undefined {
+    if (typeof window === 'undefined') return undefined;
+    return (window as any).__CIRCUIT_CODING_SNAPSHOT as CodingCircuitSnapshot | undefined;
+}
+
+function resolvePin(componentId: string, fallback = '2'): string {
+    if (!componentId || componentId === 'NONE') return fallback;
+    const snapshot = getCircuitSnapshot();
+    if (!snapshot) return fallback;
+    const component = snapshot.components.find((entry) => entry.componentId === componentId);
+    return component?.primaryBoardPin || fallback;
+}
+
+function resolveNamedPin(componentId: string, pinId: string, fallback = '2'): string {
+    if (!componentId || componentId === 'NONE') return fallback;
+    const snapshot = getCircuitSnapshot();
+    if (!snapshot) return fallback;
+    const component = snapshot.components.find((entry) => entry.componentId === componentId);
+    if (!component) return fallback;
+    return component.pinMappings[pinId]?.boardPinLabel || fallback;
+}
+
+function looksLikeBoardPin(value: string) {
+    return /^(?:A\d+|\d+|D\d+|GPIO\d+|GP\d+)$/i.test(value);
+}
+
+function sanitizeIdentifier(value: string, fallbackPrefix = 'device') {
+    const cleaned = String(value || '').replace(/[^A-Za-z0-9_]/g, '_');
+    if (!cleaned) return fallbackPrefix;
+    return /^[A-Za-z_]/.test(cleaned) ? cleaned : `${fallbackPrefix}_${cleaned}`;
+}
+
+function resolveComponentOrPin(value: string, fallback = '2') {
+    if (!value || value === 'NONE') return fallback;
+    if (looksLikeBoardPin(value)) return value;
+    return resolvePin(value, fallback);
+}
+
+function resolveComponentNamedPinOrPin(value: string, pinId: string, fallback = '2') {
+    if (!value || value === 'NONE') return fallback;
+    if (looksLikeBoardPin(value)) return value;
+    return resolveNamedPin(value, pinId, fallback);
+}
+
+function getInstanceIdentifier(rawValue: string, prefix: string, fallbackPin = '2') {
+    if (!rawValue || rawValue === 'NONE') {
+        return `${prefix}_${sanitizeIdentifier(fallbackPin, prefix)}`;
+    }
+    if (looksLikeBoardPin(rawValue)) {
+        return `${prefix}_${sanitizeIdentifier(rawValue, prefix)}`;
+    }
+    return sanitizeIdentifier(rawValue, prefix);
+}
 
 // ----------------------------------------------------------------------------
 // 1. ARDUINO C++ GENERATOR
@@ -73,6 +128,12 @@ arduinoGenerator.INDENT = '  ';
     const baud = block.getFieldValue('BAUD') || '9600';
     (arduinoGenerator as any).setups_['serial_begin'] = `  Serial.begin(${baud});`;
     return `  Serial.println(${text});\n`;
+};
+
+(arduinoGenerator as any).forBlock['arduino_serialBegin'] = function (block: Blockly.Block) {
+    const baud = block.getFieldValue('BAUD') || '9600';
+    (arduinoGenerator as any).setups_['serial_begin'] = `  Serial.begin(${baud});`;
+    return '';
 };
 
 (arduinoGenerator as any).forBlock['arduino_hc05_init'] = function (block: Blockly.Block) {
@@ -269,13 +330,25 @@ arduinoGenerator.INDENT = '  ';
     return ['lightMeter.readLightLevel()', (arduinoGenerator as any).ORDER_ATOMIC];
 };
 (arduinoGenerator as any).forBlock['arduino_setup_loop'] = function (block: Blockly.Block) {
-    const setupCode = (arduinoGenerator as any).statementToCode(block, 'SETUP');
-    if (setupCode) {
-        // Collect any generic blocks attached to the setup slot
-        (arduinoGenerator as any).setups_['manual_setup'] = setupCode;
-    }
-    const loopCode = (arduinoGenerator as any).statementToCode(block, 'LOOP');
-    return loopCode;
+    const setupCode = (arduinoGenerator as any).statementToCode(block, 'SETUP') || '';
+    const loopCode = (arduinoGenerator as any).statementToCode(block, 'LOOP') || '';
+    (arduinoGenerator as any).setups_['__setup_code__'] = setupCode;
+    (arduinoGenerator as any).setups_['__loop_code__'] = loopCode;
+    return '';
+};
+
+(arduinoGenerator as any).forBlock['arduino_on_start'] = function (block: Blockly.Block) {
+    const setupCode = (arduinoGenerator as any).statementToCode(block, 'SETUP') || '';
+    const existing = (arduinoGenerator as any).setups_['__setup_code__'] || '';
+    (arduinoGenerator as any).setups_['__setup_code__'] = existing + setupCode;
+    return '';
+};
+
+(arduinoGenerator as any).forBlock['arduino_forever'] = function (block: Blockly.Block) {
+    const loopCode = (arduinoGenerator as any).statementToCode(block, 'LOOP') || '';
+    const existing = (arduinoGenerator as any).setups_['__loop_code__'] || '';
+    (arduinoGenerator as any).setups_['__loop_code__'] = existing + loopCode;
+    return '';
 };
 
 (arduinoGenerator as any).forBlock['oled_init'] = function (block: Blockly.Block) {
@@ -656,6 +729,10 @@ function dedentMicroPython(code: string) {
     return `print(${text})\n`;
 };
 
+(micropythonGenerator as any).forBlock['arduino_serialBegin'] = function () {
+    return '';
+};
+
 (micropythonGenerator as any).forBlock['arduino_hc05_init'] = function (block: Blockly.Block) {
     const rx = block.getFieldValue('RX') || '10';
     const tx = block.getFieldValue('TX') || '11';
@@ -936,12 +1013,25 @@ function dedentMicroPython(code: string) {
 };
 
 (micropythonGenerator as any).forBlock['arduino_setup_loop'] = function (block: Blockly.Block) {
-    const setupCode = (micropythonGenerator as any).statementToCode(block, 'SETUP');
-    if (setupCode) {
-        (micropythonGenerator as any).setups_['manual_setup'] = dedentMicroPython(setupCode).trimEnd();
-    }
-    const loopCode = (micropythonGenerator as any).statementToCode(block, 'LOOP');
-    return dedentMicroPython(loopCode);
+    const setupCode = (micropythonGenerator as any).statementToCode(block, 'SETUP') || '';
+    const loopCode = (micropythonGenerator as any).statementToCode(block, 'LOOP') || '';
+    (micropythonGenerator as any).setups_['__setup_code__'] = dedentMicroPython(setupCode).trimEnd();
+    (micropythonGenerator as any).setups_['__loop_code__'] = dedentMicroPython(loopCode).trimEnd();
+    return '';
+};
+
+(micropythonGenerator as any).forBlock['arduino_on_start'] = function (block: Blockly.Block) {
+    const setupCode = dedentMicroPython((micropythonGenerator as any).statementToCode(block, 'SETUP') || '').trimEnd();
+    const existing = (micropythonGenerator as any).setups_['__setup_code__'] || '';
+    (micropythonGenerator as any).setups_['__setup_code__'] = [existing, setupCode].filter(Boolean).join("\n");
+    return '';
+};
+
+(micropythonGenerator as any).forBlock['arduino_forever'] = function (block: Blockly.Block) {
+    const loopCode = dedentMicroPython((micropythonGenerator as any).statementToCode(block, 'LOOP') || '').trimEnd();
+    const existing = (micropythonGenerator as any).setups_['__loop_code__'] || '';
+    (micropythonGenerator as any).setups_['__loop_code__'] = [existing, loopCode].filter(Boolean).join("\n");
+    return '';
 };
 
 (micropythonGenerator as any).forBlock['oled_init'] = function (block: Blockly.Block) {
@@ -1143,6 +1233,585 @@ function dedentMicroPython(code: string) {
     return ['"' + block.getFieldValue('TEXT') + '"', (micropythonGenerator as any).ORDER_ATOMIC];
 };
 
+type BlockHandler = (block: Blockly.Block) => string | [string, number] | '';
+
+type GeneratorWithBlocks = Blockly.CodeGenerator & {
+    forBlock: Record<string, BlockHandler>;
+    ORDER_NONE: number;
+    ORDER_ATOMIC: number;
+    valueToCode: (block: Blockly.Block, name: string, order: number) => string;
+};
+
+function registerOverrideHandlers(generator: GeneratorWithBlocks, handlers: Record<string, BlockHandler>) {
+    for (const [type, handler] of Object.entries(handlers)) {
+        generator.forBlock[type] = handler;
+    }
+}
+
+function getValueCode(generator: GeneratorWithBlocks, block: Blockly.Block, name: string, fallback: string) {
+    return generator.valueToCode(block, name, generator.ORDER_NONE) || fallback;
+}
+
+function findCreatorBlock(
+    block: Blockly.Block,
+    creatorTypes: string | string[],
+    identityField: string,
+    identityValue: string
+) {
+    if (!identityValue || !block.workspace) return null;
+    const types = Array.isArray(creatorTypes) ? creatorTypes : [creatorTypes];
+    return block.workspace
+        .getAllBlocks(false)
+        .find((candidate) => types.includes(candidate.type) && candidate.getFieldValue(identityField) === identityValue) || null;
+}
+
+function getCreatorFieldValue(
+    block: Blockly.Block,
+    creatorTypes: string | string[],
+    identityField: string,
+    identityValue: string,
+    targetField: string,
+    fallback: string
+) {
+    const creator = findCreatorBlock(block, creatorTypes, identityField, identityValue);
+    const value = creator?.getFieldValue(targetField);
+    return typeof value === 'string' && value.length > 0 ? value : fallback;
+}
+
+function ensureArduinoServoSetup(identifier: string, pin: string) {
+    const setups = (arduinoGenerator as any).setups_;
+    setups['include_servo'] = '#include <Servo.h>';
+    setups[`declare_servo_${identifier}`] = `Servo ${identifier};`;
+    setups[`servo_attach_${identifier}`] = `  ${identifier}.attach(${pin});`;
+}
+
+function getArduinoServoConfig(block: Blockly.Block, mode: 'generic' | 'named') {
+    if (mode === 'named') {
+        const rawName = block.getFieldValue('NAME') || 'myServo';
+        return {
+            identifier: sanitizeIdentifier(rawName, 'servo'),
+            pin: getCreatorFieldValue(block, 'arduino_servo_attach', 'NAME', rawName, 'PIN', '9'),
+        };
+    }
+
+    const rawSensor = block.getFieldValue('SENSOR') || block.getFieldValue('PIN') || '9';
+    const configuredPin = block.type === 'arduino_servo_init'
+        ? (block.getFieldValue('PIN') || '9')
+        : getCreatorFieldValue(block, 'arduino_servo_init', 'SENSOR', rawSensor, 'PIN', '9');
+    const pin = block.type === 'arduino_servo_init'
+        ? configuredPin
+        : resolveComponentOrPin(rawSensor, configuredPin);
+
+    return {
+        identifier: getInstanceIdentifier(rawSensor, 'servo', pin),
+        pin,
+    };
+}
+
+function ensureArduinoUltrasonicSetup(identifier: string, trig: string, echo: string) {
+    const setups = (arduinoGenerator as any).setups_;
+    setups[`declare_ultrasonic_${identifier}`] = `const int ${identifier}_trig = ${trig};\nconst int ${identifier}_echo = ${echo};`;
+    setups[`helper_ultrasonic_${identifier}`] = `long ${identifier}_read_cm() {\n  pinMode(${identifier}_trig, OUTPUT);\n  digitalWrite(${identifier}_trig, LOW);\n  delayMicroseconds(2);\n  digitalWrite(${identifier}_trig, HIGH);\n  delayMicroseconds(10);\n  digitalWrite(${identifier}_trig, LOW);\n  pinMode(${identifier}_echo, INPUT);\n  return pulseIn(${identifier}_echo, HIGH) * 0.01723;\n}`;
+}
+
+function getArduinoUltrasonicConfig(block: Blockly.Block, mode: 'generic' | 'named') {
+    if (mode === 'named') {
+        const rawName = block.getFieldValue('NAME') || 'mySonar';
+        return {
+            identifier: sanitizeIdentifier(rawName, 'sonar'),
+            trig: getCreatorFieldValue(block, 'arduino_sonar_add', 'NAME', rawName, 'TRIG', '9'),
+            echo: getCreatorFieldValue(block, 'arduino_sonar_add', 'NAME', rawName, 'ECHO', '10'),
+        };
+    }
+
+    const rawSensor = block.getFieldValue('SENSOR') || 'ultrasonic';
+    const fallbackTrig = block.type === 'arduino_ultrasonic_init'
+        ? (block.getFieldValue('TRIG') || '9')
+        : getCreatorFieldValue(block, 'arduino_ultrasonic_init', 'SENSOR', rawSensor, 'TRIG', '9');
+    const fallbackEcho = block.type === 'arduino_ultrasonic_init'
+        ? (block.getFieldValue('ECHO') || '10')
+        : getCreatorFieldValue(block, 'arduino_ultrasonic_init', 'SENSOR', rawSensor, 'ECHO', '10');
+
+    return {
+        identifier: getInstanceIdentifier(rawSensor, 'ultrasonic', fallbackTrig),
+        trig: resolveComponentNamedPinOrPin(rawSensor, 'TRIG', fallbackTrig),
+        echo: resolveComponentNamedPinOrPin(rawSensor, 'ECHO', fallbackEcho),
+    };
+}
+
+function ensureArduinoDhtSetup(identifier: string, pin: string, type: string) {
+    const setups = (arduinoGenerator as any).setups_;
+    setups['include_dht'] = '#include <DHT.h>';
+    setups[`declare_dht_${identifier}`] = `DHT ${identifier}(${pin}, ${type});`;
+    setups[`dht_begin_${identifier}`] = `  ${identifier}.begin();`;
+}
+
+function getArduinoDhtConfig(block: Blockly.Block, mode: 'generic' | 'named') {
+    if (mode === 'named') {
+        const rawName = block.getFieldValue('NAME') || 'myDHT';
+        return {
+            identifier: sanitizeIdentifier(rawName, 'dht'),
+            pin: getCreatorFieldValue(block, 'arduino_dht_named_add', 'NAME', rawName, 'PIN', '2'),
+            type: getCreatorFieldValue(block, 'arduino_dht_named_add', 'NAME', rawName, 'TYPE', 'DHT11'),
+        };
+    }
+
+    const rawSensor = block.getFieldValue('SENSOR') || 'dht';
+    const type = block.getFieldValue('TYPE') || getCreatorFieldValue(block, 'arduino_dht_init', 'SENSOR', rawSensor, 'TYPE', 'DHT11');
+    const fallbackPin = block.type === 'arduino_dht_init'
+        ? (block.getFieldValue('PIN') || '2')
+        : getCreatorFieldValue(block, 'arduino_dht_init', 'SENSOR', rawSensor, 'PIN', '2');
+
+    return {
+        identifier: getInstanceIdentifier(rawSensor, 'dht', fallbackPin),
+        pin: resolveComponentOrPin(rawSensor, fallbackPin),
+        type,
+    };
+}
+
+registerOverrideHandlers(arduinoGenerator as GeneratorWithBlocks, {
+    arduino_servo_init(block: Blockly.Block) {
+        const { identifier, pin } = getArduinoServoConfig(block, 'generic');
+        ensureArduinoServoSetup(identifier, pin);
+        return '';
+    },
+    arduino_servo_write(block: Blockly.Block) {
+        const { identifier, pin } = getArduinoServoConfig(block, 'generic');
+        const angle = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'ANGLE', '90');
+        ensureArduinoServoSetup(identifier, pin);
+        return `  ${identifier}.write(${angle});\n`;
+    },
+    arduino_servo_read(block: Blockly.Block) {
+        const { identifier, pin } = getArduinoServoConfig(block, 'generic');
+        ensureArduinoServoSetup(identifier, pin);
+        return [`${identifier}.read()`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+    arduino_servo_attach(block: Blockly.Block) {
+        const { identifier, pin } = getArduinoServoConfig(block, 'named');
+        ensureArduinoServoSetup(identifier, pin);
+        return '';
+    },
+    arduino_servo_detach(block: Blockly.Block) {
+        const { identifier, pin } = getArduinoServoConfig(block, 'named');
+        ensureArduinoServoSetup(identifier, pin);
+        return `  ${identifier}.detach();\n`;
+    },
+    arduino_servo_set_angle(block: Blockly.Block) {
+        const { identifier, pin } = getArduinoServoConfig(block, 'named');
+        const angle = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'ANGLE', '90');
+        ensureArduinoServoSetup(identifier, pin);
+        return `  ${identifier}.write(${angle});\n`;
+    },
+    arduino_servo_read_angle(block: Blockly.Block) {
+        const { identifier, pin } = getArduinoServoConfig(block, 'named');
+        ensureArduinoServoSetup(identifier, pin);
+        return [`${identifier}.read()`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+    arduino_ultrasonic_init(block: Blockly.Block) {
+        const { identifier, trig, echo } = getArduinoUltrasonicConfig(block, 'generic');
+        ensureArduinoUltrasonicSetup(identifier, trig, echo);
+        return '';
+    },
+    arduino_ultrasonic(block: Blockly.Block) {
+        const { identifier, trig, echo } = getArduinoUltrasonicConfig(block, 'generic');
+        ensureArduinoUltrasonicSetup(identifier, trig, echo);
+        return [`${identifier}_read_cm()`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+    arduino_sonar_add(block: Blockly.Block) {
+        const { identifier, trig, echo } = getArduinoUltrasonicConfig(block, 'named');
+        ensureArduinoUltrasonicSetup(identifier, trig, echo);
+        return '';
+    },
+    arduino_sonar_read(block: Blockly.Block) {
+        const { identifier, trig, echo } = getArduinoUltrasonicConfig(block, 'named');
+        const unit = block.getFieldValue('UNIT') || 'CM';
+        ensureArduinoUltrasonicSetup(identifier, trig, echo);
+        if (unit === 'INCH') return [`(${identifier}_read_cm() / 2.54)`, (arduinoGenerator as any).ORDER_ATOMIC];
+        if (unit === 'MM') return [`(${identifier}_read_cm() * 10)`, (arduinoGenerator as any).ORDER_ATOMIC];
+        return [`${identifier}_read_cm()`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+    arduino_dht_init(block: Blockly.Block) {
+        const { identifier, pin, type } = getArduinoDhtConfig(block, 'generic');
+        ensureArduinoDhtSetup(identifier, pin, type);
+        return '';
+    },
+    arduino_dht_read(block: Blockly.Block) {
+        const { identifier, pin, type } = getArduinoDhtConfig(block, 'generic');
+        const metric = block.getFieldValue('METRIC') || 'TEMP_C';
+        ensureArduinoDhtSetup(identifier, pin, type);
+        return [metric === 'HUMIDITY' ? `${identifier}.readHumidity()` : `${identifier}.readTemperature()`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+    arduino_dht_named_add(block: Blockly.Block) {
+        const { identifier, pin, type } = getArduinoDhtConfig(block, 'named');
+        ensureArduinoDhtSetup(identifier, pin, type);
+        return '';
+    },
+    arduino_dht_named_temp(block: Blockly.Block) {
+        const { identifier, pin, type } = getArduinoDhtConfig(block, 'named');
+        ensureArduinoDhtSetup(identifier, pin, type);
+        return [`${identifier}.readTemperature()`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+    arduino_dht_named_humidity(block: Blockly.Block) {
+        const { identifier, pin, type } = getArduinoDhtConfig(block, 'named');
+        ensureArduinoDhtSetup(identifier, pin, type);
+        return [`${identifier}.readHumidity()`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+    arduino_dht_named_temp_f(block: Blockly.Block) {
+        const { identifier, pin, type } = getArduinoDhtConfig(block, 'named');
+        ensureArduinoDhtSetup(identifier, pin, type);
+        return [`${identifier}.readTemperature(true)`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+});
+function ensureArduinoEncoderSetup(identifier: string, clk: string, dt: string) {
+    const setups = (arduinoGenerator as any).setups_;
+    setups['include_encoder'] = '#include <Encoder.h>';
+    setups[`declare_encoder_${identifier}`] = `Encoder ${identifier}(${clk}, ${dt});`;
+}
+
+function getArduinoEncoderConfig(block: Blockly.Block, mode: 'generic' | 'named') {
+    if (mode === 'named') {
+        const rawName = block.getFieldValue('NAME') || 'myEncoder';
+        return {
+            identifier: sanitizeIdentifier(rawName, 'encoder'),
+            clk: getCreatorFieldValue(block, 'arduino_encoder_add', 'NAME', rawName, 'CLK', '2'),
+            dt: getCreatorFieldValue(block, 'arduino_encoder_add', 'NAME', rawName, 'DT', '3'),
+        };
+    }
+
+    const rawSensor = block.getFieldValue('SENSOR') || 'encoder_1';
+    return {
+        identifier: sanitizeIdentifier(rawSensor, 'encoder'),
+        clk: getCreatorFieldValue(block, 'arduino_encoder_init', 'SENSOR', rawSensor, 'CLK', '2'),
+        dt: getCreatorFieldValue(block, 'arduino_encoder_init', 'SENSOR', rawSensor, 'DT', '3'),
+    };
+}
+
+function ensureArduinoStepperSetup(identifier: string, stepsPerRevolution: string, pins: string[]) {
+    const setups = (arduinoGenerator as any).setups_;
+    setups['include_stepper'] = '#include <Stepper.h>';
+    setups[`declare_stepper_${identifier}`] = `Stepper ${identifier}(${stepsPerRevolution}, ${pins.join(', ')});`;
+    setups[`stepper_speed_${identifier}`] = `  ${identifier}.setSpeed(60);`;
+}
+
+function getArduinoStepperConfig(block: Blockly.Block, mode: 'generic' | 'named') {
+    if (mode === 'named') {
+        const rawName = block.getFieldValue('NAME') || 'myStepper';
+        const creator = findCreatorBlock(block, ['arduino_stepper_add_2wire', 'arduino_stepper_add_4wire'], 'NAME', rawName);
+        const stepsPerRevolution = creator ? getValueCode(arduinoGenerator as GeneratorWithBlocks, creator, 'STEPS', '200') : '200';
+        const pin1 = creator?.getFieldValue('PIN1') || '8';
+        const pin2 = creator?.getFieldValue('PIN2') || '9';
+        const pin3 = creator?.getFieldValue('PIN3') || '';
+        const pin4 = creator?.getFieldValue('PIN4') || '';
+        const pins = pin3 && pin4 ? [pin1, pin2, pin3, pin4] : [pin1, pin2];
+        return { identifier: sanitizeIdentifier(rawName, 'stepper'), stepsPerRevolution, pins };
+    }
+
+    const rawSensor = block.getFieldValue('SENSOR') || 'stepper_1';
+    const creator = findCreatorBlock(block, 'arduino_stepper_init', 'SENSOR', rawSensor);
+    return {
+        identifier: sanitizeIdentifier(rawSensor, 'stepper'),
+        stepsPerRevolution: creator?.getFieldValue('STEPS') || '200',
+        pins: [creator?.getFieldValue('PIN1') || '8', creator?.getFieldValue('PIN2') || '9'],
+    };
+}
+
+function ensureArduinoL298nSetup(identifier: string, config: { ena: string; enb: string; in1: string; in2: string; in3: string; in4: string }) {
+    const setups = (arduinoGenerator as any).setups_;
+    setups[`declare_l298n_${identifier}`] = `const int ${identifier}_ena = ${config.ena};\nconst int ${identifier}_enb = ${config.enb};\nconst int ${identifier}_in1 = ${config.in1};\nconst int ${identifier}_in2 = ${config.in2};\nconst int ${identifier}_in3 = ${config.in3};\nconst int ${identifier}_in4 = ${config.in4};`;
+    setups[`l298_pinmode_ena_${identifier}`] = `  pinMode(${identifier}_ena, OUTPUT);`;
+    setups[`l298_pinmode_enb_${identifier}`] = `  pinMode(${identifier}_enb, OUTPUT);`;
+    setups[`l298_pinmode_in1_${identifier}`] = `  pinMode(${identifier}_in1, OUTPUT);`;
+    setups[`l298_pinmode_in2_${identifier}`] = `  pinMode(${identifier}_in2, OUTPUT);`;
+    setups[`l298_pinmode_in3_${identifier}`] = `  pinMode(${identifier}_in3, OUTPUT);`;
+    setups[`l298_pinmode_in4_${identifier}`] = `  pinMode(${identifier}_in4, OUTPUT);`;
+}
+
+function getArduinoL298nConfig(block: Blockly.Block, mode: 'generic' | 'named') {
+    if (mode === 'named') {
+        const rawName = block.getFieldValue('NAME') || 'myL298N';
+        return {
+            identifier: sanitizeIdentifier(rawName, 'l298n'),
+            ena: getCreatorFieldValue(block, 'arduino_l298n_attach', 'NAME', rawName, 'ENA', '5'),
+            enb: getCreatorFieldValue(block, 'arduino_l298n_attach', 'NAME', rawName, 'ENB', '6'),
+            in1: getCreatorFieldValue(block, 'arduino_l298n_attach', 'NAME', rawName, 'IN1', '7'),
+            in2: getCreatorFieldValue(block, 'arduino_l298n_attach', 'NAME', rawName, 'IN2', '8'),
+            in3: getCreatorFieldValue(block, 'arduino_l298n_attach', 'NAME', rawName, 'IN3', '9'),
+            in4: getCreatorFieldValue(block, 'arduino_l298n_attach', 'NAME', rawName, 'IN4', '10'),
+        };
+    }
+
+    const rawSensor = block.getFieldValue('SENSOR') || 'l298n_1';
+    return {
+        identifier: sanitizeIdentifier(rawSensor, 'l298n'),
+        ena: getCreatorFieldValue(block, 'arduino_l298n_init', 'SENSOR', rawSensor, 'ENA', '5'),
+        enb: getCreatorFieldValue(block, 'arduino_l298n_init', 'SENSOR', rawSensor, 'ENB', '6'),
+        in1: getCreatorFieldValue(block, 'arduino_l298n_init', 'SENSOR', rawSensor, 'IN1', '7'),
+        in2: getCreatorFieldValue(block, 'arduino_l298n_init', 'SENSOR', rawSensor, 'IN2', '8'),
+        in3: getCreatorFieldValue(block, 'arduino_l298n_init', 'SENSOR', rawSensor, 'IN3', '9'),
+        in4: getCreatorFieldValue(block, 'arduino_l298n_init', 'SENSOR', rawSensor, 'IN4', '10'),
+    };
+}
+
+function arduinoL298nDirectionStatement(identifier: string, motor: string, direction: string) {
+    const enablePin = motor === 'B' ? `${identifier}_enb` : `${identifier}_ena`;
+    const inA = motor === 'B' ? `${identifier}_in3` : `${identifier}_in1`;
+    const inB = motor === 'B' ? `${identifier}_in4` : `${identifier}_in2`;
+
+    if (direction === 'FORWARD') return `  analogWrite(${enablePin}, 255);\n  digitalWrite(${inA}, HIGH);\n  digitalWrite(${inB}, LOW);\n`;
+    if (direction === 'REVERSE' || direction === 'BACKWARD') return `  analogWrite(${enablePin}, 255);\n  digitalWrite(${inA}, LOW);\n  digitalWrite(${inB}, HIGH);\n`;
+    if (direction === 'BRAKE') return `  analogWrite(${enablePin}, 255);\n  digitalWrite(${inA}, HIGH);\n  digitalWrite(${inB}, HIGH);\n`;
+    return `  analogWrite(${enablePin}, 0);\n  digitalWrite(${inA}, LOW);\n  digitalWrite(${inB}, LOW);\n`;
+}
+
+registerOverrideHandlers(arduinoGenerator as GeneratorWithBlocks, {
+    arduino_encoder_init(block: Blockly.Block) {
+        const { identifier, clk, dt } = getArduinoEncoderConfig(block, 'generic');
+        ensureArduinoEncoderSetup(identifier, clk, dt);
+        return '';
+    },
+    arduino_encoder_read(block: Blockly.Block) {
+        const { identifier, clk, dt } = getArduinoEncoderConfig(block, 'generic');
+        ensureArduinoEncoderSetup(identifier, clk, dt);
+        return [`${identifier}.read()`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+    arduino_encoder_write(block: Blockly.Block) {
+        const { identifier, clk, dt } = getArduinoEncoderConfig(block, 'generic');
+        const value = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'VALUE', '0');
+        ensureArduinoEncoderSetup(identifier, clk, dt);
+        return `  ${identifier}.write(${value});\n`;
+    },
+    arduino_encoder_add(block: Blockly.Block) {
+        const { identifier, clk, dt } = getArduinoEncoderConfig(block, 'named');
+        ensureArduinoEncoderSetup(identifier, clk, dt);
+        return '';
+    },
+    arduino_encoder_named_read(block: Blockly.Block) {
+        const { identifier, clk, dt } = getArduinoEncoderConfig(block, 'named');
+        ensureArduinoEncoderSetup(identifier, clk, dt);
+        return [`${identifier}.read()`, (arduinoGenerator as any).ORDER_ATOMIC];
+    },
+    arduino_encoder_reset(block: Blockly.Block) {
+        const { identifier, clk, dt } = getArduinoEncoderConfig(block, 'named');
+        ensureArduinoEncoderSetup(identifier, clk, dt);
+        return `  ${identifier}.write(0);\n`;
+    },
+    arduino_stepper_init(block: Blockly.Block) {
+        const { identifier, stepsPerRevolution, pins } = getArduinoStepperConfig(block, 'generic');
+        ensureArduinoStepperSetup(identifier, stepsPerRevolution, pins);
+        return '';
+    },
+    arduino_stepper_speed(block: Blockly.Block) {
+        const { identifier, stepsPerRevolution, pins } = getArduinoStepperConfig(block, 'generic');
+        const rpm = block.getFieldValue('RPM') || '60';
+        ensureArduinoStepperSetup(identifier, stepsPerRevolution, pins);
+        return `  ${identifier}.setSpeed(${rpm});\n`;
+    },
+    arduino_stepper_step(block: Blockly.Block) {
+        const { identifier, stepsPerRevolution, pins } = getArduinoStepperConfig(block, 'generic');
+        const steps = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'STEPS', '200');
+        ensureArduinoStepperSetup(identifier, stepsPerRevolution, pins);
+        return `  ${identifier}.step(${steps});\n`;
+    },
+    arduino_stepper_add_2wire(block: Blockly.Block) {
+        const { identifier, stepsPerRevolution, pins } = getArduinoStepperConfig(block, 'named');
+        ensureArduinoStepperSetup(identifier, stepsPerRevolution, pins);
+        return '';
+    },
+    arduino_stepper_add_4wire(block: Blockly.Block) {
+        const { identifier, stepsPerRevolution, pins } = getArduinoStepperConfig(block, 'named');
+        ensureArduinoStepperSetup(identifier, stepsPerRevolution, pins);
+        return '';
+    },
+    arduino_stepper_set_speed(block: Blockly.Block) {
+        const { identifier, stepsPerRevolution, pins } = getArduinoStepperConfig(block, 'named');
+        const rpm = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'RPM', '60');
+        ensureArduinoStepperSetup(identifier, stepsPerRevolution, pins);
+        return `  ${identifier}.setSpeed(${rpm});\n`;
+    },
+    arduino_stepper_step_named(block: Blockly.Block) {
+        const { identifier, stepsPerRevolution, pins } = getArduinoStepperConfig(block, 'named');
+        const steps = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'STEPS', '200');
+        ensureArduinoStepperSetup(identifier, stepsPerRevolution, pins);
+        return `  ${identifier}.step(${steps});\n`;
+    },
+    arduino_l298n_init(block: Blockly.Block) {
+        const config = getArduinoL298nConfig(block, 'generic');
+        ensureArduinoL298nSetup(config.identifier, config);
+        return '';
+    },
+    arduino_l298n_drive(block: Blockly.Block) {
+        const config = getArduinoL298nConfig(block, 'generic');
+        ensureArduinoL298nSetup(config.identifier, config);
+        return arduinoL298nDirectionStatement(config.identifier, block.getFieldValue('MOTOR') || 'A', block.getFieldValue('DIR') || 'STOP');
+    },
+    arduino_l298n_speed(block: Blockly.Block) {
+        const config = getArduinoL298nConfig(block, 'generic');
+        const enablePin = (block.getFieldValue('MOTOR') || 'A') === 'B' ? `${config.identifier}_enb` : `${config.identifier}_ena`;
+        const speed = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'SPEED', '255');
+        ensureArduinoL298nSetup(config.identifier, config);
+        return `  analogWrite(${enablePin}, constrain(${speed}, 0, 255));\n`;
+    },
+    arduino_l298n_attach(block: Blockly.Block) {
+        const config = getArduinoL298nConfig(block, 'named');
+        ensureArduinoL298nSetup(config.identifier, config);
+        return '';
+    },
+    arduino_l298n_set_direction(block: Blockly.Block) {
+        const config = getArduinoL298nConfig(block, 'named');
+        ensureArduinoL298nSetup(config.identifier, config);
+        return arduinoL298nDirectionStatement(config.identifier, block.getFieldValue('MOTOR') || 'A', block.getFieldValue('DIR') || 'STOP');
+    },
+    arduino_l298n_set_speed(block: Blockly.Block) {
+        const config = getArduinoL298nConfig(block, 'named');
+        const enablePin = (block.getFieldValue('MOTOR') || 'A') === 'B' ? `${config.identifier}_enb` : `${config.identifier}_ena`;
+        const speed = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'SPEED', '255');
+        ensureArduinoL298nSetup(config.identifier, config);
+        return `  analogWrite(${enablePin}, constrain(${speed}, 0, 255));\n`;
+    },
+});
+function getArduinoNeoPixelConfig(block: Blockly.Block) {
+    const rawSensor = block.getFieldValue('SENSOR') || 'NONE';
+    const creator = findCreatorBlock(block, 'neopixel_init', 'SENSOR', rawSensor);
+    return {
+        identifier: getInstanceIdentifier(rawSensor, 'neopixel', '6'),
+        count: creator?.getFieldValue('COUNT') || block.getFieldValue('COUNT') || '8',
+        pin: resolveComponentOrPin(rawSensor, '6'),
+    };
+}
+
+function ensureArduinoNeoPixelSetup(identifier: string, count: string, pin: string) {
+    const setups = (arduinoGenerator as any).setups_;
+    setups['include_neopixel'] = '#include <Adafruit_NeoPixel.h>';
+    setups[`declare_neopixel_${identifier}`] = `Adafruit_NeoPixel ${identifier}(${count}, ${pin}, NEO_GRB + NEO_KHZ800);`;
+    setups[`neopixel_begin_${identifier}`] = `  ${identifier}.begin();`;
+    setups[`neopixel_show_${identifier}`] = `  ${identifier}.show();`;
+}
+
+function getArduinoOledConfig(block: Blockly.Block) {
+    const rawSensor = block.getFieldValue('SENSOR') || 'NONE';
+    const creator = findCreatorBlock(block, 'oled_init', 'SENSOR', rawSensor);
+    return {
+        identifier: getInstanceIdentifier(rawSensor, 'display', 'oled'),
+        width: creator?.getFieldValue('WIDTH') || block.getFieldValue('WIDTH') || '128',
+        height: creator?.getFieldValue('HEIGHT') || block.getFieldValue('HEIGHT') || '64',
+    };
+}
+
+function ensureArduinoOledSetup(identifier: string, width: string, height: string) {
+    const setups = (arduinoGenerator as any).setups_;
+    setups['include_wire'] = '#include <Wire.h>';
+    setups['include_adafruit_gfx'] = '#include <Adafruit_GFX.h>';
+    setups['include_adafruit_ssd1306'] = '#include <Adafruit_SSD1306.h>';
+    setups[`declare_oled_${identifier}`] = `Adafruit_SSD1306 ${identifier}(${width}, ${height}, &Wire, -1);`;
+    setups[`oled_begin_${identifier}`] = `  if (!${identifier}.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {\n    for (;;) {}\n  }\n  ${identifier}.clearDisplay();\n  ${identifier}.setTextColor(WHITE);`;
+}
+
+function ensureArduinoTftSetup() {
+    const setups = (arduinoGenerator as any).setups_;
+    setups['include_mcufriend_tft'] = '#include <MCUFRIEND_kbv.h>';
+    setups['declare_tft_display'] = 'MCUFRIEND_kbv tft;';
+    setups['tft_display_begin'] = '  uint16_t tftId = tft.readID();\n  tft.begin(tftId);\n  tft.setRotation(1);\n  tft.fillScreen(TFT_BLACK);\n  tft.setTextColor(TFT_WHITE);\n  tft.setTextSize(2);';
+}
+
+registerOverrideHandlers(arduinoGenerator as GeneratorWithBlocks, {
+    neopixel_init(block: Blockly.Block) {
+        const { identifier, count, pin } = getArduinoNeoPixelConfig(block);
+        ensureArduinoNeoPixelSetup(identifier, count, pin);
+        return '';
+    },
+    neopixel_set_color(block: Blockly.Block) {
+        const { identifier, count, pin } = getArduinoNeoPixelConfig(block);
+        ensureArduinoNeoPixelSetup(identifier, count, pin);
+        return `  ${identifier}.setPixelColor(${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'INDEX', '0')}, ${identifier}.Color(${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'R', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'G', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'B', '0')}));\n`;
+    },
+    neopixel_show(block: Blockly.Block) {
+        const { identifier, count, pin } = getArduinoNeoPixelConfig(block);
+        ensureArduinoNeoPixelSetup(identifier, count, pin);
+        return `  ${identifier}.show();\n`;
+    },
+    neopixel_clear(block: Blockly.Block) {
+        const { identifier, count, pin } = getArduinoNeoPixelConfig(block);
+        ensureArduinoNeoPixelSetup(identifier, count, pin);
+        return `  ${identifier}.clear();\n  ${identifier}.show();\n`;
+    },
+    oled_init(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        return '';
+    },
+    oled_clear(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        return `  ${identifier}.clearDisplay();\n  ${identifier}.display();\n`;
+    },
+    oled_print(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        return `  ${identifier}.setCursor(${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y', '0')});\n  ${identifier}.print(${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'TEXT', '""')});\n  ${identifier}.display();\n`;
+    },
+    oled_set_rotation(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        return `  ${identifier}.setRotation(${block.getFieldValue('ROTATION') || '0'});\n  ${identifier}.display();\n`;
+    },
+    oled_set_text_color(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        return `  ${identifier}.setTextColor(${block.getFieldValue('COLOR') || 'WHITE'});\n  ${identifier}.display();\n`;
+    },
+    oled_draw_pixel(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        return `  ${identifier}.drawPixel(${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y', '0')}, ${block.getFieldValue('COLOR') || 'WHITE'});\n  ${identifier}.display();\n`;
+    },
+    oled_draw_line(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        return `  ${identifier}.drawLine(${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X0', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y0', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X1', '10')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y1', '10')}, ${block.getFieldValue('COLOR') || 'WHITE'});\n  ${identifier}.display();\n`;
+    },
+    oled_draw_rect(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        const command = block.getFieldValue('FILL') === 'TRUE' ? 'fillRect' : 'drawRect';
+        return `  ${identifier}.${command}(${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'W', '10')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'H', '10')}, ${block.getFieldValue('COLOR') || 'WHITE'});\n  ${identifier}.display();\n`;
+    },
+    oled_draw_circle(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        const command = block.getFieldValue('FILL') === 'TRUE' ? 'fillCircle' : 'drawCircle';
+        return `  ${identifier}.${command}(${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'R', '5')}, ${block.getFieldValue('COLOR') || 'WHITE'});\n  ${identifier}.display();\n`;
+    },
+    oled_draw_triangle(block: Blockly.Block) {
+        const { identifier, width, height } = getArduinoOledConfig(block);
+        ensureArduinoOledSetup(identifier, width, height);
+        const command = block.getFieldValue('FILL') === 'TRUE' ? 'fillTriangle' : 'drawTriangle';
+        return `  ${identifier}.${command}(${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X0', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y0', '10')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X1', '10')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y1', '0')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X2', '20')}, ${getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y2', '10')}, ${block.getFieldValue('COLOR') || 'WHITE'});\n  ${identifier}.display();\n`;
+    },
+    arduino_tft_init(block: Blockly.Block) {
+        void block;
+        ensureArduinoTftSetup();
+        return '';
+    },
+    arduino_tft_clear(block: Blockly.Block) {
+        ensureArduinoTftSetup();
+        const color = block.getFieldValue('COLOR') || 'TFT_BLACK';
+        return `  tft.fillScreen(${color});
+`;
+    },
+    arduino_tft_print(block: Blockly.Block) {
+        ensureArduinoTftSetup();
+        const textValue = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'TEXT', '""');
+        const x = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'X', '0');
+        const y = getValueCode(arduinoGenerator as GeneratorWithBlocks, block, 'Y', '0');
+        const size = block.getFieldValue('SIZE') || '2';
+        const color = block.getFieldValue('COLOR') || 'TFT_WHITE';
+        return `  tft.setCursor(${x}, ${y});
+  tft.setTextColor(${color});
+  tft.setTextSize(${size});
+  tft.print(${textValue});
+`;
+    },
+});
 // ----------------------------------------------------------------------------
 // 3. GENERATOR HELPERS
 // ----------------------------------------------------------------------------
@@ -1153,6 +1822,14 @@ export function getGenerator(type: string): Blockly.CodeGenerator {
     if (type === "micropython") return micropythonGenerator;
     return arduinoGenerator;
 }
+
+
+
+
+
+
+
+
 
 
 

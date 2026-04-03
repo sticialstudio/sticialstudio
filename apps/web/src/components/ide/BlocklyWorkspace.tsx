@@ -1,13 +1,18 @@
 "use client";
 
-import BlockEditor from './BlockEditor';
+import type { WorkspaceSvg } from "blockly";
+
+import BlockEditor from "./BlockEditor";
 
 interface BlocklyWorkspaceProps {
   generatorType: string;
   initialXml: string;
   onCodeChange: (code: string) => void;
   onXmlChange: (xml: string) => void;
+  onWorkspaceReady?: (workspace: WorkspaceSvg | null) => void;
   selectedCategoryName?: string;
+  onSelectCategory?: (category: string) => void;
+  sourceCode?: string;
 }
 
 export default function BlocklyWorkspace({
@@ -15,16 +20,22 @@ export default function BlocklyWorkspace({
   initialXml,
   onCodeChange,
   onXmlChange,
-  selectedCategoryName
+  onWorkspaceReady,
+  selectedCategoryName,
+  onSelectCategory,
+  sourceCode,
 }: BlocklyWorkspaceProps) {
   return (
-    <section className="h-full min-h-0 rounded-2xl border border-slate-700 bg-slate-950/70 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+    <section className="relative flex h-full w-full min-h-0 min-w-0 flex-1 overflow-hidden rounded-[30px] border border-white/8 bg-[linear-gradient(180deg,#10131f_0%,#090c16_100%)] shadow-[0_28px_72px_-48px_rgba(0,0,0,1)]">
       <BlockEditor
         generatorType={generatorType}
         initialXml={initialXml}
         onCodeChange={onCodeChange}
         onXmlChange={onXmlChange}
+        onWorkspaceReady={onWorkspaceReady}
         selectedCategoryName={selectedCategoryName}
+        onSelectCategory={onSelectCategory}
+        sourceCode={sourceCode}
       />
     </section>
   );

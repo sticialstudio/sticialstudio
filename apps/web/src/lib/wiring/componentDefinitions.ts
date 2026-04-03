@@ -1,4 +1,12 @@
 import type { BreadboardZone, ComponentFootprint, MountFootprintClass } from '@/lib/wiring/mountingTypes';
+import {
+  DHT22_GEOMETRY,
+  OLED_GEOMETRY,
+  POTENTIOMETER_GEOMETRY,
+  SERVO_GEOMETRY,
+  ULTRASONIC_GEOMETRY,
+  getWokwiComponentGeometry,
+} from '@/lib/wiring/wokwiGeometry';
 
 export type ComponentCategory =
   | 'Basic'
@@ -39,6 +47,27 @@ export interface ComponentDefinition {
 const componentRegistry = new Map<string, ComponentDefinition>();
 const aliasRegistry = new Map<string, string>();
 
+function applyCanonicalGeometry(definition: ComponentDefinition) {
+  const geometry = getWokwiComponentGeometry(definition.id);
+  if (!geometry) {
+    return;
+  }
+
+  const geometryPins = new Map(geometry.pins.map((pin) => [pin.id, pin] as const));
+  definition.size = { ...geometry.size };
+  definition.pins = definition.pins.map((pin) => {
+    const canonicalPin = geometryPins.get(pin.id);
+    if (!canonicalPin) {
+      return pin;
+    }
+
+    return {
+      ...pin,
+      position: { ...canonicalPin.position },
+    };
+  });
+}
+
 const ledSvg = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 57.6 86.4" width="57.6" height="86.4">
   <defs>
@@ -69,11 +98,11 @@ const buttonSvg = `
 </svg>
 `;
 
-const POTENTIOMETER_SIZE = { width: 75.59, height: 75.59 } as const;
-const SERVO_SIZE = { width: 170.08, height: 119.55 } as const;
-const ULTRASONIC_SIZE = { width: 170.08, height: 94.49 } as const;
-const DHT22_SIZE = { width: 57.07, height: 116.73 } as const;
-const OLED_SIZE = { width: 144, height: 124.8 } as const;
+const POTENTIOMETER_SIZE = POTENTIOMETER_GEOMETRY.size;
+const SERVO_SIZE = SERVO_GEOMETRY.size;
+const ULTRASONIC_SIZE = ULTRASONIC_GEOMETRY.size;
+const DHT22_SIZE = DHT22_GEOMETRY.size;
+const OLED_SIZE = OLED_GEOMETRY.size;
 
 const potentiometerSvg = `
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${POTENTIOMETER_SIZE.width} ${POTENTIOMETER_SIZE.height}" width="${POTENTIOMETER_SIZE.width}" height="${POTENTIOMETER_SIZE.height}">
@@ -376,6 +405,8 @@ const definitions: ComponentDefinition[] = [
     mountStyle: 'breadboard',
   },
 ];
+
+definitions.forEach((definition) => applyCanonicalGeometry(definition));
 
 const ALL_BREADBOARD_ZONES: BreadboardZone[] = ['strip-top', 'strip-bottom', 'rail-top', 'rail-bottom'];
 const STRIP_ONLY_ZONES: BreadboardZone[] = ['strip-top', 'strip-bottom'];

@@ -1,4 +1,4 @@
-import type { BreadboardZone } from '@/lib/wiring/mountingTypes';
+﻿import type { BreadboardSegment, BreadboardZone } from '@/lib/wiring/mountingTypes';
 
 export const BREADBOARD_CONFIG = {
   width: 652.8,
@@ -8,6 +8,7 @@ export const BREADBOARD_CONFIG = {
   holeSpacingY: 9.6,
   startX: 28.8,
   startY: 19.2,
+  railSplitAfterColumn: 31,
 } as const;
 
 export interface BreadboardAnchor {
@@ -22,19 +23,40 @@ export interface BreadboardNodeEntry extends BreadboardAnchor {
   column: number;
   row: string;
   zone: BreadboardZone;
+  segment: BreadboardSegment;
+  continuityGroupId: string;
+}
+
+export interface BreadboardContinuityGroup {
+  id: string;
+  kind: 'rail' | 'strip';
+  row: string;
+  zone: BreadboardZone;
+  segment: BreadboardSegment;
+  columnStart: number;
+  columnEnd: number;
+  anchorIds: string[];
+  nodeIds: string[];
+  bounds: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+  };
 }
 
 const TOP_STRIP_ROWS = ['A', 'B', 'C', 'D', 'E'] as const;
 const BOTTOM_STRIP_ROWS = ['F', 'G', 'H', 'I', 'J'] as const;
 const RAIL_ROWS = [
-  ['RAIL_TOP_MINUS', 'rail-top-minus'],
-  ['RAIL_TOP_PLUS', 'rail-top-plus'],
-  ['RAIL_BOT_PLUS', 'rail-bot-plus'],
-  ['RAIL_BOT_MINUS', 'rail-bot-minus'],
+  ['RAIL_TOP_MINUS', 'TOP_MINUS', 'rail-top'],
+  ['RAIL_TOP_PLUS', 'TOP_PLUS', 'rail-top'],
+  ['RAIL_BOT_PLUS', 'BOT_PLUS', 'rail-bottom'],
+  ['RAIL_BOT_MINUS', 'BOT_MINUS', 'rail-bottom'],
 ] as const;
 
 let cachedAnchors: Record<string, BreadboardAnchor> | null = null;
 let cachedNodeEntries: BreadboardNodeEntry[] | null = null;
+let cachedContinuityGroups: BreadboardContinuityGroup[] | null = null;
 let cachedContinuityEdges: Array<[string, string]> | null = null;
 
 export function toBreadboardNodeId(anchorId: string) {
@@ -53,87 +75,213 @@ export function getBreadboardZoneForEntry(entry: Pick<BreadboardNodeEntry, 'kind
   return TOP_STRIP_ROWS.includes(entry.row as (typeof TOP_STRIP_ROWS)[number]) ? 'strip-top' : 'strip-bottom';
 }
 
-export function generateBreadboardLocalAnchors(): Record<string, BreadboardAnchor> {
-  if (cachedAnchors) {
-    return cachedAnchors;
+function getRailSegment(column: number): BreadboardSegment {
+  return column <= BREADBOARD_CONFIG.railSplitAfterColumn ? 'left' : 'right';
+}
+
+function toRailGroupId(rowKey: string, segment: BreadboardSegment) {
+  return `GROUP_${rowKey}_${segment.toUpperCase()}`;
+}
+
+function toStripGroupId(zone: BreadboardZone, column: number) {
+  return `GROUP_${zone.toUpperCase().replace(/-/g, '_')}_${column}`;
+}
+
+function buildGroupBounds(anchorIds: string[], anchors: Record<string, BreadboardAnchor>, kind: 'rail' | 'strip') {
+  const points = anchorIds.map((anchorId) => anchors[anchorId]).filter((anchor): anchor is BreadboardAnchor => Boolean(anchor));
+  const minX = Math.min(...points.map((point) => point.x));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxY = Math.max(...points.map((point) => point.y));
+
+  const padX = kind === 'rail' ? BREADBOARD_CONFIG.holeSpacingX * 0.62 : BREADBOARD_CONFIG.holeSpacingX * 0.52;
+  const padY = kind === 'rail' ? BREADBOARD_CONFIG.holeSpacingY * 0.76 : BREADBOARD_CONFIG.holeSpacingY * 0.54;
+
+  return {
+    x: minX - padX,
+    y: minY - padY,
+    width: maxX - minX + padX * 2,
+    height: maxY - minY + padY * 2,
+  };
+}
+
+function buildBreadboardData() {
+  if (cachedAnchors && cachedNodeEntries && cachedContinuityGroups) {
+    return {
+      anchors: cachedAnchors,
+      entries: cachedNodeEntries,
+      groups: cachedContinuityGroups,
+    };
   }
 
   const anchors: Record<string, BreadboardAnchor> = {};
+  const entries: BreadboardNodeEntry[] = [];
+  const groupSeed = new Map<
+    string,
+    Omit<BreadboardContinuityGroup, 'bounds' | 'nodeIds'>
+  >();
+
   const { columns, holeSpacingX, holeSpacingY, startX, startY } = BREADBOARD_CONFIG;
   const bottomRailStartY = startY + 16 * holeSpacingY;
   const stripAStartY = startY + 3 * holeSpacingY;
   const stripFStartY = startY + 10 * holeSpacingY;
 
-  for (let col = 1; col <= columns; col += 1) {
-    const localX = startX + (col - 1) * holeSpacingX;
-
-    anchors[`RAIL_TOP_MINUS_${col}`] = { x: localX, y: startY };
-    anchors[`RAIL_TOP_PLUS_${col}`] = { x: localX, y: startY + holeSpacingY };
-    anchors[`RAIL_BOT_PLUS_${col}`] = { x: localX, y: bottomRailStartY };
-    anchors[`RAIL_BOT_MINUS_${col}`] = { x: localX, y: bottomRailStartY + holeSpacingY };
-
-    TOP_STRIP_ROWS.forEach((rowLetter, rowIndex) => {
-      anchors[`STRIP_${col}_${rowLetter}`] = {
-        x: localX,
-        y: stripAStartY + rowIndex * holeSpacingY,
-      };
-    });
-
-    BOTTOM_STRIP_ROWS.forEach((rowLetter, rowIndex) => {
-      anchors[`STRIP_${col}_${rowLetter}`] = {
-        x: localX,
-        y: stripFStartY + rowIndex * holeSpacingY,
-      };
-    });
-  }
-
-  cachedAnchors = anchors;
-  return anchors;
-}
-
-export function getBreadboardNodeEntries(): BreadboardNodeEntry[] {
-  if (cachedNodeEntries) {
-    return cachedNodeEntries;
-  }
-
-  const anchors = generateBreadboardLocalAnchors();
-  const entries: BreadboardNodeEntry[] = [];
-
-  Object.entries(anchors).forEach(([anchorId, anchor]) => {
-    const railMatch = anchorId.match(/^RAIL_(TOP|BOT)_(PLUS|MINUS)_(\d+)$/);
-    if (railMatch) {
-      const entry: BreadboardNodeEntry = {
-        anchorId,
-        nodeId: toBreadboardNodeId(anchorId),
-        kind: 'rail',
-        column: Number(railMatch[3]),
-        row: `${railMatch[1]}_${railMatch[2]}`,
-        zone: railMatch[1] === 'TOP' ? 'rail-top' : 'rail-bottom',
-        x: anchor.x,
-        y: anchor.y,
-      };
-      entries.push(entry);
+  const registerGroupAnchor = (
+    groupId: string,
+    kind: 'rail' | 'strip',
+    row: string,
+    zone: BreadboardZone,
+    segment: BreadboardSegment,
+    column: number,
+    anchorId: string
+  ) => {
+    const existing = groupSeed.get(groupId);
+    if (!existing) {
+      groupSeed.set(groupId, {
+        id: groupId,
+        kind,
+        row,
+        zone,
+        segment,
+        columnStart: column,
+        columnEnd: column,
+        anchorIds: [anchorId],
+      });
       return;
     }
 
-    const stripMatch = anchorId.match(/^STRIP_(\d+)_([A-J])$/);
-    if (stripMatch) {
-      const entry: BreadboardNodeEntry = {
+    existing.anchorIds.push(anchorId);
+    existing.columnStart = Math.min(existing.columnStart, column);
+    existing.columnEnd = Math.max(existing.columnEnd, column);
+  };
+
+  for (let col = 1; col <= columns; col += 1) {
+    const localX = startX + (col - 1) * holeSpacingX;
+    const railSegment = getRailSegment(col);
+
+    const railDefinitions = [
+      {
+        anchorId: `RAIL_TOP_MINUS_${col}`,
+        y: startY,
+        rowKey: 'TOP_MINUS',
+        rowLabel: 'TOP_MINUS',
+        zone: 'rail-top' as const,
+      },
+      {
+        anchorId: `RAIL_TOP_PLUS_${col}`,
+        y: startY + holeSpacingY,
+        rowKey: 'TOP_PLUS',
+        rowLabel: 'TOP_PLUS',
+        zone: 'rail-top' as const,
+      },
+      {
+        anchorId: `RAIL_BOT_PLUS_${col}`,
+        y: bottomRailStartY,
+        rowKey: 'BOT_PLUS',
+        rowLabel: 'BOT_PLUS',
+        zone: 'rail-bottom' as const,
+      },
+      {
+        anchorId: `RAIL_BOT_MINUS_${col}`,
+        y: bottomRailStartY + holeSpacingY,
+        rowKey: 'BOT_MINUS',
+        rowLabel: 'BOT_MINUS',
+        zone: 'rail-bottom' as const,
+      },
+    ];
+
+    railDefinitions.forEach((rail) => {
+      anchors[rail.anchorId] = { x: localX, y: rail.y };
+      const continuityGroupId = toRailGroupId(rail.rowKey, railSegment);
+      entries.push({
+        anchorId: rail.anchorId,
+        nodeId: toBreadboardNodeId(rail.anchorId),
+        kind: 'rail',
+        column: col,
+        row: rail.rowLabel,
+        zone: rail.zone,
+        segment: railSegment,
+        continuityGroupId,
+        x: localX,
+        y: rail.y,
+      });
+      registerGroupAnchor(continuityGroupId, 'rail', rail.rowLabel, rail.zone, railSegment, col, rail.anchorId);
+    });
+
+    TOP_STRIP_ROWS.forEach((rowLetter, rowIndex) => {
+      const anchorId = `STRIP_${col}_${rowLetter}`;
+      const y = stripAStartY + rowIndex * holeSpacingY;
+      anchors[anchorId] = { x: localX, y };
+      const continuityGroupId = toStripGroupId('strip-top', col);
+      entries.push({
         anchorId,
         nodeId: toBreadboardNodeId(anchorId),
         kind: 'strip',
-        column: Number(stripMatch[1]),
-        row: stripMatch[2],
-        zone: TOP_STRIP_ROWS.includes(stripMatch[2] as (typeof TOP_STRIP_ROWS)[number]) ? 'strip-top' : 'strip-bottom',
-        x: anchor.x,
-        y: anchor.y,
-      };
-      entries.push(entry);
-    }
-  });
+        column: col,
+        row: rowLetter,
+        zone: 'strip-top',
+        segment: 'full',
+        continuityGroupId,
+        x: localX,
+        y,
+      });
+      registerGroupAnchor(continuityGroupId, 'strip', rowLetter, 'strip-top', 'full', col, anchorId);
+    });
 
+    BOTTOM_STRIP_ROWS.forEach((rowLetter, rowIndex) => {
+      const anchorId = `STRIP_${col}_${rowLetter}`;
+      const y = stripFStartY + rowIndex * holeSpacingY;
+      anchors[anchorId] = { x: localX, y };
+      const continuityGroupId = toStripGroupId('strip-bottom', col);
+      entries.push({
+        anchorId,
+        nodeId: toBreadboardNodeId(anchorId),
+        kind: 'strip',
+        column: col,
+        row: rowLetter,
+        zone: 'strip-bottom',
+        segment: 'full',
+        continuityGroupId,
+        x: localX,
+        y,
+      });
+      registerGroupAnchor(continuityGroupId, 'strip', rowLetter, 'strip-bottom', 'full', col, anchorId);
+    });
+  }
+
+  const groups = Array.from(groupSeed.values())
+    .map((group) => ({
+      ...group,
+      nodeIds: group.anchorIds.map((anchorId) => toBreadboardNodeId(anchorId)),
+      bounds: buildGroupBounds(group.anchorIds, anchors, group.kind),
+    }))
+    .sort((left, right) => {
+      if (left.zone !== right.zone) {
+        return left.zone.localeCompare(right.zone);
+      }
+      if (left.columnStart !== right.columnStart) {
+        return left.columnStart - right.columnStart;
+      }
+      return left.id.localeCompare(right.id);
+    });
+
+  cachedAnchors = anchors;
   cachedNodeEntries = entries;
-  return entries;
+  cachedContinuityGroups = groups;
+
+  return { anchors, entries, groups };
+}
+
+export function generateBreadboardLocalAnchors(): Record<string, BreadboardAnchor> {
+  return buildBreadboardData().anchors;
+}
+
+export function getBreadboardNodeEntries(): BreadboardNodeEntry[] {
+  return buildBreadboardData().entries;
+}
+
+export function getBreadboardContinuityGroups(): BreadboardContinuityGroup[] {
+  return buildBreadboardData().groups;
 }
 
 export function getBreadboardContinuityEdges(): Array<[string, string]> {
@@ -142,31 +290,11 @@ export function getBreadboardContinuityEdges(): Array<[string, string]> {
   }
 
   const edges: Array<[string, string]> = [];
-
-  for (const [railPrefix] of RAIL_ROWS) {
-    for (let col = 1; col < BREADBOARD_CONFIG.columns; col += 1) {
-      edges.push([
-        toBreadboardNodeId(`${railPrefix}_${col}`),
-        toBreadboardNodeId(`${railPrefix}_${col + 1}`),
-      ]);
+  getBreadboardContinuityGroups().forEach((group) => {
+    for (let index = 0; index < group.nodeIds.length - 1; index += 1) {
+      edges.push([group.nodeIds[index], group.nodeIds[index + 1]]);
     }
-  }
-
-  for (let col = 1; col <= BREADBOARD_CONFIG.columns; col += 1) {
-    for (let index = 0; index < TOP_STRIP_ROWS.length - 1; index += 1) {
-      edges.push([
-        toBreadboardNodeId(`STRIP_${col}_${TOP_STRIP_ROWS[index]}`),
-        toBreadboardNodeId(`STRIP_${col}_${TOP_STRIP_ROWS[index + 1]}`),
-      ]);
-    }
-
-    for (let index = 0; index < BOTTOM_STRIP_ROWS.length - 1; index += 1) {
-      edges.push([
-        toBreadboardNodeId(`STRIP_${col}_${BOTTOM_STRIP_ROWS[index]}`),
-        toBreadboardNodeId(`STRIP_${col}_${BOTTOM_STRIP_ROWS[index + 1]}`),
-      ]);
-    }
-  }
+  });
 
   cachedContinuityEdges = edges;
   return edges;

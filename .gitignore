@@ -1,5 +1,6 @@
 node_modules/
 prisma/dev.db
+packages/database/prisma/dev.db
 .DS_Store
 dist/
 build/
@@ -8,26 +9,37 @@ build/
 *.tsbuildinfo
 *.sqlite
 
-# Environment secrets — never commit these
+# Environment secrets - never commit these
 .env
 .env.local
 .env.*.local
 .env.production
 .env.development
 
-# Backup & debug artifacts
+# Backup and debug artifacts
 *.bak
 testlog*.txt
 output.json
+err.html
+apps/web/ts_error.txt
+apps/web/tsc_output.txt
+tmp/
+tmp_blobs/
+tmp_blob_*.txt
+.playwright-cli/
 
 # OS artifacts
 Thumbs.db
 
-# Large binaries & compiled tools
+# Large binaries and compiled tools
 apps/api/bin/*.exe
 apps/api/bin/*.bin
+Adafruit-Motor-Shield-library-master.zip
+hal-master/
+Board_Images/
+wokwi-elements-main/
 
-# Projects folder — large media assets, not version-controlled here
+# Projects folder - large media assets, not version-controlled here
 Projects/
 
 # Compiled output

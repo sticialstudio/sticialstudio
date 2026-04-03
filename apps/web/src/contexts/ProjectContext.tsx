@@ -26,7 +26,7 @@ export interface ProjectContextValue {
   refreshProjectFiles: () => Promise<void>;
   createFile: (name: string, type: string, parentId?: string | null, content?: string) => Promise<void>;
   saveProject: () => Promise<void>;
-  bootstrapOfflineFiles: (sourceFileName: string, language: string) => void;
+  bootstrapOfflineFiles: (sourceFileName: string, language: string, defaultCode?: string) => void;
   hasUnsavedChanges: boolean;
   setHasUnsavedChanges: (val: boolean) => void;
 }
@@ -291,15 +291,15 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     }
   }, [codingMode, currentBoard, environment, files, generator, language, projectId, projectNameState, refreshProjectFiles, token]);
 
-  const bootstrapOfflineFiles = useCallback((sourceFileName: string, languageName: string) => {
+  const bootstrapOfflineFiles = useCallback((sourceFileName: string, languageName: string, defaultCode?: string) => {
     if (files.length > 0) return;
 
     const sourceId = `offline-src-${Date.now()}`;
     const blocklyId = `offline-blockly-${Date.now() + 1}`;
-    const initialCode =
-      languageName === "python"
+    const initialCode = defaultCode ??
+      (languageName === "python"
         ? "import time\n\n# Setup\n\n# Loop\nwhile True:\n    pass\n"
-        : "void setup() {\n  // Setup logic\n}\n\nvoid loop() {\n  // Loop logic\n}\n";
+        : "void setup() {\n  // put your setup code here, to run once:\n\n}\n\nvoid loop() {\n  // put your main code here, to run repeatedly:\n\n}\n");
 
     setProjectNameState("Untitled Project");
     setFiles([

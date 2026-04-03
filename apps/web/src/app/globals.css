@@ -1,33 +1,48 @@
-@import "tailwindcss";
+﻿@import "tailwindcss";
 
 :root {
-  --background: #020617;
-  --foreground: #e2e8f0;
-  --panel-bg: rgba(15, 23, 42, 0.82);
-  --panel-border: rgba(51, 65, 85, 0.75);
-  --muted: #94a3b8;
-  --muted-2: #6b7280;
-  --accent: #22d3ee;
-  --accent-hover: #06b6d4;
-  --canvas-glow-1: rgba(34, 211, 238, 0.14);
-  --canvas-glow-2: rgba(249, 115, 22, 0.12);
-  --scroll-thumb: rgba(100, 116, 139, 0.5);
-  --scroll-thumb-hover: rgba(148, 163, 184, 0.6);
-}
-
-html[data-theme='light'] {
   --background: #fff9f2;
   --foreground: #101418;
   --panel-bg: rgba(255, 255, 255, 0.94);
-  --panel-border: rgba(249, 115, 22, 0.24);
+  --panel-border: rgba(44, 62, 112, 0.14);
   --muted: #334155;
   --muted-2: #6b7280;
+  --accent: #3047a6;
+  --accent-hover: #243789;
+  --canvas-glow-1: rgba(48, 71, 166, 0.18);
+  --canvas-glow-2: rgba(19, 131, 111, 0.14);
+  --scroll-thumb: rgba(48, 71, 166, 0.28);
+  --scroll-thumb-hover: rgba(48, 71, 166, 0.42);
+}
+
+html[data-theme='dark'] {
+  --background: #08101d;
+  --foreground: #e2e8f0;
+  --panel-bg: rgba(11, 18, 33, 0.9);
+  --panel-border: rgba(148, 163, 184, 0.14);
+  --muted: #cbd5e1;
+  --muted-2: #94a3b8;
+  --accent: #7dd3fc;
+  --accent-hover: #38bdf8;
+  --canvas-glow-1: rgba(56, 189, 248, 0.16);
+  --canvas-glow-2: rgba(79, 209, 197, 0.12);
+  --scroll-thumb: rgba(125, 211, 252, 0.28);
+  --scroll-thumb-hover: rgba(125, 211, 252, 0.42);
+}
+
+html[data-theme='magma'] {
+  --background: #1a0f10;
+  --foreground: #f7ede8;
+  --panel-bg: rgba(37, 22, 23, 0.9);
+  --panel-border: rgba(255, 196, 151, 0.14);
+  --muted: #f6d6c5;
+  --muted-2: #d2b4a8;
   --accent: #f97316;
   --accent-hover: #ea580c;
-  --canvas-glow-1: rgba(249, 115, 22, 0.24);
-  --canvas-glow-2: rgba(251, 146, 60, 0.12);
-  --scroll-thumb: rgba(249, 115, 22, 0.32);
-  --scroll-thumb-hover: rgba(249, 115, 22, 0.5);
+  --canvas-glow-1: rgba(249, 115, 22, 0.22);
+  --canvas-glow-2: rgba(255, 181, 71, 0.14);
+  --scroll-thumb: rgba(249, 115, 22, 0.3);
+  --scroll-thumb-hover: rgba(251, 146, 60, 0.46);
 }
 
 @theme inline {
@@ -39,8 +54,187 @@ html[data-theme='light'] {
   --color-muted-2: var(--muted-2);
   --color-accent: var(--accent);
   --color-accent-hover: var(--accent-hover);
-  --font-sans: var(--font-space-grotesk), 'Segoe UI', sans-serif;
-  --font-mono: var(--font-jetbrains-mono), 'Consolas', monospace;
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SFMono-Regular', Consolas, monospace;
+  --color-ui-background: var(--ui-color-background);
+  --color-ui-surface: var(--ui-color-surface);
+  --color-ui-primary: var(--ui-color-primary);
+  --color-ui-primary-strong: var(--ui-color-primary-strong);
+  --color-ui-accent: var(--ui-color-accent);
+  --color-ui-success: var(--ui-color-success);
+  --color-ui-warning: var(--ui-color-warning);
+  --color-ui-text: var(--ui-color-text);
+  --color-ui-text-muted: var(--ui-color-text-muted);
+}
+
+:root {
+  --ui-color-background: #f5efe6;
+  --ui-color-surface: #ffffff;
+  --ui-color-primary: #3047a6;
+  --ui-color-primary-strong: #243789;
+  --ui-color-accent: #13836f;
+  --ui-color-success: #29995d;
+  --ui-color-warning: #c58a1c;
+  --ui-color-text: #1f2937;
+  --ui-color-text-muted: #526173;
+  --ui-color-text-soft: #7b8797;
+  --ui-border-soft: rgba(74, 92, 120, 0.14);
+  --ui-border-strong: rgba(47, 68, 165, 0.22);
+  --ui-shadow-card: 0 18px 40px -28px rgba(26, 41, 72, 0.28);
+  --ui-shadow-card-hover: 0 24px 58px -26px rgba(34, 52, 95, 0.34);
+  --ui-shadow-button: 0 20px 36px -24px rgba(48, 71, 166, 0.52);
+  --ui-shell-background:
+    radial-gradient(circle at top left, rgba(48, 71, 166, 0.12), transparent 32%),
+    radial-gradient(circle at top right, rgba(19, 131, 111, 0.14), transparent 28%),
+    linear-gradient(180deg, #fbf7f1 0%, #f2ecdf 100%);
+}
+
+html[data-theme='dark'] {
+  --ui-color-background: #0d1526;
+  --ui-color-surface: #111c30;
+  --ui-color-primary: #5f7bf7;
+  --ui-color-primary-strong: #7f96ff;
+  --ui-color-accent: #24b79d;
+  --ui-color-success: #38c172;
+  --ui-color-warning: #f0b34b;
+  --ui-color-text: #edf2ff;
+  --ui-color-text-muted: #a9b4cf;
+  --ui-color-text-soft: #7e8aa8;
+  --ui-border-soft: rgba(157, 178, 214, 0.14);
+  --ui-border-strong: rgba(96, 123, 247, 0.3);
+  --ui-shadow-card: 0 24px 50px -32px rgba(2, 6, 23, 0.78);
+  --ui-shadow-card-hover: 0 28px 64px -30px rgba(6, 14, 32, 0.9);
+  --ui-shadow-button: 0 20px 40px -24px rgba(95, 123, 247, 0.48);
+  --ui-shell-background:
+    radial-gradient(circle at top left, rgba(95, 123, 247, 0.14), transparent 30%),
+    radial-gradient(circle at top right, rgba(36, 183, 157, 0.14), transparent 26%),
+    linear-gradient(180deg, #070d18 0%, #0c1524 100%);
+}
+
+html[data-theme='magma'] {
+  --ui-color-background: #1f1414;
+  --ui-color-surface: #2a1a1a;
+  --ui-color-primary: #f97316;
+  --ui-color-primary-strong: #ea580c;
+  --ui-color-accent: #ffb347;
+  --ui-color-success: #5cd18d;
+  --ui-color-warning: #ffb347;
+  --ui-color-text: #fff1eb;
+  --ui-color-text-muted: #d6b6aa;
+  --ui-color-text-soft: #a98780;
+  --ui-border-soft: rgba(255, 196, 151, 0.14);
+  --ui-border-strong: rgba(249, 115, 22, 0.26);
+  --ui-shadow-card: 0 24px 52px -32px rgba(21, 10, 10, 0.68);
+  --ui-shadow-card-hover: 0 30px 70px -28px rgba(28, 11, 11, 0.86);
+  --ui-shadow-button: 0 22px 42px -24px rgba(249, 115, 22, 0.45);
+  --ui-shell-background:
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.16), transparent 32%),
+    radial-gradient(circle at top right, rgba(255, 179, 71, 0.14), transparent 26%),
+    linear-gradient(180deg, #160d0d 0%, #241413 100%);
+}
+
+.ui-foundation-shell {
+  background: var(--ui-shell-background);
+  color: var(--ui-color-text);
+}
+
+.ui-foundation-panel {
+  background: linear-gradient(180deg, color-mix(in srgb, var(--ui-color-surface) 96%, transparent) 0%, color-mix(in srgb, var(--ui-color-surface) 86%, transparent) 100%);
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 24px;
+  box-shadow: var(--ui-shadow-card);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+}
+
+.ui-foundation-panel-quiet {
+  background: color-mix(in srgb, var(--ui-color-surface) 82%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 85%, transparent);
+  border-radius: 24px;
+  box-shadow: 0 16px 34px -28px rgba(15, 23, 42, 0.18);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+.ui-workspace-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 32px;
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 86%, transparent);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--ui-color-primary) 10%, transparent), transparent 28%),
+    radial-gradient(circle at bottom right, color-mix(in srgb, var(--ui-color-accent) 10%, transparent), transparent 28%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ui-color-surface) 95%, transparent) 0%, color-mix(in srgb, var(--ui-color-surface) 84%, transparent) 100%);
+  box-shadow: var(--ui-shadow-card);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+.ui-workspace-stage {
+  border-radius: 28px;
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 88%, transparent);
+  background: color-mix(in srgb, var(--ui-color-surface) 88%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--ui-color-surface) 55%, transparent);
+}
+
+.ui-workspace-rail {
+  border-radius: 26px;
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 92%, transparent);
+  background: color-mix(in srgb, var(--ui-color-surface) 84%, transparent);
+  box-shadow: var(--ui-shadow-card);
+}
+
+.ui-workspace-drawer {
+  border-radius: 26px;
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 92%, transparent);
+  background: color-mix(in srgb, var(--ui-color-surface) 90%, transparent);
+  box-shadow: var(--ui-shadow-card);
+}
+
+.ui-workspace-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  border: 1px solid var(--ui-border-soft);
+  background: color-mix(in srgb, var(--ui-color-surface) 82%, transparent);
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ui-color-text-soft);
+}
+
+.ui-workspace-eyebrow {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ui-color-text-soft);
+}
+
+.ui-workspace-title {
+  color: var(--ui-color-text);
+  font-size: clamp(1.4rem, 2vw, 2rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.ui-workspace-copy {
+  color: var(--ui-color-text-muted);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.ui-foundation-subtle {
+  color: var(--ui-color-text-muted);
+}
+
+.ui-foundation-grid {
+  display: grid;
+  gap: 24px;
 }
 
 * {
@@ -120,56 +314,138 @@ body {
   background: var(--scroll-thumb-hover);
 }
 
-/* Light mode compatibility layer for remaining slate/cyan utility classes */
-html[data-theme='light'] .bg-slate-950,
-html[data-theme='light'] .bg-slate-950\/85,
-html[data-theme='light'] .bg-slate-950\/80,
-html[data-theme='light'] .bg-slate-950\/75,
-html[data-theme='light'] .bg-slate-950\/70,
-html[data-theme='light'] .bg-slate-950\/60,
-html[data-theme='light'] .bg-slate-950\/50,
-html[data-theme='light'] .bg-slate-900,
-html[data-theme='light'] .bg-slate-900\/85,
-html[data-theme='light'] .bg-slate-900\/80,
-html[data-theme='light'] .bg-slate-900\/70,
-html[data-theme='light'] .bg-slate-900\/60,
-html[data-theme='light'] .bg-slate-900\/50,
-html[data-theme='light'] .bg-slate-800,
-html[data-theme='light'] .bg-slate-800\/50 {
-  background-color: var(--panel-bg) !important;
+/* ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â
+   THEME COMPATIBILITY LAYER
+   Fixes text readability for Light and Magma themes across all pages.
+   All selectors are written in flat (non-nested) form for Turbopack compat.
+   ÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚ÂÃƒÂ¢Ã¢â‚¬Â¢Ã‚Â */
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ text-white ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ theme text colour ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+html[data-theme='light'] .text-white,
+html[data-theme='magma'] .text-white { color: var(--ui-color-text) !important; }
+
+html[data-theme='light'] .hover\:text-white:hover,
+html[data-theme='magma'] .hover\:text-white:hover { color: var(--ui-color-text) !important; }
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Soft/muted white opacity text ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+html[data-theme='light'] .text-white\/34,
+html[data-theme='light'] .text-white\/46,
+html[data-theme='light'] .text-white\/48,
+html[data-theme='magma'] .text-white\/34,
+html[data-theme='magma'] .text-white\/46,
+html[data-theme='magma'] .text-white\/48 { color: var(--ui-color-text-soft) !important; }
+
+html[data-theme='light'] .text-white\/50,
+html[data-theme='light'] .text-white\/52,
+html[data-theme='light'] .text-white\/56,
+html[data-theme='light'] .text-white\/58,
+html[data-theme='light'] .text-white\/60,
+html[data-theme='light'] .text-white\/62,
+html[data-theme='light'] .text-white\/66,
+html[data-theme='light'] .text-white\/70,
+html[data-theme='light'] .text-white\/72,
+html[data-theme='light'] .text-white\/74,
+html[data-theme='magma'] .text-white\/50,
+html[data-theme='magma'] .text-white\/52,
+html[data-theme='magma'] .text-white\/56,
+html[data-theme='magma'] .text-white\/58,
+html[data-theme='magma'] .text-white\/60,
+html[data-theme='magma'] .text-white\/62,
+html[data-theme='magma'] .text-white\/66,
+html[data-theme='magma'] .text-white\/70,
+html[data-theme='magma'] .text-white\/72,
+html[data-theme='magma'] .text-white\/74 { color: var(--ui-color-text-muted) !important; }
+
+html[data-theme='light'] .text-white\/84,
+html[data-theme='light'] .text-white\/88,
+html[data-theme='magma'] .text-white\/84,
+html[data-theme='magma'] .text-white\/88 { color: var(--ui-color-text) !important; }
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ White opacity backgrounds ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ surface tokens ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+html[data-theme='light'] .bg-white\/\[0\.03\],
+html[data-theme='light'] .bg-white\/\[0\.04\],
+html[data-theme='magma'] .bg-white\/\[0\.03\],
+html[data-theme='magma'] .bg-white\/\[0\.04\] {
+  background-color: color-mix(in srgb, var(--ui-color-surface) 90%, transparent) !important;
 }
+
+html[data-theme='light'] .bg-white\/\[0\.06\],
+html[data-theme='light'] .bg-white\/\[0\.08\],
+html[data-theme='magma'] .bg-white\/\[0\.06\],
+html[data-theme='magma'] .bg-white\/\[0\.08\] {
+  background-color: var(--ui-color-surface) !important;
+}
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ White opacity borders ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ border tokens ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+html[data-theme='light'] .border-white\/8,
+html[data-theme='light'] .border-white\/10,
+html[data-theme='magma'] .border-white\/8,
+html[data-theme='magma'] .border-white\/10 { border-color: var(--ui-border-soft) !important; }
+
+html[data-theme='light'] .border-white\/12,
+html[data-theme='light'] .border-white\/14,
+html[data-theme='light'] .border-white\/16,
+html[data-theme='light'] .border-white\/18,
+html[data-theme='light'] .border-white\/20,
+html[data-theme='light'] .border-white\/22,
+html[data-theme='magma'] .border-white\/12,
+html[data-theme='magma'] .border-white\/14,
+html[data-theme='magma'] .border-white\/16,
+html[data-theme='magma'] .border-white\/18,
+html[data-theme='magma'] .border-white\/20,
+html[data-theme='magma'] .border-white\/22 { border-color: var(--ui-border-strong) !important; }
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Slate text tokens ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+html[data-theme='light'] .text-slate-100,
+html[data-theme='light'] .text-slate-200,
+html[data-theme='light'] .text-slate-300,
+html[data-theme='magma'] .text-slate-100,
+html[data-theme='magma'] .text-slate-200,
+html[data-theme='magma'] .text-slate-300 { color: var(--ui-color-text) !important; }
+
+html[data-theme='light'] .text-slate-400,
+html[data-theme='magma'] .text-slate-400 { color: var(--ui-color-text-muted) !important; }
+
+html[data-theme='light'] .text-slate-500,
+html[data-theme='magma'] .text-slate-500 { color: var(--ui-color-text-soft) !important; }
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Slate dark backgrounds ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ surface ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+html[data-theme='light'] .bg-slate-950,
+html[data-theme='light'] .bg-slate-900,
+html[data-theme='light'] .bg-slate-800,
+html[data-theme='magma'] .bg-slate-950,
+html[data-theme='magma'] .bg-slate-900,
+html[data-theme='magma'] .bg-slate-800 { background-color: var(--ui-color-surface) !important; }
 
 html[data-theme='light'] .border-slate-700,
-html[data-theme='light'] .border-slate-700\/80,
-html[data-theme='light'] .border-slate-700\/70,
-html[data-theme='light'] .border-slate-700\/60,
 html[data-theme='light'] .border-slate-600,
-html[data-theme='light'] .border-slate-600\/80 {
-  border-color: var(--panel-border) !important;
+html[data-theme='magma'] .border-slate-700,
+html[data-theme='magma'] .border-slate-600 { border-color: var(--ui-border-soft) !important; }
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Form inputs that assume dark backgrounds ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+html[data-theme='light'] input[class*="bg-white"],
+html[data-theme='magma'] input[class*="bg-white"] {
+  background: var(--ui-color-surface) !important;
+  color: var(--ui-color-text) !important;
+  border-color: var(--ui-border-soft) !important;
+}
+html[data-theme='light'] input::placeholder,
+html[data-theme='magma'] input::placeholder {
+  color: var(--ui-color-text-soft) !important;
+  opacity: 0.55 !important;
 }
 
-html[data-theme='light'] .text-slate-100,
-html[data-theme='light'] .text-slate-200 {
-  color: #0f172a !important;
-}
-
-html[data-theme='light'] .text-slate-300 {
-  color: #1f2937 !important;
-}
-
-html[data-theme='light'] .text-slate-400 {
-  color: #4b5563 !important;
-}
-
-html[data-theme='light'] .text-slate-500 {
-  color: #6b7280 !important;
-}
-
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Cyan / Sky colours ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ themed accent ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
 html[data-theme='light'] .text-cyan-200,
 html[data-theme='light'] .text-cyan-300,
-html[data-theme='light'] .text-cyan-400 {
-  color: var(--accent) !important;
-}
+html[data-theme='light'] .text-cyan-400,
+html[data-theme='light'] .text-sky-200,
+html[data-theme='light'] .text-sky-300,
+html[data-theme='magma'] .text-cyan-200,
+html[data-theme='magma'] .text-cyan-300,
+html[data-theme='magma'] .text-cyan-400,
+html[data-theme='magma'] .text-sky-200,
+html[data-theme='magma'] .text-sky-300 { color: var(--accent) !important; }
 
 html[data-theme='light'] .border-cyan-400\/70,
 html[data-theme='light'] .border-cyan-400\/60,
@@ -178,17 +454,79 @@ html[data-theme='light'] .border-cyan-400\/50 {
 }
 
 html[data-theme='light'] .bg-cyan-400\/10,
-html[data-theme='light'] .bg-cyan-400\/20 {
+html[data-theme='light'] .bg-cyan-400\/20,
+html[data-theme='light'] .bg-sky-400\/10 {
   background-color: color-mix(in srgb, var(--accent) 12%, transparent) !important;
 }
 
-/* Blockly toolbox tuning for narrow category rail */
-.blocklyToolboxDiv {
-  background-color: color-mix(in srgb, var(--background) 95%, transparent) !important;
-  border-right: 1px solid var(--panel-border) !important;
-  width: 88px !important;
-  padding: 0 !important;
+html[data-theme='light'] .border-sky-300\/16 {
+  border-color: color-mix(in srgb, var(--accent) 20%, transparent) !important;
 }
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Action card icon backdrop (dashboard) ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+html[data-theme='light'] .bg-black\/40 { background: rgba(0,0,0,0.10) !important; }
+html[data-theme='magma'] .bg-black\/40 { background: rgba(0,0,0,0.25) !important; }
+
+/* ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ Magma: emerald ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ magma success colour ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ÃƒÂ¢Ã¢â‚¬ÂÃ¢â€šÂ¬ */
+html[data-theme='magma'] .text-emerald-200\/88 { color: var(--ui-color-success) !important; }
+
+/* ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ Blockly native toolbox: always hidden (WorkspaceSidebar replaces it) ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ */
+.blocklyToolboxDiv,
+div.blocklyToolboxDiv {
+  display: none !important;
+  width: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+}
+
+/* ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ Blockly flyout: the block library middle column (6cm fixed) ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ */
+/*  6cm ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â«ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Âª 226.77 px ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ locked so the middle column never changes size          */
+:root {
+  --ide-flyout-width: 6cm;
+}
+
+.blocklyFlyout {
+  filter: none !important;
+}
+
+/* Lock flyout background to exactly 6cm */
+.blocklyFlyoutBackground {
+  fill: rgba(12, 18, 32, 0.92) !important;
+}
+
+html[data-theme='light'] .blocklyFlyoutBackground {
+  fill: rgba(240, 246, 255, 0.97) !important;
+}
+
+/* Flyout scrollbar */
+.blocklyFlyout > .blocklyFlyoutScrollbar {
+  opacity: 0.4 !important;
+}
+
+/* Flyout block text contrast */
+.blocklyFlyout text {
+  font-family: var(--font-sans, 'Segoe UI', sans-serif) !important;
+}
+
+.blocklyFlyoutButton .blocklyText {
+  fill: var(--foreground, #e2e8f0) !important;
+}
+
+html[data-theme='light'] .blocklyFlyout text.blocklyText {
+  fill: #1f2937 !important;
+}
+
+/* Flyout scrollbar knob */
+.blocklyFlyoutScrollbar .blocklyScrollbarKnob {
+  fill: rgba(100, 116, 139, 0.5) !important;
+}
+
+/* Prevent flyout from expanding beyond its column */
+.blocklyFlyout rect.blocklyFlyoutBackground,
+.blocklyFlyout > g {
+  pointer-events: auto;
+}
+
 
 .blocklyTreeRoot {
   margin: 0 !important;
@@ -242,4 +580,630 @@ html[data-theme='light'] .bg-cyan-400\/20 {
 .blocklyTreeIconOpen {
   display: none !important;
 }
+
+/* ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ Light mode: block panel row text ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ */
+html[data-theme='light'] .block-row-label {
+  color: #111827 !important;
+}
+
+html[data-theme='light'] .block-row-hint {
+  color: #6b7280 !important;
+}
+
+html[data-theme='light'] .blocks-panel-header {
+  color: #374151 !important;
+}
+
+html[data-theme='light'] .blocks-panel-empty {
+  color: #6b7280 !important;
+}
+
+/* ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ Light mode: Blockly block text should use dark labels ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ */
+html[data-theme='light'] .blocklyText,
+html[data-theme='light'] .blocklyHtmlInput,
+html[data-theme='light'] text.blocklyText {
+  fill: #ffffff !important; /* Blockly text on colored blocks stays white for contrast */
+}
+
+/* ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ Light mode: workspace background ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ÃƒÆ’Ã…Â½ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œÃƒÆ’Ã†â€™Ãƒâ€šÃ‚Â¶ÃƒÆ’Ã†â€™ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¡ */
+html[data-theme='light'] .blocklyMainBackground {
+  fill: rgba(240, 245, 255, 0.95) !important;
+}
+
+html[data-theme='light'] .blocklyZoom image,
+html[data-theme='light'] .blocklyTrash image {
+  opacity: 0.7 !important;
+}
+
+
+.custom-blockly-host {
+  --blockly-shell-border: rgba(134, 78, 251, 0.3);
+  --blockly-shell-shadow: 0 32px 78px -54px rgba(12, 6, 32, 0.9);
+}
+
+.custom-blockly-host .blocklyMainBackground {
+  fill: #270e5b !important;
+}
+
+.custom-blockly-host .blocklyFlyoutBackground {
+  fill: rgba(99, 57, 186, 0.96) !important;
+  stroke: rgba(134, 78, 251, 0.34) !important;
+  stroke-width: 1px !important;
+}
+
+.custom-blockly-host .blocklyFlyout {
+  filter: drop-shadow(14px 0 24px rgba(9, 4, 25, 0.42));
+}
+
+.custom-blockly-host .blocklyFlyout text.blocklyText,
+.custom-blockly-host .blocklyFlyout .blocklyText {
+  fill: #f8f4ff !important;
+  font-weight: 600 !important;
+}
+
+.custom-blockly-host .blocklyFlyoutScrollbar .blocklyScrollbarKnob,
+.custom-blockly-host .blocklyMainWorkspaceScrollbar .blocklyScrollbarKnob {
+  fill: rgba(134, 78, 251, 0.45) !important;
+}
+
+.custom-blockly-host .blocklyZoom > image,
+.custom-blockly-host .blocklyTrash image {
+  opacity: 0.78 !important;
+}
+
+.custom-blockly-host .blocklyMainWorkspaceScrollbar,
+.custom-blockly-host .blocklyFlyoutScrollbar {
+  opacity: 0.72 !important;
+}
+
+.custom-blockly-host .blocklyBubbleCanvas .blocklyText,
+.custom-blockly-host .blocklyHtmlInput {
+  fill: #f8f4ff !important;
+  color: #f8f4ff !important;
+}
+
+html[data-theme='dark'] .custom-blockly-host,
+html[data-theme='magma'] .custom-blockly-host,
+html[data-theme='light'] .custom-blockly-host {
+  --blockly-shell-border: rgba(134, 78, 251, 0.3);
+  --blockly-shell-shadow: 0 32px 78px -54px rgba(12, 6, 32, 0.9);
+}
+
+html[data-theme='light'] .custom-blockly-host .blocklyMainBackground {
+  fill: #270e5b !important;
+}
+
+html[data-theme='light'] .custom-blockly-host .blocklyFlyoutBackground {
+  fill: rgba(99, 57, 186, 0.96) !important;
+  stroke: rgba(134, 78, 251, 0.34) !important;
+}
+
+html[data-theme='light'] .custom-blockly-host .blocklyFlyout text.blocklyText,
+html[data-theme='light'] .custom-blockly-host .blocklyFlyout .blocklyText,
+html[data-theme='light'] .custom-blockly-host .blocklyBubbleCanvas .blocklyText,
+html[data-theme='light'] .custom-blockly-host .blocklyHtmlInput {
+  fill: #f8f4ff !important;
+  color: #f8f4ff !important;
+}
+
+html[data-theme='light'] .custom-blockly-host .blocklyZoom image,
+html[data-theme='light'] .custom-blockly-host .blocklyTrash image {
+  opacity: 0.78 !important;
+}
+/* ===== Phase 1 redesign foundation overrides ===== */
+/* ===== Ultra-Premium Phase 2 Foundation ===== */
+:root {
+  --background: #f2f2f2;
+  --foreground: #101828;
+  --panel-bg: rgba(255, 255, 255, 0.72);
+  --panel-border: rgba(0, 0, 0, 0.04);
+  --muted: #4e5058;
+  --muted-2: #80848e;
+  --accent: #6339ba;
+  --accent-hover: #4338ca;
+  --canvas-glow-1: rgba(134, 78, 251, 0.08);
+  --canvas-glow-2: rgba(99, 57, 186, 0.06);
+  --scroll-thumb: rgba(0, 0, 0, 0.1);
+  --scroll-thumb-hover: rgba(0, 0, 0, 0.18);
+
+  --ui-color-background: #f2f2f2;
+  --ui-color-surface: #ffffff;
+  --ui-surface-elevated: rgba(255, 255, 255, 0.88);
+  --ui-surface-quiet: rgba(250, 248, 245, 0.76);
+  --ui-surface-inverse: #0f172a;
+  --ui-color-primary: #864efb;
+  --ui-color-primary-strong: #6339ba;
+  --ui-color-accent: #6339ba;
+  --ui-color-success: #10b981;
+  --ui-color-warning: #f59e0b;
+  --ui-color-text: #101828;
+  --ui-color-text-muted: #475467;
+  --ui-color-text-soft: #667085;
+  --ui-border-soft: rgba(0, 0, 0, 0.04);
+  --ui-border-strong: rgba(0, 0, 0, 0.08);
+  --ui-shadow-card: 0 40px 80px -20px rgba(0, 0, 0, 0.06);
+  --ui-shadow-card-hover: 0 50px 100px -20px rgba(0, 0, 0, 0.1);
+  --ui-shadow-button: 0 20px 40px -15px rgba(134, 78, 251, 0.35);
+  --ui-shell-background:
+    radial-gradient(circle at 0% 0%, rgba(134, 78, 251, 0.06), transparent 40%),
+    radial-gradient(circle at 100% 0%, rgba(99, 57, 186, 0.04), transparent 40%),
+    #f2f2f2;
+  --ui-page-background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.8), transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 30%);
+}
+
+html[data-theme='dark'] {
+  --background: #09111f;
+  --foreground: #f8fafc;
+  --panel-bg: rgba(15, 20, 33, 0.82);
+  --panel-border: rgba(148, 163, 184, 0.16);
+  --muted: #d8e1f5;
+  --muted-2: #94a3b8;
+  --accent: #8b5cf6;
+  --accent-hover: #a78bfa;
+  --canvas-glow-1: rgba(139, 92, 246, 0.16);
+  --canvas-glow-2: rgba(45, 212, 191, 0.08);
+  --scroll-thumb: rgba(148, 163, 184, 0.24);
+  --scroll-thumb-hover: rgba(148, 163, 184, 0.4);
+
+  --ui-color-background: #09111f;
+  --ui-color-surface: #151d2f;
+  --ui-surface-elevated: rgba(24, 32, 51, 0.94);
+  --ui-surface-quiet: rgba(13, 19, 33, 0.88);
+  --ui-surface-inverse: #ffffff;
+  --ui-color-primary: #8b5cf6;
+  --ui-color-primary-strong: #c4b5fd;
+  --ui-color-accent: #2dd4bf;
+  --ui-color-success: #34d399;
+  --ui-color-warning: #fbbf24;
+  --ui-color-text: #f5f7ff;
+  --ui-color-text-muted: #ccd5ea;
+  --ui-color-text-soft: #95a2c3;
+  --ui-border-soft: rgba(148, 163, 184, 0.18);
+  --ui-border-strong: rgba(139, 92, 246, 0.34);
+  --ui-shadow-card: 0 34px 84px -28px rgba(2, 8, 23, 0.84);
+  --ui-shadow-card-hover: 0 40px 100px -26px rgba(2, 8, 23, 0.94);
+  --ui-shadow-button: 0 18px 34px -18px rgba(139, 92, 246, 0.48);
+  --ui-shell-background:
+    radial-gradient(circle at 0% 0%, rgba(139, 92, 246, 0.14), transparent 42%),
+    radial-gradient(circle at 100% 0%, rgba(45, 212, 191, 0.08), transparent 36%),
+    linear-gradient(180deg, #060b15 0%, #0a1120 100%);
+  --ui-page-background:
+    radial-gradient(circle at top, rgba(255, 255, 255, 0.04), transparent 30%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, rgba(255, 255, 255, 0) 20%);
+}
+
+html[data-theme='magma'] {
+  --background: #4d2e0f;
+  --foreground: #fcfcfd;
+  --panel-bg: rgba(102, 60, 20, 0.65);
+  --panel-border: rgba(217, 98, 62, 0.15);
+  --muted: #f9a8d4;
+  --muted-2: #f472b6;
+  --accent: #d9623e;
+  --accent-hover: #e29837;
+  --canvas-glow-1: rgba(217, 98, 62, 0.16);
+  --canvas-glow-2: rgba(226, 152, 55, 0.12);
+  --scroll-thumb: rgba(217, 98, 62, 0.15);
+  --scroll-thumb-hover: rgba(217, 98, 62, 0.25);
+
+  --ui-color-background: #4d2e0f;
+  --ui-color-surface: #6b3f15;
+  --ui-surface-elevated: rgba(107, 63, 21, 0.85);
+  --ui-surface-quiet: rgba(77, 46, 15, 0.6);
+  --ui-surface-inverse: #fdf2f8;
+  --ui-color-primary: #d9623e;
+  --ui-color-primary-strong: #e29837;
+  --ui-color-accent: #e29837;
+  --ui-color-success: #10b981;
+  --ui-color-warning: #f59e0b;
+  --ui-color-text: #fcfcfd;
+  --ui-color-text-muted: #fedf89;
+  --ui-color-text-soft: #fec84b;
+  --ui-border-soft: rgba(217, 98, 62, 0.12);
+  --ui-border-strong: rgba(217, 98, 62, 0.25);
+  --ui-shadow-card: 0 40px 100px -20px rgba(0, 0, 0, 0.8);
+  --ui-shadow-card-hover: 0 50px 120px -20px rgba(0, 0, 0, 0.9);
+  --ui-shadow-button: 0 20px 40px -15px rgba(217, 98, 62, 0.5);
+  --ui-shell-background:
+    radial-gradient(circle at 0% 0%, rgba(217, 98, 62, 0.15), transparent 45%),
+    radial-gradient(circle at 100% 0%, rgba(226, 152, 55, 0.12), transparent 45%),
+    #4d2e0f;
+  --ui-page-background:
+    radial-gradient(circle at top, rgba(217, 98, 62, 0.05), transparent 30%),
+    linear-gradient(180deg, rgba(217, 98, 62, 0.02) 0%, rgba(217, 98, 62, 0) 20%);
+}
+
+body {
+  background: var(--ui-shell-background);
+  color: var(--foreground);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--ui-color-primary) 24%, transparent);
+  color: var(--ui-color-text);
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+.ui-page-shell {
+  position: relative;
+  background: var(--ui-shell-background);
+  color: var(--ui-color-text);
+}
+
+.ui-page-shell-workspace {
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--ui-color-primary) 10%, transparent), transparent 26%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ui-color-background) 94%, black 6%) 0%, var(--ui-color-background) 100%);
+}
+
+.ui-page-shell-immersive {
+  background:
+    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--ui-color-primary) 12%, transparent), transparent 24%),
+    radial-gradient(circle at 100% 10%, color-mix(in srgb, var(--ui-color-accent) 10%, transparent), transparent 22%),
+    linear-gradient(180deg, color-mix(in srgb, var(--ui-color-background) 90%, black 10%) 0%, var(--ui-color-background) 100%);
+}
+
+.ui-page-backdrop {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: var(--ui-page-background);
+  opacity: 0.95;
+}
+
+.ui-foundation-shell {
+  background: var(--ui-shell-background);
+  color: var(--ui-color-text);
+  /* Modern clean fonts */
+  letter-spacing: -0.01em;
+}
+
+.ui-foundation-panel {
+  background: color-mix(in srgb, var(--ui-surface-elevated) 90%, transparent);
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 36px;
+  box-shadow: var(--ui-shadow-card);
+  backdrop-filter: blur(40px);
+  -webkit-backdrop-filter: blur(40px);
+  transition: box-shadow 300ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.ui-foundation-panel:hover {
+  box-shadow: var(--ui-shadow-card-hover);
+}
+
+.ui-foundation-panel-quiet {
+  background: color-mix(in srgb, var(--ui-surface-quiet) 82%, transparent);
+  border: 1px solid var(--ui-border-soft);
+  border-radius: 32px;
+  box-shadow: 0 16px 40px -20px rgba(0, 0, 0, 0.05);
+  backdrop-filter: blur(32px);
+  -webkit-backdrop-filter: blur(32px);
+}
+
+.ui-floating-panel {
+  background: color-mix(in srgb, var(--ui-surface-elevated) 95%, transparent);
+  border: 1px solid var(--ui-border-strong);
+  border-radius: 40px;
+  box-shadow: var(--ui-shadow-card-hover);
+  backdrop-filter: blur(50px);
+  -webkit-backdrop-filter: blur(50px);
+}
+
+.ui-workspace-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 40px;
+  border: 1px solid var(--ui-border-soft);
+  background: color-mix(in srgb, var(--ui-color-surface) 92%, transparent);
+  box-shadow: var(--ui-shadow-card);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+}
+
+.ui-workspace-stage,
+.ui-workspace-rail,
+.ui-workspace-drawer {
+  background: color-mix(in srgb, var(--ui-surface-elevated) 95%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 80%, transparent);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, rgba(255,255,255,0.8) 20%, transparent);
+}
+
+.ui-workspace-stage {
+  border-radius: 36px;
+}
+
+.ui-workspace-rail,
+.ui-workspace-drawer {
+  border-radius: 32px;
+}
+
+.ui-workspace-chip {
+  background: color-mix(in srgb, var(--ui-color-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-color-primary) 15%, transparent);
+  color: var(--ui-color-primary-strong);
+  font-weight: 700;
+  letter-spacing: 0.05em;
+}
+
+.ui-workspace-title {
+  font-size: clamp(1.6rem, 2.5vw, 2.4rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.ui-workspace-copy {
+  color: var(--ui-color-text-muted);
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.ui-elevated-surface {
+  background: color-mix(in srgb, var(--ui-surface-elevated) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 92%, transparent);
+}
+
+.ui-quiet-surface {
+  background: color-mix(in srgb, var(--ui-surface-quiet) 94%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 88%, transparent);
+}
+
+.ui-icon-surface {
+  background: color-mix(in srgb, var(--ui-surface-elevated) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 92%, transparent);
+  color: var(--ui-color-primary);
+}
+
+.ui-pill-surface {
+  background: color-mix(in srgb, var(--ui-surface-elevated) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 92%, transparent);
+  color: var(--ui-color-text-muted);
+}
+
+.ui-pill-surface-quiet {
+  background: color-mix(in srgb, var(--ui-surface-quiet) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 88%, transparent);
+  color: var(--ui-color-text-soft);
+}
+
+.ui-input-surface {
+  background: color-mix(in srgb, var(--ui-surface-elevated) 96%, transparent);
+  border: 1px solid color-mix(in srgb, var(--ui-border-soft) 92%, transparent);
+  color: var(--ui-color-text);
+}
+
+.ui-input-surface::placeholder {
+  color: var(--ui-color-text-soft);
+  opacity: 0.82;
+}
+.circuit-lab-page {
+  background: linear-gradient(180deg, #04070d 0%, #060a12 100%);
+}
+
+.circuit-lab-shell {
+  background: linear-gradient(180deg, #050913 0%, #04070e 100%);
+  color: #e6edf7;
+}
+
+.circuit-lab-flow {
+  box-shadow: 0 18px 48px -38px rgba(0, 0, 0, 0.95);
+}
+
+html[data-theme='light'] .circuit-lab-shell,
+html[data-theme='magma'] .circuit-lab-shell,
+html[data-theme='dark'] .circuit-lab-shell,
+html[data-theme='light'] .circuit-lab-page,
+html[data-theme='magma'] .circuit-lab-page,
+html[data-theme='dark'] .circuit-lab-page {
+  background-color: #04070e;
+}
+
+html[data-theme='light'] .circuit-lab-shell .text-white,
+html[data-theme='magma'] .circuit-lab-shell .text-white,
+html[data-theme='light'] .circuit-lab-page .text-white,
+html[data-theme='magma'] .circuit-lab-page .text-white {
+  color: #f8fbff !important;
+}
+
+html[data-theme='light'] .circuit-lab-shell .text-white\/40,
+html[data-theme='light'] .circuit-lab-shell .text-white\/50,
+html[data-theme='light'] .circuit-lab-shell .text-white\/52,
+html[data-theme='light'] .circuit-lab-shell .text-white\/55,
+html[data-theme='light'] .circuit-lab-shell .text-white\/58,
+html[data-theme='light'] .circuit-lab-shell .text-white\/60,
+html[data-theme='light'] .circuit-lab-shell .text-white\/84,
+html[data-theme='light'] .circuit-lab-shell .text-white\/88,
+html[data-theme='magma'] .circuit-lab-shell .text-white\/40,
+html[data-theme='magma'] .circuit-lab-shell .text-white\/50,
+html[data-theme='magma'] .circuit-lab-shell .text-white\/52,
+html[data-theme='magma'] .circuit-lab-shell .text-white\/55,
+html[data-theme='magma'] .circuit-lab-shell .text-white\/58,
+html[data-theme='magma'] .circuit-lab-shell .text-white\/60,
+html[data-theme='magma'] .circuit-lab-shell .text-white\/84,
+html[data-theme='magma'] .circuit-lab-shell .text-white\/88,
+html[data-theme='light'] .circuit-lab-page .text-white\/40,
+html[data-theme='light'] .circuit-lab-page .text-white\/50,
+html[data-theme='light'] .circuit-lab-page .text-white\/52,
+html[data-theme='light'] .circuit-lab-page .text-white\/55,
+html[data-theme='light'] .circuit-lab-page .text-white\/58,
+html[data-theme='light'] .circuit-lab-page .text-white\/60,
+html[data-theme='light'] .circuit-lab-page .text-white\/84,
+html[data-theme='light'] .circuit-lab-page .text-white\/88,
+html[data-theme='magma'] .circuit-lab-page .text-white\/40,
+html[data-theme='magma'] .circuit-lab-page .text-white\/50,
+html[data-theme='magma'] .circuit-lab-page .text-white\/52,
+html[data-theme='magma'] .circuit-lab-page .text-white\/55,
+html[data-theme='magma'] .circuit-lab-page .text-white\/58,
+html[data-theme='magma'] .circuit-lab-page .text-white\/60,
+html[data-theme='magma'] .circuit-lab-page .text-white\/84,
+html[data-theme='magma'] .circuit-lab-page .text-white\/88 {
+  color: #c7d2e3 !important;
+}
+.circuit-lab-shell .text-slate-300,
+.circuit-lab-page .text-slate-300 {
+  color: #dbe5f3 !important;
+}
+
+.circuit-lab-shell .text-slate-400,
+.circuit-lab-page .text-slate-400 {
+  color: #bcc8db !important;
+}
+
+.circuit-lab-shell .text-slate-500,
+.circuit-lab-page .text-slate-500 {
+  color: #94a3ba !important;
+}
+
+.circuit-lab-shell .text-slate-600,
+.circuit-lab-page .text-slate-600 {
+  color: #728198 !important;
+}
+
+.circuit-lab-shell .hover\:text-white:hover,
+.circuit-lab-page .hover\:text-white:hover {
+  color: #ffffff !important;
+}
+
+.circuit-lab-shell .hover\:text-slate-300:hover,
+.circuit-lab-page .hover\:text-slate-300:hover {
+  color: #dbe5f3 !important;
+}
+
+.circuit-lab-shell .placeholder\:text-slate-500::placeholder,
+.circuit-lab-page .placeholder\:text-slate-500::placeholder {
+  color: #7f8ca1 !important;
+}
+
+/* Blockly workspace theme tokens */
+.custom-blockly-host {
+  --blockly-shell-bg: linear-gradient(180deg, #1b1730 0%, #131221 100%);
+  --blockly-shell-border: rgba(118, 101, 214, 0.26);
+  --blockly-shell-shadow: 0 32px 78px -54px rgba(12, 6, 32, 0.9);
+  --blockly-sidebar-bg: linear-gradient(180deg, #1f1b39 0%, #151327 100%);
+  --blockly-sidebar-border: rgba(255, 255, 255, 0.08);
+  --blockly-sidebar-border-strong: rgba(154, 168, 255, 0.24);
+  --blockly-sidebar-kicker: rgba(164, 177, 255, 0.72);
+  --blockly-sidebar-text: #f8f7ff;
+  --blockly-sidebar-text-soft: #c9c7ef;
+  --blockly-sidebar-chip: rgba(255, 255, 255, 0.08);
+  --blockly-sidebar-input-bg: rgba(255, 255, 255, 0.05);
+  --blockly-sidebar-card: rgba(255, 255, 255, 0.06);
+  --blockly-sidebar-card-strong: rgba(255, 255, 255, 0.09);
+  --blockly-sidebar-accent: #8a78ff;
+  --blockly-workspace-fill: #151329;
+  --blockly-flyout-fill: rgba(24, 21, 44, 0.97);
+  --blockly-flyout-stroke: rgba(143, 158, 255, 0.24);
+  --blockly-flyout-text: #f8f7ff;
+  --blockly-scrollbar-fill: rgba(127, 150, 255, 0.46);
+  --blockly-toolbar-opacity: 0.78;
+}
+
+html[data-theme='light'] .custom-blockly-host {
+  --blockly-shell-bg: linear-gradient(180deg, #eef1fb 0%, #e4e9f8 100%);
+  --blockly-shell-border: rgba(48, 71, 166, 0.14);
+  --blockly-shell-shadow: 0 30px 70px -52px rgba(42, 61, 120, 0.22);
+  --blockly-sidebar-bg: linear-gradient(180deg, #3047a6 0%, #243789 100%);
+  --blockly-sidebar-border: rgba(255, 255, 255, 0.12);
+  --blockly-sidebar-border-strong: rgba(255, 255, 255, 0.22);
+  --blockly-sidebar-kicker: rgba(219, 229, 255, 0.76);
+  --blockly-sidebar-text: #f8fbff;
+  --blockly-sidebar-text-soft: #dbe5ff;
+  --blockly-sidebar-chip: rgba(255, 255, 255, 0.08);
+  --blockly-sidebar-input-bg: rgba(9, 17, 48, 0.18);
+  --blockly-sidebar-card: rgba(255, 255, 255, 0.08);
+  --blockly-sidebar-card-strong: rgba(255, 255, 255, 0.12);
+  --blockly-sidebar-accent: #b9c7ff;
+  --blockly-workspace-fill: #eef2ff;
+  --blockly-flyout-fill: rgba(247, 244, 255, 0.98);
+  --blockly-flyout-stroke: rgba(48, 71, 166, 0.16);
+  --blockly-flyout-text: #1f2937;
+  --blockly-scrollbar-fill: rgba(48, 71, 166, 0.34);
+  --blockly-toolbar-opacity: 0.68;
+}
+
+html[data-theme='dark'] .custom-blockly-host {
+  --blockly-shell-bg: linear-gradient(180deg, #171628 0%, #11111d 100%);
+  --blockly-shell-border: rgba(118, 101, 214, 0.24);
+  --blockly-shell-shadow: 0 32px 78px -54px rgba(12, 6, 32, 0.9);
+  --blockly-sidebar-bg: linear-gradient(180deg, #1f1b39 0%, #151327 100%);
+  --blockly-sidebar-border: rgba(255, 255, 255, 0.08);
+  --blockly-sidebar-border-strong: rgba(154, 168, 255, 0.24);
+  --blockly-sidebar-kicker: rgba(164, 177, 255, 0.72);
+  --blockly-sidebar-text: #f8f7ff;
+  --blockly-sidebar-text-soft: #c9c7ef;
+  --blockly-sidebar-chip: rgba(255, 255, 255, 0.08);
+  --blockly-sidebar-input-bg: rgba(255, 255, 255, 0.05);
+  --blockly-sidebar-card: rgba(255, 255, 255, 0.06);
+  --blockly-sidebar-card-strong: rgba(255, 255, 255, 0.09);
+  --blockly-sidebar-accent: #8a78ff;
+  --blockly-workspace-fill: #151329;
+  --blockly-flyout-fill: rgba(24, 21, 44, 0.97);
+  --blockly-flyout-stroke: rgba(143, 158, 255, 0.24);
+  --blockly-flyout-text: #f8f7ff;
+  --blockly-scrollbar-fill: rgba(127, 150, 255, 0.46);
+  --blockly-toolbar-opacity: 0.78;
+}
+
+html[data-theme='magma'] .custom-blockly-host {
+  --blockly-shell-bg: linear-gradient(180deg, #281613 0%, #1d100f 100%);
+  --blockly-shell-border: rgba(231, 132, 73, 0.22);
+  --blockly-shell-shadow: 0 32px 78px -54px rgba(28, 10, 6, 0.78);
+  --blockly-sidebar-bg: linear-gradient(180deg, #45261f 0%, #2f1915 100%);
+  --blockly-sidebar-border: rgba(255, 224, 201, 0.1);
+  --blockly-sidebar-border-strong: rgba(255, 191, 140, 0.22);
+  --blockly-sidebar-kicker: rgba(255, 205, 168, 0.74);
+  --blockly-sidebar-text: #fff3ec;
+  --blockly-sidebar-text-soft: #f4cdbb;
+  --blockly-sidebar-chip: rgba(255, 255, 255, 0.07);
+  --blockly-sidebar-input-bg: rgba(255, 255, 255, 0.05);
+  --blockly-sidebar-card: rgba(255, 255, 255, 0.05);
+  --blockly-sidebar-card-strong: rgba(255, 255, 255, 0.09);
+  --blockly-sidebar-accent: #ffb874;
+  --blockly-workspace-fill: #23120f;
+  --blockly-flyout-fill: rgba(59, 34, 28, 0.98);
+  --blockly-flyout-stroke: rgba(249, 115, 22, 0.24);
+  --blockly-flyout-text: #fff1eb;
+  --blockly-scrollbar-fill: rgba(249, 115, 22, 0.42);
+  --blockly-toolbar-opacity: 0.78;
+}
+
+.custom-blockly-host .blocklyMainBackground {
+  fill: var(--blockly-workspace-fill) !important;
+}
+
+.custom-blockly-host .blocklyFlyoutBackground {
+  fill: var(--blockly-flyout-fill) !important;
+  stroke: var(--blockly-flyout-stroke) !important;
+}
+
+.custom-blockly-host .blocklyFlyout {
+  filter: drop-shadow(14px 0 24px rgba(9, 4, 25, 0.32));
+}
+
+.custom-blockly-host .blocklyFlyout text.blocklyText,
+.custom-blockly-host .blocklyFlyout .blocklyText,
+.custom-blockly-host .blocklyBubbleCanvas .blocklyText,
+.custom-blockly-host .blocklyHtmlInput {
+  fill: var(--blockly-flyout-text) !important;
+  color: var(--blockly-flyout-text) !important;
+}
+
+.custom-blockly-host .blocklyFlyoutScrollbar .blocklyScrollbarKnob,
+.custom-blockly-host .blocklyMainWorkspaceScrollbar .blocklyScrollbarKnob {
+  fill: var(--blockly-scrollbar-fill) !important;
+}
+
+.custom-blockly-host .blocklyZoom > image,
+.custom-blockly-host .blocklyTrash image {
+  opacity: var(--blockly-toolbar-opacity) !important;
+}
+
+
 

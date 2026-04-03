@@ -5,6 +5,7 @@ import { useCircuitStore } from '@/stores/circuitStore';
 import type { CodingCircuitSnapshot } from '@/lib/blockly/circuitAwareness';
 import type { CircuitNetlist, ComponentPinMapping } from '@/lib/wiring/NetlistEngine';
 import type { MountedPlacement } from '@/lib/wiring/mountingTypes';
+import type { LogicalNetState, PinElectricalState, SimulationBusEvent, SimulationCapabilities, SimulationPinSnapshot, SimulationTraceEvent } from '@/lib/simulator/simulationTypes';
 
 export interface ComponentData {
   id: string;
@@ -21,6 +22,10 @@ export interface NetData {
   id: string;
   from: string;
   to: string;
+  fromNodeId?: string;
+  toNodeId?: string;
+  fromAnchorId?: string | null;
+  toAnchorId?: string | null;
   color: string;
   waypoints?: { x: number; y: number }[];
 }
@@ -37,6 +42,13 @@ export interface CircuitSimulationState {
   digitalPins: Record<string, boolean>;
   pulseWidths: Record<string, number>;
   analogPins: Record<string, number>;
+  netStates: Record<string, LogicalNetState>;
+  electricalPins: Record<string, PinElectricalState>;
+  pinDetails: Record<string, SimulationPinSnapshot>;
+  busEvents: SimulationBusEvent[];
+  traceEvents: SimulationTraceEvent[];
+  warnings: string[];
+  capabilities: SimulationCapabilities | null;
 }
 
 interface CircuitContextType {
@@ -139,3 +151,6 @@ export const useCircuit = () => {
   }
   return context;
 };
+
+
+
