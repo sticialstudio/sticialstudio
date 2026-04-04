@@ -39,9 +39,11 @@ hal-master/
 Board_Images/
 wokwi-elements-main/
 
-# Projects folder - large media assets, not version-controlled here
-Projects/
+# Root Projects folder - large media assets, not version-controlled here
+/Projects/
 
 # Compiled output
 packages/database/dist/
 apps/web/.next/
+
+
