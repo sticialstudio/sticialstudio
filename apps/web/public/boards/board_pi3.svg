@@ -1,0 +1,142 @@
+
+<svg width="600" height="400" viewBox="0 0 600 400" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1e293b"/>
+      <stop offset="100%" stop-color="#020617"/>
+    </radialGradient>
+    <linearGradient id="boardGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#059669"/>
+      <stop offset="100%" stop-color="#064e3b"/>
+    </linearGradient>
+    <linearGradient id="boardGradBlue" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#075985"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="-5%" y="-5%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="6" flood-color="#000" flood-opacity="0.6"/>
+    </filter>
+  </defs>
+  <rect width="600" height="400" fill="url(#bg)"/>
+  <g filter="url(#shadow)">
+    
+      <!-- Board Base -->
+      <rect x="150" y="120" width="300" height="200" rx="10" fill="url(#boardGrad)" stroke="#34d399" stroke-width="2"/>
+      
+      <!-- 40-pin GPIO Header -->
+      <rect x="170" y="125" width="220" height="20" fill="#1e293b"/>
+      <circle cx="175" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="175" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="186" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="186" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="197" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="197" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="208" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="208" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="219" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="219" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="230" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="230" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="241" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="241" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="252" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="252" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="263" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="263" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="274" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="274" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="285" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="285" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="296" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="296" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="307" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="307" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="318" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="318" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="329" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="329" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="340" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="340" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="351" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="351" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="362" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="362" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="373" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="373" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="384" cy="130" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="384" cy="130" r="2" fill="#0f172a" opacity="0.9"/>
+
+      <circle cx="175" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="175" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="186" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="186" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="197" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="197" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="208" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="208" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="219" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="219" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="230" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="230" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="241" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="241" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="252" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="252" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="263" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="263" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="274" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="274" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="285" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="285" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="296" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="296" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="307" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="307" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="318" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="318" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="329" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="329" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="340" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="340" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="351" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="351" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="362" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="362" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="373" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="373" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+<circle cx="384" cy="140" r="4" fill="#fbbf24" opacity="0.8"/>
+<circle cx="384" cy="140" r="2" fill="#0f172a" opacity="0.9"/>
+
+      
+      <!-- Broadcom SOC -->
+      <rect x="250" y="180" width="70" height="70" rx="4" fill="#0f172a" stroke="#1e293b" stroke-width="2"/>
+      <circle cx="260" cy="190" r="4" fill="#334155"/>
+      <text x="285" y="215" font-family="monospace" font-size="10" font-weight="bold" fill="#64748b" text-anchor="middle">BCM2837</text>
+      <text x="285" y="230" font-family="monospace" font-size="8" fill="#475569" text-anchor="middle">Broadcom</text>
+      
+      <!-- RAM Chip (Pi 4/5 have separate RAM) -->
+      
+
+      <!-- Ports -->
+      <!-- USB / Ethernet blocks cluster on right side -->
+      <rect x="430" y="150" width="30" height="40" rx="2" fill="#94a3b8"/>
+      <rect x="430" y="200" width="30" height="40" rx="2" fill="#94a3b8"/>
+      <rect x="430" y="250" width="30" height="50" rx="2" fill="#64748b"/>
+      
+      <!-- USB C / HDMI on bottom -->
+      <rect x="180" y="310" width="25" height="15" fill="#cbd5e1"/>
+      <rect x="220" y="310" width="20" height="15" fill="#f8fafc"/>
+      <rect x="260" y="310" width="20" height="15" fill="#f8fafc"/>
+      
+      <!-- Styling/Logo -->
+      <text x="180" y="290" font-family="sans-serif" font-size="20" font-weight="900" fill="#a7f3d0">Raspberry Pi 3</text>
+    
+  </g>
+</svg>

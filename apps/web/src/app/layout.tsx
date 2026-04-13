@@ -1,22 +1,11 @@
 import type { Metadata } from 'next';
-import { Space_Grotesk, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 import { BoardProvider } from '@/contexts/BoardContext';
 import { ProjectProvider } from '@/contexts/ProjectContext';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
-
-const spaceGrotesk = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-space-grotesk',
-  display: 'swap'
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-jetbrains-mono',
-  display: 'swap'
-});
+import { StudioPreferencesProvider } from '@/contexts/StudioPreferencesContext';
+import { CircuitProvider } from '@/contexts/CircuitContext';
 
 export const metadata: Metadata = {
   title: 'EdTech IDE',
@@ -29,16 +18,21 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" data-theme="dark" suppressHydrationWarning>
-      <body className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} antialiased`}>
+    <html lang="en" data-theme="light" suppressHydrationWarning>
+      <body className="antialiased">
         <ThemeProvider>
-          <AuthProvider>
-            <BoardProvider>
-              <ProjectProvider>{children}</ProjectProvider>
-            </BoardProvider>
-          </AuthProvider>
+          <StudioPreferencesProvider>
+            <AuthProvider>
+              <BoardProvider>
+                <ProjectProvider>
+                  <CircuitProvider>{children}</CircuitProvider>
+                </ProjectProvider>
+              </BoardProvider>
+            </AuthProvider>
+          </StudioPreferencesProvider>
         </ThemeProvider>
       </body>
     </html>
   );
 }
+

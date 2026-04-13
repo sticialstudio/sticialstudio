@@ -1,158 +1,221 @@
 "use client";
 
-import MainLayout from '@/components/layout/MainLayout';
-import { useRouter } from 'next/navigation';
-import { Search, ArrowLeft, Cpu, CircuitBoard, Microchip } from 'lucide-react';
-import { useBoard, BoardKey } from '@/contexts/BoardContext';
-import { BOARD_CONFIG } from '@/lib/boards/boardConfig';
-import { useMemo, useState } from 'react';
-import BoardCard from '@/components/ui/BoardCard';
+import { useMemo, useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { CircuitBoard, Cpu, Microchip, Search, Sparkles } from "lucide-react";
+import MainLayout from "@/components/layout/MainLayout";
+import OnboardingShell from "@/components/onboarding/OnboardingShell";
+import { useBoard, type BoardKey } from "@/contexts/BoardContext";
+import { useProject } from "@/contexts/ProjectContext";
+import { BOARD_CONFIG } from "@/lib/boards/boardConfig";
+import { writePendingProjectIntent } from "@/lib/projects/projectFlow";
+import { Card } from "@/components/ui/Card";
 
-type FamilyFilter = 'all' | 'arduino' | 'esp' | 'raspberry';
+type FamilyFilter = "all" | "arduino" | "esp" | "raspberry";
 
 const familyLabel: Record<FamilyFilter, string> = {
-    all: 'All',
-    arduino: 'Arduino',
-    esp: 'ESP',
-    raspberry: 'Raspberry Pi'
+  all: "All",
+  arduino: "Arduino",
+  esp: "ESP",
+  raspberry: "Raspberry Pi",
 };
 
 const familyIcon = {
-    arduino: Microchip,
-    esp: Cpu,
-    raspberry: CircuitBoard
+  arduino: Microchip,
+  esp: Cpu,
+  raspberry: CircuitBoard,
 } as const;
 
-export default function SelectBoardPage() {
-    const router = useRouter();
-    const { codingMode, language, setLanguage, setGenerator, setCurrentBoard } = useBoard();
-    const [search, setSearch] = useState('');
-    const [activeFilter, setActiveFilter] = useState<FamilyFilter>('all');
-    const [selectedBoard, setSelectedBoard] = useState<BoardKey | null>(null);
+function SelectBoardContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { codingMode, setCodingMode, environment, setEnvironment, setLanguage, setGenerator, setCurrentBoard } = useBoard();
+  const { setProjectId } = useProject();
+  const [search, setSearch] = useState("");
+  const [activeFilter, setActiveFilter] = useState<FamilyFilter>("all");
 
-    const languageScopedBoards = useMemo(() => {
-        return Object.entries(BOARD_CONFIG).filter(([, config]) => {
-            if (codingMode === 'text') {
-                return config.language === language;
-            }
-            return true;
-        }) as [BoardKey, (typeof BOARD_CONFIG)[BoardKey]][];
-    }, [codingMode, language]);
+  const entry = searchParams?.get("entry");
+  const isDirectBlockEntry = entry === "block-home";
+  const isDirectTextEntry = entry === "text-home";
+  const isCircuitEntry = entry === "circuit-lab";
+  const isVirtualEntry = entry === "virtual";
+  const isDirectHomeEntry = isDirectBlockEntry || isDirectTextEntry;
+  const isVirtualFlow = isCircuitEntry || isVirtualEntry || environment === "virtual";
 
-    const filteredBoards = useMemo(() => {
-        return languageScopedBoards.filter(([name, config]) => {
-            const matchesFamily = activeFilter === 'all' || config.family === activeFilter;
-            const q = search.trim().toLowerCase();
-            const matchesSearch =
-                q.length === 0 ||
-                name.toLowerCase().includes(q) ||
-                config.chip.toLowerCase().includes(q) ||
-                config.summary.toLowerCase().includes(q);
-            return matchesFamily && matchesSearch;
-        });
-    }, [activeFilter, languageScopedBoards, search]);
+  useEffect(() => {
+    if (isDirectBlockEntry) {
+      if (environment !== "physical") setEnvironment("physical");
+      if (codingMode !== "block") setCodingMode("block");
+      return;
+    }
 
-    const handleSelectBoard = (boardKey: BoardKey) => {
-        const config = BOARD_CONFIG[boardKey];
+    if (isDirectTextEntry) {
+      if (environment !== "physical") setEnvironment("physical");
+      if (codingMode !== "text") setCodingMode("text");
+      return;
+    }
 
-        if (codingMode === 'block') {
-            setLanguage(config.language);
-            setGenerator(config.generator);
-        }
+    if ((isCircuitEntry || isVirtualEntry) && environment !== "virtual") {
+      setEnvironment("virtual");
+    }
+  }, [codingMode, environment, isCircuitEntry, isVirtualEntry, isDirectBlockEntry, isDirectTextEntry, setCodingMode, setEnvironment]);
 
-        setSelectedBoard(boardKey);
-        window.setTimeout(() => {
-            setCurrentBoard(boardKey);
-            router.push('/projects/ide');
-        }, 160);
-    };
+  const availableBoards = useMemo(() => {
+    return Object.entries(BOARD_CONFIG) as [BoardKey, (typeof BOARD_CONFIG)[BoardKey]][];
+  }, []);
 
-    return (
-        <MainLayout>
-            <div className="relative flex flex-1 justify-center overflow-y-auto app-canvas px-4 py-8 text-foreground sm:px-6 sm:py-10">
-                <button
-                    type="button"
-                    onClick={() => router.back()}
-                    className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-lg border border-slate-700 bg-slate-900/70 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-slate-300 transition-colors hover:border-cyan-400/70 hover:text-cyan-200 sm:left-6 sm:top-6"
-                >
-                    <ArrowLeft size={14} />
-                    Back
-                </button>
+  const filteredBoards = useMemo(() => {
+    return availableBoards.filter(([name, config]) => {
+      const matchesFamily = activeFilter === "all" || config.family === activeFilter;
+      const query = search.trim().toLowerCase();
+      const matchesSearch =
+        query.length === 0 ||
+        name.toLowerCase().includes(query) ||
+        config.chip.toLowerCase().includes(query) ||
+        config.summary.toLowerCase().includes(query);
+      return matchesFamily && matchesSearch;
+    });
+  }, [activeFilter, availableBoards, search]);
 
-                <div className="w-full max-w-6xl space-y-7 pt-10 sm:space-y-8 sm:pt-12">
-                    <header className="ui-fade-up space-y-3 text-center">
-                        <p className="text-sm font-semibold uppercase tracking-[0.2em] text-cyan-300 sm:text-base">Hardware Selection</p>
-                        <h1 className="text-3xl font-bold tracking-tight text-slate-100 sm:text-4xl">Choose a Board</h1>
-                        <p className="mx-auto max-w-2xl text-sm leading-7 text-slate-400 md:text-base">
-                            Select target hardware for your project. Board options follow your selected coding path automatically.
-                        </p>
-                    </header>
+  const steps = isDirectHomeEntry
+    ? [{ label: "Board" }, { label: "Workspace" }]
+    : isVirtualEntry
+      ? [{ label: "Mode" }, { label: "Language" }, { label: "Board" }, { label: "Workspace" }]
+      : isVirtualFlow
+        ? [{ label: "Mode" }, { label: "Board" }, { label: "Workspace" }]
+        : [{ label: "Environment" }, { label: "Mode" }, { label: "Language" }, { label: "Workspace" }];
 
-                    <section className="space-y-4 rounded-2xl border border-slate-700/80 bg-slate-900/60 p-4">
-                        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                            <div className="relative w-full lg:max-w-sm">
-                                <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
-                                <input
-                                    value={search}
-                                    onChange={(e) => setSearch(e.target.value)}
-                                    placeholder="Search board, chip, or capability"
-                                    className="h-10 w-full rounded-lg border border-slate-700 bg-slate-950 pl-9 pr-3 text-sm text-slate-200 placeholder:text-slate-500 focus:border-cyan-400/70 focus:outline-none"
-                                />
-                            </div>
+  const activeStep = isDirectHomeEntry ? 0 : isVirtualEntry ? 2 : isVirtualFlow ? 1 : 2;
 
-                            <div className="-mx-1 flex gap-2 overflow-x-auto pb-1 pl-1">
-                                {(Object.keys(familyLabel) as FamilyFilter[]).map((filterKey) => (
-                                    <button
-                                        key={filterKey}
-                                        type="button"
-                                        onClick={() => setActiveFilter(filterKey)}
-                                        className={`shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-colors ${
-                                            activeFilter === filterKey
-                                                ? 'border-cyan-400/70 bg-cyan-400/10 text-cyan-200'
-                                                : 'border-slate-700 bg-slate-950 text-slate-400 hover:border-slate-500 hover:text-slate-200'
-                                        }`}
-                                    >
-                                        {familyLabel[filterKey]}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
+  const nextMessage = isVirtualFlow
+    ? "Open the workspace in Circuit Lab and start building."
+    : codingMode === "text"
+      ? "Open the editor with the language that matches this board."
+      : "Open Blockly directly and start building with blocks.";
 
-                        <p className="text-xs text-slate-500">
-                            {filteredBoards.length} board option{filteredBoards.length === 1 ? '' : 's'} shown
-                        </p>
-                    </section>
+  const handleBoardSelect = (board: BoardKey) => {
+    const config = BOARD_CONFIG[board];
 
-                    {filteredBoards.length === 0 ? (
-                        <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-900/50 px-6 py-16 text-center">
-                            <p className="text-lg font-semibold text-slate-200">No boards matched your filters</p>
-                            <p className="mt-2 text-sm text-slate-400">Try a different search term or switch the hardware filter tab.</p>
-                        </div>
-                    ) : (
-                        <section className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {filteredBoards.map(([boardName, config], index) => {
-                                const Icon = familyIcon[config.family];
-                                return (
-                                    <BoardCard
-                                        key={boardName}
-                                        name={boardName}
-                                        chip={config.chip}
-                                        description={config.summary}
-                                        familyLabel={familyLabel[config.family]}
-                                        icon={Icon}
-                                        selected={selectedBoard === boardName}
-                                        onClick={() => handleSelectBoard(boardName)}
-                                        delayMs={60 + index * 28}
-                                    />
-                                );
-                            })}
-                        </section>
-                    )}
-                </div>
+    setProjectId(null);
+    setCurrentBoard(board);
+
+    // For the virtual flow the user already chose their language on the language page.
+    // Only overwrite language/generator when coming from a direct home or physical flow
+    // where no explicit choice was made yet.
+    if (!isVirtualEntry) {
+      setLanguage(config.language);
+      setGenerator(config.generator);
+    }
+
+    writePendingProjectIntent({ source: "wizard" });
+    router.push("/projects/ide");
+  };
+
+  const backHref = isDirectHomeEntry
+    ? "/"
+    : isVirtualEntry
+      ? `/projects/select-language?mode=${codingMode ?? "block"}&entry=virtual`
+      : isCircuitEntry
+        ? "/projects/select-mode?entry=circuit-lab"
+        : "/projects/select-mode";
+
+  return (
+    <MainLayout>
+      <OnboardingShell
+        backHref={backHref}
+        backLabel="Back"
+        steps={steps}
+        activeIndex={activeStep}
+        contentClassName="justify-center py-8 lg:py-12"
+      >
+        <div className="mx-auto flex w-full max-w-[1240px] flex-1 flex-col justify-center">
+          <div className="mx-auto max-w-[780px] text-center">
+            <p className="text-[12px] font-extrabold uppercase tracking-[0.25em] text-[color:var(--ui-color-primary)]">
+              Step {activeStep + 1}
+            </p>
+            <h1 className="mt-5 text-[3rem] font-bold tracking-tight text-[color:var(--ui-color-text)] sm:text-[4rem]">Choose your board</h1>
+            <p className="mx-auto mt-6 max-w-[620px] text-lg leading-relaxed text-[color:var(--ui-color-text-soft)]">
+              Pick the board first. The workspace will open with the right coding setup automatically.
+            </p>
+          </div>
+
+          <div className="mx-auto mt-10 flex w-full max-w-[1120px] flex-col gap-4 rounded-[26px] border border-white/10 bg-white/[0.04] p-4 backdrop-blur-xl lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-sm">
+              <Search size={16} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/34" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search board or chip"
+                className="h-12 w-full rounded-[18px] border border-white/10 bg-white/[0.04] pl-10 pr-4 text-sm text-white outline-none transition-colors placeholder:text-white/26 focus:border-sky-300/36 focus:bg-white/[0.06]"
+              />
             </div>
-        </MainLayout>
-    );
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(familyLabel) as FamilyFilter[]).map((filterKey) => (
+                <button
+                  key={filterKey}
+                  type="button"
+                  onClick={() => setActiveFilter(filterKey)}
+                  className={[
+                    "rounded-full border px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] transition-colors",
+                    activeFilter === filterKey
+                      ? "border-sky-300/26 bg-sky-400/12 text-white"
+                      : "border-white/10 bg-white/[0.03] text-white/46 hover:border-white/18 hover:text-white/72",
+                  ].join(" ")}
+                >
+                  {familyLabel[filterKey]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredBoards.length === 0 ? (
+            <div className="mx-auto mt-8 flex w-full max-w-[820px] items-center justify-center gap-2 rounded-[26px] border border-white/10 bg-white/[0.04] p-8 text-center text-white/58 backdrop-blur-xl">
+              <Sparkles size={16} className="text-sky-300/80" />
+              Try another search or switch the board family.
+            </div>
+          ) : (
+            <div className="mx-auto mt-8 grid w-full max-w-[1120px] gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {filteredBoards.map(([boardName, config]) => {
+                const Icon = familyIcon[config.family];
+                return (
+                  <Card
+                    key={boardName}
+                    variant="immersive"
+                    eyebrow={familyLabel[config.family]}
+                    title={boardName}
+                    description={config.summary}
+                    icon={<Icon size={22} />}
+                    image={config.image}
+                    onClick={() => handleBoardSelect(boardName)}
+                    className="h-full"
+
+                    footer={
+                      <div className="flex flex-wrap gap-2">
+                        <span className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/58">
+                          {config.runtimeLabel}
+                        </span>
+                        <span className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-sky-200/84">
+                          {config.chip}
+                        </span>
+                      </div>
+                    }
+                  >
+                    <p className="max-w-[34ch] text-sm leading-7 text-white/52">{nextMessage}</p>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </OnboardingShell>
+    </MainLayout>
+  );
 }
 
-
-
+export default function SelectBoardPage() {
+  return (
+    <Suspense fallback={null}>
+      <SelectBoardContent />
+    </Suspense>
+  );
+}

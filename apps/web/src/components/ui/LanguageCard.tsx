@@ -28,7 +28,7 @@ export default function LanguageCard({
     <button
       type="button"
       onClick={onClick}
-      className="ui-fade-up group relative w-full overflow-hidden rounded-3xl border border-panel-border bg-panel p-6 text-left shadow-lg transition-all duration-300 hover:-translate-y-1.5 hover:border-accent/70 hover:shadow-2xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-8"
+      className="ui-fade-up group relative w-full overflow-hidden rounded-3xl glass-panel p-6 text-left transition-all duration-300 hover:-translate-y-1.5 hover:border-accent/70 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/70 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:p-8"
       style={animationStyle}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-accent/15 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />

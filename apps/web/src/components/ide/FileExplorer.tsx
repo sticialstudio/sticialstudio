@@ -1,14 +1,14 @@
-import React, { useState, useMemo } from 'react';
-import { Folder, FileCode, File, ChevronRight, ChevronDown, Plus, MoreVertical } from 'lucide-react';
+﻿import React, { useState, useMemo } from 'react';
+import { ChevronDown, ChevronRight, File, FileCode, Folder, FolderOpen, Search } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { useProject, FileItem } from '@/contexts/ProjectContext';
-import { useBoard } from '@/contexts/BoardContext';
+import { fadeInUp } from '@/components/ui/motion';
 
 export default function FileExplorer() {
-    const { files, activeFileId, setActiveFileId, createFile } = useProject();
-    const { language, codingMode } = useBoard();
+    const { files, activeFileId, setActiveFileId } = useProject();
     const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+    const [query, setQuery] = useState('');
 
-    // Compute the nested tree structure from the flat DB file array
     const fileTree = useMemo(() => {
         const tree: FileItem[] = [];
         const childrenMap: Record<string, FileItem[]> = {};
@@ -22,8 +22,6 @@ export default function FileExplorer() {
             }
         });
 
-        // Mutate children bindings into the tree structure
-        // Note: For now, React files map is flat, but we set up the algorithm for actual tree processing
         const assembleTree = (nodes: FileItem[]) => {
             nodes.forEach(node => {
                 if (childrenMap[node.id]) {
@@ -37,39 +35,54 @@ export default function FileExplorer() {
         return tree;
     }, [files]);
 
+    const filteredQuery = query.trim().toLowerCase();
+
     const toggleFolder = (id: string, e: React.MouseEvent) => {
         e.stopPropagation();
-        const newExpanded = new Set(expandedFolders);
-        if (newExpanded.has(id)) {
-            newExpanded.delete(id);
+        const next = new Set(expandedFolders);
+        if (next.has(id)) {
+            next.delete(id);
         } else {
-            newExpanded.add(id);
+            next.add(id);
         }
-        setExpandedFolders(newExpanded);
+        setExpandedFolders(next);
     };
 
-    // Use an extended type here that maps the generic DB FileItem to have optional children
     type UITreeNode = FileItem & { children?: UITreeNode[] };
 
+    const nodeMatchesQuery = (item: UITreeNode): boolean => {
+        if (!filteredQuery) return true;
+        if (item.name.toLowerCase().includes(filteredQuery)) return true;
+        return Boolean(item.children?.some(nodeMatchesQuery));
+    };
+
+    const visibleTree = useMemo(
+        () => fileTree.filter((file) => nodeMatchesQuery(file as UITreeNode)),
+        [fileTree, filteredQuery]
+    );
+
     const FileNode = ({ item, depth = 0 }: { item: UITreeNode, depth?: number }) => {
-        const isExpanded = expandedFolders.has(item.id);
+        if (!nodeMatchesQuery(item)) return null;
+
+        const isExpanded = expandedFolders.has(item.id) || Boolean(filteredQuery);
         const isActive = activeFileId === item.id;
-        const paddingLeft = `${depth * 12 + 8}px`;
+        const paddingLeft = `${depth * 14 + 10}px`;
 
         if (item.type === 'folder') {
             return (
-                <div>
-                    <div
-                        className="flex items-center py-1.5 px-2 hover:bg-slate-800/40 cursor-pointer text-slate-300 select-none group transition-colors"
+                <div className="space-y-1">
+                    <button
+                        type="button"
+                        className="flex w-full items-center rounded-[14px] px-2 py-2 text-left text-[var(--ui-color-text-muted)] transition-colors hover:bg-[color:var(--ui-surface-elevated)] hover:text-[var(--ui-color-text)]"
                         style={{ paddingLeft }}
                         onClick={(e) => toggleFolder(item.id, e)}
                     >
-                        <span className="w-4 h-4 flex items-center justify-center mr-1 text-slate-500 group-hover:text-slate-300 transition-colors">
+                        <span className="mr-2 flex h-5 w-5 items-center justify-center text-[var(--ui-color-text-soft)]">
                             {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                         </span>
-                        <Folder size={14} className="mr-2 text-indigo-400" />
-                        <span className="text-sm truncate">{item.name}</span>
-                    </div>
+                        <Folder size={15} className="mr-2 text-[var(--ui-color-accent)]" />
+                        <span className="truncate text-sm font-medium text-[var(--ui-color-text)]">{item.name}</span>
+                    </button>
                     {isExpanded && item.children?.map((child: UITreeNode) => (
                         <FileNode key={child.id} item={child} depth={depth + 1} />
                     ))}
@@ -78,45 +91,57 @@ export default function FileExplorer() {
         }
 
         return (
-            <div
-                className={`flex items-center py-1.5 px-2 cursor-pointer select-none group transition-colors ${isActive ? 'bg-accent/15 text-accent border-r-2 border-accent' : 'hover:bg-slate-800/40 text-slate-400'}`}
+            <button
+                type="button"
+                className={`flex w-full items-center rounded-[14px] px-2 py-2 text-left transition-all ${isActive ? 'bg-[var(--ui-color-primary)] text-white shadow-[var(--ui-shadow-button)]' : 'text-[var(--ui-color-text-muted)] hover:bg-[color:var(--ui-surface-elevated)] hover:text-[var(--ui-color-text)]'}`}
                 style={{ paddingLeft }}
                 onClick={() => setActiveFileId(item.id)}
             >
-                <span className="w-4 h-4 mr-1"></span> {/* Spacer for alignment */}
+                <span className="mr-2 flex h-5 w-5 items-center justify-center" />
                 {item.name.endsWith('.cpp') || item.name.endsWith('.h') ? (
-                    <FileCode size={14} className={`mr-2 ${isActive ? 'text-accent' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                    <FileCode size={15} className={`mr-2 ${isActive ? 'text-white' : 'text-[var(--ui-color-primary)]'}`} />
                 ) : (
-                    <File size={14} className={`mr-2 ${isActive ? 'text-accent' : 'text-slate-500 group-hover:text-slate-300'}`} />
+                    <File size={15} className={`mr-2 ${isActive ? 'text-white' : 'text-[var(--ui-color-text-soft)]'}`} />
                 )}
-                <span className="text-sm truncate">{item.name}</span>
-            </div>
+                <span className="truncate text-sm font-medium">{item.name}</span>
+            </button>
         );
     };
 
     return (
-        <div className="w-full h-full flex flex-col bg-[#0f111a] border-r border-panel-border hide-scrollbar overflow-hidden">
-            {/* Header */}
-            <div className="h-8 flex items-center justify-between px-3 shrink-0">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Explorer</span>
-                <div className="flex space-x-1">
-                    <button className="p-1 rounded text-slate-500 hover:text-foreground hover:bg-slate-800 transition-colors" title="New File">
-                        <Plus size={14} />
-                    </button>
-                    <button className="p-1 rounded text-slate-500 hover:text-foreground hover:bg-slate-800 transition-colors">
-                        <MoreVertical size={14} />
-                    </button>
+        <motion.div className="flex h-full w-full flex-col overflow-hidden" variants={fadeInUp} initial="hidden" animate="visible">
+            <div className="border-b border-[color:var(--ui-border-soft)] px-4 py-4">
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--ui-color-text-soft)]">
+                    <FolderOpen size={13} className="text-[var(--ui-color-primary)]" />
+                    Files
+                </div>
+                <div className="relative mt-4">
+                    <Search size={14} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[var(--ui-color-text-soft)]" />
+                    <input
+                        type="text"
+                        value={query}
+                        onChange={(event) => setQuery(event.target.value)}
+                        placeholder="Search files"
+                        className="ui-input-surface h-11 w-full rounded-[16px] pl-10 pr-4 text-sm outline-none"
+                    />
                 </div>
             </div>
 
-            {/* File List */}
-            <div className="flex-1 overflow-y-auto py-1">
+            <div className="flex-1 overflow-y-auto px-3 py-3">
                 {files.length === 0 ? (
-                    <div className="px-3 py-2 text-xs text-slate-400 italic">No files in project...</div>
+                    <div className="ui-quiet-surface rounded-[18px] px-4 py-5 text-sm text-[var(--ui-color-text-muted)]">
+                        Files will appear here when the workspace creates or loads them.
+                    </div>
+                ) : visibleTree.length === 0 ? (
+                    <div className="ui-quiet-surface rounded-[18px] px-4 py-5 text-sm text-[var(--ui-color-text-muted)]">
+                        No files match that search.
+                    </div>
                 ) : (
-                    fileTree.map((file) => <FileNode key={file.id} item={file as UITreeNode} />)
+                    <div className="space-y-1">
+                        {visibleTree.map((file) => <FileNode key={file.id} item={file as UITreeNode} />)}
+                    </div>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 }

@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { CircuitBoard, File, RefreshCw, Download } from 'lucide-react';
+﻿import React, { useState, useEffect } from 'react';
+import { CircuitBoard, Download, File, RefreshCw } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Button } from '@/components/ui/Button';
+import { fadeInUp } from '@/components/ui/motion';
 import { useProject } from '@/contexts/ProjectContext';
 import { useBoard } from '@/contexts/BoardContext';
 
@@ -70,7 +73,6 @@ _ls()
     const handleReadFile = async (filename: string) => {
         setIsLoading(true);
         try {
-            // Read file and print it inside special tags to easily extract
             const script = `
 try:
  with open('${filename}','r') as f:
@@ -83,7 +85,6 @@ except Exception as e:
             const out = await runMicroPythonCommand(script);
             if (out.includes('====BEGIN====') && out.includes('====END====')) {
                 const content = out.split('====BEGIN====')[1].split('====END====')[0].replace(/^\n/, '').replace(/\n$/, '');
-                // Load into IDE with the correct content/type mapping
                 await createFile(filename, inferFileType(filename), null, content);
             }
         } catch (e) {
@@ -94,46 +95,84 @@ except Exception as e:
     };
 
     return (
-        <div className="w-full h-full flex flex-col bg-[#0f111a] border-r border-panel-border hide-scrollbar overflow-hidden">
-            {/* Header */}
-            <div className="h-8 flex items-center justify-between px-3 shrink-0 bg-[#1e293b]">
-                <div className="flex items-center text-emerald-400">
-                    <CircuitBoard size={14} className="mr-2" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Device Files</span>
-                </div>
-                <div className="flex space-x-1">
-                    <button onClick={fetchFiles} disabled={!isConnected || isLoading} className="p-1 rounded text-slate-500 hover:text-emerald-400 disabled:opacity-50 transition-colors" title="Refresh">
-                        <RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />
-                    </button>
+        <motion.div
+            className="flex h-full w-full flex-col overflow-hidden"
+            variants={fadeInUp}
+            initial="hidden"
+            animate="visible"
+        >
+            <div className="border-b border-[color:var(--ui-border-soft)] px-4 py-4">
+                <div className="flex items-center justify-between gap-3">
+                    <div>
+                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--ui-color-text-soft)]">
+                            <CircuitBoard size={13} className="text-[var(--ui-color-accent)]" />
+                            Device files
+                        </div>
+                    </div>
+                    <Button
+                        variant="secondary"
+                        icon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
+                        onClick={fetchFiles}
+                        disabled={!isConnected || isLoading}
+                        className="min-h-10 rounded-[16px] px-4 py-2 text-sm"
+                    >
+                        Refresh
+                    </Button>
                 </div>
             </div>
 
-            {/* File List */}
-            <div className="flex-1 overflow-y-auto py-1">
+            <div className="flex-1 overflow-y-auto px-4 py-4">
                 {!isConnected ? (
-                    <div className="px-3 py-4 text-xs text-slate-500 text-center">Connect board to view device files.</div>
+                    <div className="ui-quiet-surface rounded-[18px] px-4 py-5 text-sm text-[var(--ui-color-text-muted)]">
+                        Connect a board to browse device files.
+                    </div>
                 ) : compileStrategy !== 'micropython-flash' ? (
-                    <div className="px-3 py-4 text-xs text-slate-500 text-center">Device files are only supported on MicroPython boards.</div>
-                ) : files.length === 0 && !isLoading ? (
-                    <div className="px-3 py-2 text-xs text-slate-400 italic">No files on device...</div>
+                    <div className="ui-quiet-surface rounded-[18px] px-4 py-5 text-sm text-[var(--ui-color-text-muted)]">
+                        Device files are available on MicroPython workflows only.
+                    </div>
+                ) : isLoading ? (
+                    <div className="space-y-3">
+                        {[0, 1, 2].map((item) => (
+                            <div key={item} className="ui-elevated-surface rounded-[18px] px-4 py-4 animate-pulse">
+                                <div className="h-4 w-32 rounded-full bg-[color:var(--ui-border-strong)]" />
+                            </div>
+                        ))}
+                    </div>
+                ) : files.length === 0 ? (
+                    <div className="ui-quiet-surface rounded-[18px] px-4 py-5 text-sm text-[var(--ui-color-text-muted)]">
+                        No files found on the device yet.
+                    </div>
                 ) : (
-                    files.map((f, i) => (
-                        <div key={i} className="flex items-center justify-between py-1.5 px-3 hover:bg-slate-800/40 group transition-colors">
-                            <div className="flex items-center text-slate-300">
-                                <File size={14} className="mr-2 text-emerald-500/80" />
-                                <span className="text-sm truncate">{f.name}</span>
+                    <div className="space-y-3">
+                        {files.map((file) => (
+                            <div key={file.name} className="ui-elevated-surface flex items-center justify-between gap-3 rounded-[18px] px-4 py-4">
+                                <div className="flex min-w-0 items-center gap-3">
+                                    <div className="ui-icon-surface flex h-10 w-10 items-center justify-center rounded-[14px]">
+                                        <File size={16} />
+                                    </div>
+                                    <div className="min-w-0">
+                                        <p className="truncate text-sm font-semibold text-[var(--ui-color-text)]">{file.name}</p>
+                                        <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--ui-color-text-soft)]">
+                                            {file.isDir ? 'Folder' : 'File'}
+                                        </p>
+                                    </div>
+                                </div>
+
+                                {!file.isDir ? (
+                                    <Button
+                                        variant="secondary"
+                                        icon={<Download size={14} />}
+                                        onClick={() => handleReadFile(file.name)}
+                                        className="min-h-10 rounded-[16px] px-4 py-2 text-sm"
+                                    >
+                                        Import
+                                    </Button>
+                                ) : null}
                             </div>
-                            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                {!f.isDir && (
-                                    <button onClick={() => handleReadFile(f.name)} className="p-1 text-slate-400 hover:text-white" title="Download to Workspace">
-                                        <Download size={14} />
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    ))
+                        ))}
+                    </div>
                 )}
             </div>
-        </div>
+        </motion.div>
     );
 }

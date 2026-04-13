@@ -1,137 +1,206 @@
 "use client";
-import React, { useState } from 'react';
-import Link from 'next/link';
-import { Mail, Lock, ArrowRight } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { apiFetch, API_BASE_URL, safeJson } from '@/lib/api';
 
-export default function LoginPage() {
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [error, setError] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const { login } = useAuth();
-    const apiHealthUrl = API_BASE_URL + '/api/health';
-    const showApiHelp = error.toLowerCase().includes('authentication server') || error.toLowerCase().includes('api');
+import React, { useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Lock, Mail } from "lucide-react";
+import AuthPageShell from "@/components/auth/AuthPageShell";
+import { Button } from "@/components/ui/Button";
+import { StatusBanner } from "@/components/ui/StatusBanner";
+import { useAuth } from "@/contexts/AuthContext";
+import { apiFetch, API_BASE_URL, safeJson } from "@/lib/api";
+import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setIsLoading(true);
-
-        try {
-            const res = await apiFetch('/api/auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
-            });
-            const data = await safeJson<any>(res);
-
-            if (res.ok && data?.token && data?.user) {
-                login(data.token, data.user);
-            } else {
-                setError(data?.error || 'Login failed');
-            }
-        } catch (err) {
-            setError(`Could not connect to the authentication server at ${API_BASE_URL}.`);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    return (
-        <div className="min-h-screen w-full flex items-center justify-center bg-background relative overflow-hidden">
-            {/* Background Glows */}
-            <div className="absolute top-1/4 right-1/4 w-96 h-96 bg-accent/20 blur-[100px] rounded-full -z-10 animate-pulse"></div>
-            <div className="absolute bottom-1/4 left-1/4 w-96 h-96 bg-indigo-500/20 blur-[100px] rounded-full -z-10 animate-pulse delay-700"></div>
-
-            <div className="w-full max-w-md p-8 bg-panel border border-panel-border rounded-2xl shadow-2xl backdrop-blur-xl animate-in slide-in-from-bottom-8 duration-500">
-                <div className="text-center mb-8">
-                    <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">Welcome Back</h1>
-                    <p className="text-slate-400 text-sm">Sign in to EdTech OS to continue</p>
-                </div>
-
-                {error && (
-                    <div className="mb-6 p-3 bg-rose-500/10 border border-rose-500/20 rounded-lg text-rose-400 text-sm text-center">
-                        {error}
-                        {showApiHelp && (
-                            <div className="mt-2 flex flex-wrap items-center justify-center gap-2 text-xs text-rose-300">
-                                <span>Check API:</span>
-                                <a
-                                    href={apiHealthUrl}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="rounded-md border border-rose-400/40 px-2 py-0.5 text-rose-200 transition hover:border-rose-300 hover:text-rose-100"
-                                >
-                                    Open /api/health
-                                </a>
-                            </div>
-                        )}
-                    </div>
-                )}
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Email Address</label>
-                        <div className="relative group">
-                            <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-accent transition-colors" size={18} />
-                            <input
-                                type="email"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-slate-900/50 border border-panel-border rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-                                placeholder="you@edtech.local"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="space-y-1">
-                        <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider ml-1">Password</label>
-                        <div className="relative group">
-                            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-accent transition-colors" size={18} />
-                            <input
-                                type="password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="w-full bg-slate-900/50 border border-panel-border rounded-xl py-2.5 pl-10 pr-4 text-white focus:outline-none focus:ring-2 focus:ring-accent/50 focus:border-accent transition-all"
-                                placeholder="********"
-                            />
-                        </div>
-                    </div>
-
-                    <div className="flex items-center justify-between text-sm py-1">
-                        <label className="flex items-center space-x-2 cursor-pointer group">
-                            <input type="checkbox" className="rounded border-panel-border bg-slate-900 text-accent focus:ring-accent/50 cursor-pointer" />
-                            <span className="text-slate-400 group-hover:text-slate-300 transition-colors">Remember me</span>
-                        </label>
-                        <a href="#" className="text-accent hover:text-indigo-300 transition-colors font-medium">Forgot password?</a>
-                    </div>
-
-                    <button
-                        type="submit"
-                        disabled={isLoading}
-                        className={`w-full py-3 px-4 bg-accent hover:bg-accent-hover text-white font-bold rounded-xl shadow-[0_0_20px_rgba(99,102,241,0.3)] hover:shadow-[0_0_30px_rgba(99,102,241,0.5)] transition-all flex items-center justify-center space-x-2 group mt-2 ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
-                    >
-                        <span>{isLoading ? 'Signing In...' : 'Sign In'}</span>
-                        {!isLoading && <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />}
-                    </button>
-                </form>
-                <div className="mt-6 text-center text-xs text-slate-500">
-                    API endpoint: <span className="font-mono text-slate-400">{API_BASE_URL}</span>
-                </div>
-
-                <div className="mt-8 text-center text-sm text-slate-400">
-                    Don't have an account?{' '}
-                    <Link href="/register" className="text-accent hover:text-indigo-300 font-semibold transition-colors">
-                        Create one now
-                    </Link>
-                </div>
-            </div>
-        </div>
-    );
+function GoogleIcon() {
+  return (
+    <svg aria-hidden viewBox="0 0 24 24" className="h-[18px] w-[18px]">
+      <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.8 3.5 14.6 2.5 12 2.5A9.5 9.5 0 1 0 21.5 12c0-.6-.1-1.2-.2-1.8H12Z" />
+      <path fill="#34A853" d="M6 14.4 5.4 17l-2.6 2A9.4 9.4 0 0 1 2.5 12c0-2.4.9-4.5 2.3-6.1l2.3 1.7 1 2.4A5.7 5.7 0 0 0 6.2 12c0 .8.1 1.6.4 2.4Z" />
+      <path fill="#4A90E2" d="M12 21.5c2.6 0 4.8-.9 6.4-2.5l-3-2.3c-.8.6-1.9 1-3.4 1-2.5 0-4.7-1.7-5.4-4.1l-3.2 2.5A9.5 9.5 0 0 0 12 21.5Z" />
+      <path fill="#FBBC05" d="M6.6 13.6A5.7 5.7 0 0 1 6.2 12c0-.8.1-1.6.4-2.4L3.4 7.1A9.5 9.5 0 0 0 2.5 12c0 1.7.4 3.3 1 4.7l3.1-2.4Z" />
+    </svg>
+  );
 }
 
+export default function LoginPage() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const { login } = useAuth();
+  const apiHealthUrl = `${API_BASE_URL}/api/health`;
+  const normalizedError = error.toLowerCase();
+  const showApiHelp =
+    normalizedError.includes("authentication") ||
+    normalizedError.includes("server") ||
+    normalizedError.includes("service") ||
+    normalizedError.includes("api");
 
+  useEffect(() => {
+    if (typeof window === "undefined") return;
 
+    const nextNotice = window.sessionStorage.getItem("authNotice");
+    if (nextNotice) {
+      setInfoMessage(nextNotice);
+      window.sessionStorage.removeItem("authNotice");
+    }
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    setError("");
+    setIsGoogleLoading(true);
+
+    try {
+      const supabase = getSupabaseBrowserClient();
+      const redirectTo = new URL("/auth/callback", window.location.origin).toString();
+      const { error: oauthError } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo,
+        },
+      });
+
+      if (oauthError) {
+        setError(oauthError.message || "Google sign-in could not start. Try again.");
+        setIsGoogleLoading(false);
+      }
+    } catch (err) {
+      setError("Google sign-in is not configured yet. Add your Supabase keys and try again.");
+      setIsGoogleLoading(false);
+    }
+  };
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setIsLoading(true);
+
+    try {
+      const res = await apiFetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
+      });
+      const data = await safeJson<any>(res);
+
+      if (res.ok && data?.token && data?.user) {
+        login(data.token, data.user);
+      } else {
+        setError(data?.error || "Sign-in failed. Check your email and password, then try again.");
+      }
+    } catch (err) {
+      setError("Could not reach the sign-in service right now. Try again in a moment.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <AuthPageShell
+      title="Welcome back."
+      subtitle="Open your projects, return to lessons, and keep building from the same workspace."
+      formTitle="Sign in"
+      formSubtitle="Return to your studio"
+      helperTitle="Workspace access"
+      helperDescription="One sign-in keeps your circuit builds, code, and lessons together across the whole platform."
+      helperChips={["Saved projects", "Courses", "Simulator"]}
+      footer={
+        <p>
+          New here?{" "}
+          <Link href="/register" className="font-semibold text-[color:var(--ui-color-primary)] transition-colors hover:underline">
+            Create an account
+          </Link>
+        </p>
+      }
+    >
+      <div className="space-y-4">
+        {infoMessage ? <StatusBanner tone="info" appearance="immersive">{infoMessage}</StatusBanner> : null}
+        {error ? (
+          <StatusBanner
+            tone="error"
+            appearance="immersive"
+            title="We could not sign you in"
+            action={
+              showApiHelp ? (
+                <a
+                  href={apiHealthUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex items-center rounded-full border border-white/12 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.14em] text-white/72 transition-colors hover:border-white/20 hover:text-white"
+                >
+                  View API health
+                </a>
+              ) : null
+            }
+          >
+            {error}
+          </StatusBanner>
+        ) : null}
+
+        <div className="space-y-3">
+          <Button
+            type="button"
+            variant="inverse"
+            icon={<GoogleIcon />}
+            disabled={isGoogleLoading || isLoading}
+            fullWidth
+            className="min-h-[58px] rounded-[20px] border-white/12 bg-white/[0.05] text-white hover:bg-white/[0.09]"
+            onClick={() => void handleGoogleSignIn()}
+          >
+            {isGoogleLoading ? "Redirecting to Google..." : "Continue with Google"}
+          </Button>
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-[color:var(--ui-border-soft)]" />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--ui-color-text-soft)]">
+              Or continue with email
+            </span>
+            <div className="h-px flex-1 bg-[color:var(--ui-border-soft)]" />
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--ui-color-text-soft)]">Email address</label>
+            <div className="relative">
+              <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--ui-color-text-soft)]" size={18} />
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                className="h-[56px] w-full rounded-[20px] border border-[color:var(--ui-border-soft)] bg-[color:var(--ui-color-surface)] pl-12 pr-4 text-sm text-[color:var(--ui-color-text)] outline-none transition-colors placeholder:text-[color:var(--ui-color-text-soft)] focus:border-[color:var(--ui-color-primary)]"
+                placeholder="you@example.com"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-xs font-semibold uppercase tracking-[0.18em] text-[color:var(--ui-color-text-soft)]">Password</label>
+            <div className="relative">
+              <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-[color:var(--ui-color-text-soft)]" size={18} />
+              <input
+                type="password"
+                required
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                className="h-[56px] w-full rounded-[20px] border border-[color:var(--ui-border-soft)] bg-[color:var(--ui-color-surface)] pl-12 pr-4 text-sm text-[color:var(--ui-color-text)] outline-none transition-colors placeholder:text-[color:var(--ui-color-text-soft)] focus:border-[color:var(--ui-color-primary)]"
+                placeholder="Enter your password"
+              />
+            </div>
+          </div>
+
+          <Button
+            type="submit"
+            icon={<ArrowRight size={18} />}
+            disabled={isLoading || isGoogleLoading}
+            fullWidth
+            className="min-h-[58px] rounded-[20px] bg-[linear-gradient(135deg,#5cb2ff,#7b61ff)] text-white hover:bg-[linear-gradient(135deg,#56a7f0,#7157f5)]"
+          >
+            {isLoading ? "Signing in..." : "Sign in"}
+          </Button>
+        </form>
+      </div>
+    </AuthPageShell>
+  );
+}

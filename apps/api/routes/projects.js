@@ -4,6 +4,64 @@ const authMiddleware = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
+function getPathKey(parentId, name) {
+    return `${parentId || 'root'}::${name}`;
+}
+
+function normalizeIncomingProjectFile(rawFile) {
+    if (!rawFile || typeof rawFile.name !== 'string' || rawFile.name.trim().length === 0) {
+        return null;
+    }
+
+    return {
+        incomingId: typeof rawFile.id === 'string' && rawFile.id.trim().length > 0 ? rawFile.id : null,
+        name: rawFile.name.trim(),
+        type: typeof rawFile.type === 'string' && rawFile.type.trim().length > 0 ? rawFile.type.trim() : 'text',
+        content: typeof rawFile.content === 'string' ? rawFile.content : '',
+        parentId: typeof rawFile.parentId === 'string' && rawFile.parentId.trim().length > 0 ? rawFile.parentId : null,
+    };
+}
+
+function getIncomingDepth(file, incomingById, memo, trail = new Set()) {
+    const currentId = file.incomingId;
+    if (!currentId) return 0;
+    if (memo.has(currentId)) return memo.get(currentId);
+
+    if (!file.parentId || !incomingById.has(file.parentId) || trail.has(currentId)) {
+        memo.set(currentId, 0);
+        return 0;
+    }
+
+    trail.add(currentId);
+    const parent = incomingById.get(file.parentId);
+    const depth = 1 + getIncomingDepth(parent, incomingById, memo, trail);
+    trail.delete(currentId);
+    memo.set(currentId, depth);
+    return depth;
+}
+
+function removeFromPathIndex(index, file) {
+    const pathKey = getPathKey(file.parentId, file.name);
+    const bucket = index.get(pathKey);
+    if (!bucket) return;
+
+    const nextBucket = bucket.filter((entry) => entry.id !== file.id);
+    if (nextBucket.length > 0) {
+        index.set(pathKey, nextBucket);
+    } else {
+        index.delete(pathKey);
+    }
+}
+
+function addToPathIndex(index, file) {
+    const pathKey = getPathKey(file.parentId, file.name);
+    const bucket = index.get(pathKey) || [];
+    if (!bucket.some((entry) => entry.id === file.id)) {
+        bucket.push(file);
+        index.set(pathKey, bucket);
+    }
+}
+
 // Protect all project routes
 router.use(authMiddleware);
 
@@ -103,85 +161,98 @@ router.put('/:id', async (req, res) => {
             }
         });
 
-        // Bulk upsert files if provided
+        // Bulk upsert files and remove stale entries so reloads stay in sync.
         if (Array.isArray(files)) {
+            const incomingFiles = files
+                .map(normalizeIncomingProjectFile)
+                .filter(Boolean);
+            const incomingById = new Map(incomingFiles.filter((file) => file.incomingId).map((file) => [file.incomingId, file]));
+            const incomingDepthMemo = new Map();
+            const sortedIncomingFiles = [...incomingFiles].sort((left, right) => {
+                const depthDiff = getIncomingDepth(left, incomingById, incomingDepthMemo) - getIncomingDepth(right, incomingById, incomingDepthMemo);
+                if (depthDiff !== 0) return depthDiff;
+                if (left.type === 'folder' && right.type !== 'folder') return -1;
+                if (left.type !== 'folder' && right.type === 'folder') return 1;
+                return left.name.localeCompare(right.name);
+            });
+
             const existingFiles = await prisma.file.findMany({ where: { projectId } });
             const existingById = new Map(existingFiles.map((file) => [file.id, file]));
             const existingByPath = new Map();
+            const incomingToPersistedId = new Map();
+            const persistedIdsToKeep = new Set();
 
             for (const file of existingFiles) {
-                const pathKey = `${file.parentId || 'root'}::${file.name}`;
-                const bucket = existingByPath.get(pathKey) || [];
-                bucket.push(file);
-                existingByPath.set(pathKey, bucket);
+                addToPathIndex(existingByPath, file);
             }
 
-            for (const rawFile of files) {
-                if (!rawFile || typeof rawFile.name !== 'string' || rawFile.name.trim().length === 0) {
-                    continue;
-                }
-
-                const normalizedName = rawFile.name.trim();
-                const normalizedType = typeof rawFile.type === 'string' && rawFile.type.trim().length > 0
-                    ? rawFile.type.trim()
-                    : 'text';
-                const normalizedContent = typeof rawFile.content === 'string' ? rawFile.content : '';
-                const normalizedParentId = typeof rawFile.parentId === 'string' && rawFile.parentId.trim().length > 0
-                    ? rawFile.parentId
+            for (const incomingFile of sortedIncomingFiles) {
+                const resolvedParentId = incomingFile.parentId
+                    ? incomingToPersistedId.get(incomingFile.parentId) || (existingById.has(incomingFile.parentId) ? incomingFile.parentId : null)
                     : null;
-                const incomingId = typeof rawFile.id === 'string' ? rawFile.id : null;
-
                 let targetFile = null;
 
-                if (incomingId && existingById.has(incomingId)) {
-                    targetFile = existingById.get(incomingId);
+                if (incomingFile.incomingId) {
+                    const remappedId = incomingToPersistedId.get(incomingFile.incomingId);
+                    if (remappedId && existingById.has(remappedId)) {
+                        targetFile = existingById.get(remappedId);
+                    } else if (existingById.has(incomingFile.incomingId)) {
+                        targetFile = existingById.get(incomingFile.incomingId);
+                    }
                 }
 
-                // Fallback for temporary client IDs: match by logical path only when unique.
                 if (!targetFile) {
-                    const pathKey = `${normalizedParentId || 'root'}::${normalizedName}`;
-                    const pathMatches = existingByPath.get(pathKey) || [];
+                    const pathMatches = existingByPath.get(getPathKey(resolvedParentId, incomingFile.name)) || [];
                     if (pathMatches.length === 1) {
                         targetFile = pathMatches[0];
                     }
                 }
 
                 if (targetFile) {
+                    removeFromPathIndex(existingByPath, targetFile);
                     const updated = await prisma.file.update({
                         where: { id: targetFile.id },
                         data: {
-                            name: normalizedName,
-                            type: normalizedType,
-                            content: normalizedContent,
-                            parentId: normalizedParentId
+                            name: incomingFile.name,
+                            type: incomingFile.type,
+                            content: incomingFile.content,
+                            parentId: resolvedParentId
                         }
                     });
 
                     existingById.set(updated.id, updated);
-                    const pathKey = `${updated.parentId || 'root'}::${updated.name}`;
-                    const bucket = existingByPath.get(pathKey) || [];
-                    if (!bucket.some((file) => file.id === updated.id)) {
-                        bucket.push(updated);
-                        existingByPath.set(pathKey, bucket);
+                    addToPathIndex(existingByPath, updated);
+                    persistedIdsToKeep.add(updated.id);
+                    if (incomingFile.incomingId) {
+                        incomingToPersistedId.set(incomingFile.incomingId, updated.id);
                     }
-                } else {
-                    const created = await prisma.file.create({
-                        data: {
-                            projectId,
-                            name: normalizedName,
-                            type: normalizedType,
-                            content: normalizedContent,
-                            parentId: normalizedParentId
-                        }
-                    });
+                    continue;
+                }
 
-                    existingById.set(created.id, created);
-                    const pathKey = `${created.parentId || 'root'}::${created.name}`;
-                    const bucket = existingByPath.get(pathKey) || [];
-                    bucket.push(created);
-                    existingByPath.set(pathKey, bucket);
+                const created = await prisma.file.create({
+                    data: {
+                        projectId,
+                        name: incomingFile.name,
+                        type: incomingFile.type,
+                        content: incomingFile.content,
+                        parentId: resolvedParentId
+                    }
+                });
+
+                existingById.set(created.id, created);
+                addToPathIndex(existingByPath, created);
+                persistedIdsToKeep.add(created.id);
+                if (incomingFile.incomingId) {
+                    incomingToPersistedId.set(incomingFile.incomingId, created.id);
                 }
             }
+
+            await prisma.file.deleteMany({
+                where: {
+                    projectId,
+                    id: { notIn: Array.from(persistedIdsToKeep) }
+                }
+            });
         }
 
         res.status(200).json({ message: 'Project saved successfully', projectId });
@@ -213,4 +284,3 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
-
