@@ -9,7 +9,6 @@ import {
   type ComponentData,
   type NetData,
   type CircuitData,
-  type CircuitSimulationState,
 } from '@/contexts/CircuitContext';
 import { getNetFromNodeId, getNetToNodeId } from '@/lib/circuit/netData';
 import type { MountedPlacement } from '@/lib/wiring/mountingTypes';
@@ -21,7 +20,6 @@ interface CircuitStoreState {
   netlist: CircuitNetlist;
   resolvedConnections: Record<string, ComponentPinMapping>;
   codingSnapshot: CodingCircuitSnapshot;
-  simulationState: CircuitSimulationState;
   selectedComponentId: string | null;
 }
 
@@ -40,8 +38,6 @@ interface CircuitStoreActions {
   clearCircuit: () => void;
   rotateComponent: (id: string) => void;
   selectComponent: (id: string | null) => void;
-  setSimulationState: (patch: Partial<CircuitSimulationState>) => void;
-  resetSimulationState: () => void;
   undo: () => void;
   redo: () => void;
 }
@@ -54,21 +50,6 @@ interface HistoryState {
 export type CircuitStore = CircuitStoreState & CircuitStoreActions & HistoryState;
 
 const emptyNetlist: CircuitNetlist = { nets: [] };
-const defaultSimulationState: CircuitSimulationState = {
-  running: false,
-  ready: false,
-  error: null,
-  digitalPins: {},
-  pulseWidths: {},
-  analogPins: {},
-  netStates: {},
-  electricalPins: {},
-  pinDetails: {},
-  busEvents: [],
-  traceEvents: [],
-  warnings: [],
-  capabilities: null,
-};
 
 function deriveCircuit(components: ComponentData[], nets: NetData[]) {
   const netlist = NetlistEngine.generateNetlist(components, nets);
@@ -123,7 +104,6 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
   netlist: emptyNetlist,
   resolvedConnections: {},
   codingSnapshot: EMPTY_CODING_CIRCUIT_SNAPSHOT,
-  simulationState: defaultSimulationState,
   selectedComponentId: null,
   past: [],
   future: [],
@@ -323,29 +303,6 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
 
   selectComponent: (id) => set({ selectedComponentId: id }),
 
-  setSimulationState: (patch) =>
-    set((state) => ({
-      simulationState: {
-        ...state.simulationState,
-        ...patch,
-        digitalPins: patch.digitalPins ?? state.simulationState.digitalPins,
-        pulseWidths: patch.pulseWidths ?? state.simulationState.pulseWidths,
-        analogPins: patch.analogPins ?? state.simulationState.analogPins,
-        netStates: patch.netStates ?? state.simulationState.netStates,
-        electricalPins: patch.electricalPins ?? state.simulationState.electricalPins,
-        pinDetails: patch.pinDetails ?? state.simulationState.pinDetails,
-        busEvents: patch.busEvents ?? state.simulationState.busEvents,
-        traceEvents: patch.traceEvents ?? state.simulationState.traceEvents,
-        warnings: patch.warnings ?? state.simulationState.warnings,
-        capabilities: patch.capabilities ?? state.simulationState.capabilities,
-      },
-    })),
-
-  resetSimulationState: () =>
-    set({
-      simulationState: defaultSimulationState,
-    }),
-
   undo: () =>
     set((state) => {
       if (state.past.length === 0) {
@@ -378,6 +335,3 @@ export const useCircuitStore = create<CircuitStore>((set) => ({
       };
     }),
 }));
-
-
-

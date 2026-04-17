@@ -10,8 +10,12 @@
         "start": "next start",
         "lint": "eslint",
         "validate:blockly-generators": "node scripts/validate-blockly-generators.mjs",
-        "test": "npm run validate:blockly-generators",
-        "start:stable": "npm run build && next start"
+        "test": "npm run validate:blockly-generators && npm run validate:circuit-metadata && npm run validate:circuit-lab",
+        "test:smoke": "playwright test",
+        "start:stable": "npm run build && next start",
+        "generate:circuit-metadata": "node scripts/generate-circuit-component-metadata.mjs",
+        "validate:circuit-metadata": "node scripts/validate-circuit-component-metadata.mjs",
+        "validate:circuit-lab": "node scripts/validate-circuit-lab.mjs"
     },
     "dependencies": {
         "@monaco-editor/react": "^4.7.0",
@@ -34,6 +38,7 @@
         "zustand": "^5.0.12"
     },
     "devDependencies": {
+        "@playwright/test": "^1.51.1",
         "@tailwindcss/postcss": "^4",
         "@types/dom-serial": "^1.0.6",
         "@types/node": "^20",

@@ -1,4 +1,5 @@
 import { apiFetch, safeJson } from '@/lib/api';
+import { CompileToHexError, extractCompileFeedback } from './compileFeedback';
 
 interface CompileHexResponse {
   success?: boolean;
@@ -25,7 +26,9 @@ export async function compileToHex(cppCode: string, board = 'Arduino Uno'): Prom
   const data = await safeJson<CompileHexResponse>(response);
 
   if (!response.ok || !data?.success) {
-    throw new Error(data?.log || `Compilation failed (${response.status}).`);
+    throw new CompileToHexError(
+      extractCompileFeedback(data?.log, data?.log ? 'Compilation failed.' : `Compilation failed (${response.status}).`)
+    );
   }
 
   if (typeof data.hex === 'string' && data.hex.trim().length > 0) {

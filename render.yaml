@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: sticialstudio-api
+    runtime: node
+    plan: starter
+    healthCheckPath: /api/health
+    buildCommand: npm ci && npm --workspace packages/database run db:generate && npm --workspace packages/database run build
+    startCommand: node apps/api/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        value: file:/var/data/dev.db
+      - key: JWT_SECRET
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_SUPABASE_ANON_KEY
+        sync: false
+    disk:
+      name: api-data
+      mountPath: /var/data
+      sizeGB: 1

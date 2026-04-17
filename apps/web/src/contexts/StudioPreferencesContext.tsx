@@ -20,7 +20,7 @@ interface StudioPreferencesContextValue extends StudioPreferencesState {
 const STORAGE_KEY = "edtech-studio-preferences";
 const DEFAULT_PREFERENCES: StudioPreferencesState = {
   autoSave: false,
-  showAdvancedBlocks: true,
+  showAdvancedBlocks: false,
 };
 
 const StudioPreferencesContext = createContext<StudioPreferencesContextValue | undefined>(undefined);

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
@@ -50,7 +50,7 @@ export default function RegisterPage() {
       const data = await safeJson<any>(res);
 
       if (res.ok && data?.token && data?.user) {
-        login(data.token, data.user);
+        await login(data.token, data.user);
       } else {
         setError(data?.error || "Registration failed. Review your details and try again.");
       }
@@ -183,3 +183,4 @@ export default function RegisterPage() {
     </AuthPageShell>
   );
 }
+

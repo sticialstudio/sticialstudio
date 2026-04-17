@@ -104,7 +104,7 @@ const blocklyThemePalette: Record<ThemeMode, { componentStyles: Blockly.Theme.Co
       scrollbarOpacity: 0.52,
       cursorColour: '#3047A6',
     },
-    gridColour: 'rgba(48, 71, 166, 0.08)',
+    gridColour: 'rgba(48, 71, 166, 0.24)',
   },
   dark: {
     componentStyles: {
@@ -120,7 +120,7 @@ const blocklyThemePalette: Record<ThemeMode, { componentStyles: Blockly.Theme.Co
       scrollbarOpacity: 0.55,
       cursorColour: '#7F96FF',
     },
-    gridColour: 'rgba(148, 163, 255, 0.08)',
+    gridColour: 'rgba(181, 165, 255, 0.32)',
   },
   magma: {
     componentStyles: {
@@ -136,7 +136,7 @@ const blocklyThemePalette: Record<ThemeMode, { componentStyles: Blockly.Theme.Co
       scrollbarOpacity: 0.55,
       cursorColour: '#F97316',
     },
-    gridColour: 'rgba(249, 115, 22, 0.09)',
+    gridColour: 'rgba(249, 115, 22, 0.26)',
   },
 };
 
@@ -191,3 +191,4 @@ export function getBlocklyGridColor(theme: ThemeMode) {
 }
 
 export const edtechTheme = blocklyThemes.dark;
+

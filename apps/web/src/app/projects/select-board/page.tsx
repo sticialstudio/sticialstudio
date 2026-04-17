@@ -5,10 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { CircuitBoard, Cpu, Microchip, Search, Sparkles } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
-import { useBoard, type BoardKey } from "@/contexts/BoardContext";
+import { useBoard, type BoardKey, type CodingMode, type HardwareEnvironment } from "@/contexts/BoardContext";
 import { useProject } from "@/contexts/ProjectContext";
 import { BOARD_CONFIG } from "@/lib/boards/boardConfig";
-import { writePendingProjectIntent } from "@/lib/projects/projectFlow";
+
 import { Card } from "@/components/ui/Card";
 
 type FamilyFilter = "all" | "arduino" | "esp" | "raspberry";
@@ -29,36 +29,92 @@ const familyIcon = {
 function SelectBoardContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { codingMode, setCodingMode, environment, setEnvironment, setLanguage, setGenerator, setCurrentBoard } = useBoard();
+  const {
+    codingMode,
+    environment,
+    language,
+    generator,
+    hasHydrated,
+    setCodingMode,
+    setEnvironment,
+    setLanguage,
+    setGenerator,
+    setCurrentBoard,
+    setPendingProjectIntent,
+  } = useBoard();
   const { setProjectId } = useProject();
   const [search, setSearch] = useState("");
   const [activeFilter, setActiveFilter] = useState<FamilyFilter>("all");
 
-  const entry = searchParams?.get("entry");
+  const entry = searchParams?.get("entry") ?? "";
+  const modeParam = searchParams?.get("mode");
+  const languageParam = searchParams?.get("language");
+  const environmentParam = searchParams?.get("environment");
+
   const isDirectBlockEntry = entry === "block-home";
   const isDirectTextEntry = entry === "text-home";
   const isCircuitEntry = entry === "circuit-lab";
   const isVirtualEntry = entry === "virtual";
   const isDirectHomeEntry = isDirectBlockEntry || isDirectTextEntry;
-  const isVirtualFlow = isCircuitEntry || isVirtualEntry || environment === "virtual";
+
+  const resolvedMode: CodingMode = isDirectBlockEntry
+    ? "block"
+    : isDirectTextEntry
+      ? "text"
+      : modeParam === "block" || modeParam === "text"
+        ? modeParam
+        : codingMode;
+
+  const resolvedEnvironment: HardwareEnvironment = isCircuitEntry || isVirtualEntry || environmentParam === "virtual"
+    ? "virtual"
+    : environmentParam === "physical"
+      ? "physical"
+      : environment ?? "physical";
+
+  const isVirtualFlow = resolvedEnvironment === "virtual";
 
   useEffect(() => {
-    if (isDirectBlockEntry) {
-      if (environment !== "physical") setEnvironment("physical");
-      if (codingMode !== "block") setCodingMode("block");
+    if (!hasHydrated) {
       return;
     }
 
-    if (isDirectTextEntry) {
-      if (environment !== "physical") setEnvironment("physical");
-      if (codingMode !== "text") setCodingMode("text");
+    if (!isDirectHomeEntry && !resolvedMode) {
+      const params = new URLSearchParams({ environment: resolvedEnvironment });
+      router.replace(`/projects/select-mode?${params.toString()}`);
       return;
     }
 
-    if ((isCircuitEntry || isVirtualEntry) && environment !== "virtual") {
-      setEnvironment("virtual");
+    if (environment !== resolvedEnvironment) {
+      setEnvironment(resolvedEnvironment);
     }
-  }, [codingMode, environment, isCircuitEntry, isVirtualEntry, isDirectBlockEntry, isDirectTextEntry, setCodingMode, setEnvironment]);
+
+    if (resolvedMode && codingMode !== resolvedMode) {
+      setCodingMode(resolvedMode);
+    }
+
+    if (languageParam === "cpp") {
+      if (language !== "cpp") setLanguage("cpp");
+      if (generator !== "arduino") setGenerator("arduino");
+    } else if (languageParam === "python") {
+      if (language !== "python") setLanguage("python");
+      if (generator !== "micropython") setGenerator("micropython");
+    }
+  }, [
+    codingMode,
+    environment,
+    generator,
+    hasHydrated,
+    isDirectHomeEntry,
+    language,
+    languageParam,
+    resolvedEnvironment,
+    resolvedMode,
+    router,
+    setCodingMode,
+    setEnvironment,
+    setGenerator,
+    setLanguage,
+  ]);
 
   const availableBoards = useMemo(() => {
     return Object.entries(BOARD_CONFIG) as [BoardKey, (typeof BOARD_CONFIG)[BoardKey]][];
@@ -89,7 +145,7 @@ function SelectBoardContent() {
 
   const nextMessage = isVirtualFlow
     ? "Open the workspace in Circuit Lab and start building."
-    : codingMode === "text"
+    : resolvedMode === "text"
       ? "Open the editor with the language that matches this board."
       : "Open Blockly directly and start building with blocks.";
 
@@ -98,26 +154,40 @@ function SelectBoardContent() {
 
     setProjectId(null);
     setCurrentBoard(board);
+    setEnvironment(resolvedEnvironment);
 
-    // For the virtual flow the user already chose their language on the language page.
-    // Only overwrite language/generator when coming from a direct home or physical flow
-    // where no explicit choice was made yet.
-    if (!isVirtualEntry) {
+    if (resolvedMode) {
+      setCodingMode(resolvedMode);
+    }
+
+    if (languageParam === "cpp") {
+      setLanguage("cpp");
+      setGenerator("arduino");
+    } else if (languageParam === "python") {
+      setLanguage("python");
+      setGenerator("micropython");
+    } else if (!isVirtualEntry) {
       setLanguage(config.language);
       setGenerator(config.generator);
     }
 
-    writePendingProjectIntent({ source: "wizard" });
+    setPendingProjectIntent({ source: "wizard" });
     router.push("/projects/ide");
   };
 
   const backHref = isDirectHomeEntry
     ? "/"
     : isVirtualEntry
-      ? `/projects/select-language?mode=${codingMode ?? "block"}&entry=virtual`
+      ? `/projects/select-language?mode=${resolvedMode ?? "block"}&entry=virtual&environment=virtual`
       : isCircuitEntry
-        ? "/projects/select-mode?entry=circuit-lab"
-        : "/projects/select-mode";
+        ? "/projects/select-mode?entry=circuit-lab&environment=virtual"
+        : resolvedMode === "text"
+          ? `/projects/select-language?mode=text&environment=${resolvedEnvironment}`
+          : `/projects/select-mode?environment=${resolvedEnvironment}`;
+
+  if (!hasHydrated) {
+    return null;
+  }
 
   return (
     <MainLayout>
@@ -188,7 +258,6 @@ function SelectBoardContent() {
                     image={config.image}
                     onClick={() => handleBoardSelect(boardName)}
                     className="h-full"
-
                     footer={
                       <div className="flex flex-wrap gap-2">
                         <span className="inline-flex rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/58">
@@ -219,3 +288,5 @@ export default function SelectBoardPage() {
     </Suspense>
   );
 }
+
+

@@ -1,4 +1,4 @@
-﻿import { type CircuitData, type CircuitSimulationState } from '@/contexts/CircuitContext';
+import { type CircuitData, type CircuitSimulationState } from '@/contexts/CircuitContext';
 import { getNetFromAnchorId, getNetFromNodeId, getNetToAnchorId, getNetToNodeId } from '@/lib/circuit/netData';
 import {
   getBreadboardContinuityGroups,
@@ -20,8 +20,10 @@ import { isComponentPowered, isGroundPinId, normalizeConnectedBoardPin } from '@
 import { createBoardNodeId } from '@/lib/wiring/boardNodes';
 import type { CircuitNetlist, ComponentPinMapping } from '@/lib/wiring/NetlistEngine';
 import type { LogicalNetState } from '@/lib/simulator/simulationTypes';
+import { getComponentVisualState } from '@/lib/simulator/componentVisualState';
 
 import type { SceneGraph, WorldComponentNode, WorldPinNode, WorldWireNode } from './sceneTypes';
+import { calculateRenderedWirePoints } from './wireBundles';
 import { buildWireRoutePoints, getWireHandles } from './wireRouting';
 
 const UNO_DEFINITION = getComponentDefinition('ARDUINO_UNO');
@@ -32,6 +34,11 @@ const LEGACY_UNO_ANCHOR_IDS: Record<string, string> = {
   'UNO_RESET.1': 'UNO_RESET',
 };
 const SUPPLY_PINS = new Set(['5V', '3.3V', '3V3', 'VIN', 'IOREF']);
+
+type SceneSimulationState = Pick<
+  CircuitSimulationState,
+  'running' | 'ready' | 'digitalPins' | 'netStates' | 'componentVisuals'
+>;
 
 function formatBoardPinLabel(pinId: string) {
   const pin = UNO_DEFINITION?.pins.find((candidate) => candidate.id === pinId);
@@ -74,7 +81,7 @@ function inferPinType(pinType: CircuitPinType | undefined): CircuitPinType | 'br
   return pinType ?? 'breadboard';
 }
 
-function buildNodeSignalStateMap(netlist: CircuitNetlist, simulationState: CircuitSimulationState) {
+function buildNodeSignalStateMap(netlist: CircuitNetlist, simulationState: Pick<CircuitSimulationState, 'netStates'>) {
   const nodeStates = new Map<string, LogicalNetState>();
 
   netlist.nets.forEach((net) => {
@@ -128,7 +135,7 @@ function getBoardPinSignalState(
   pinId: string,
   nodeId: string,
   nodeSignalStates: Map<string, LogicalNetState>,
-  simulationState: CircuitSimulationState
+  simulationState: Pick<CircuitSimulationState, 'digitalPins'>
 ) {
   const nodeState = nodeSignalStates.get(nodeId);
   if (nodeState) {
@@ -195,7 +202,7 @@ export interface BuildSceneOptions {
 
 export function buildSceneGraph(
   circuitData: CircuitData,
-  simulationState: CircuitSimulationState,
+  simulationState: SceneSimulationState,
   netlist: CircuitNetlist,
   resolvedConnections: Record<string, ComponentPinMapping>,
   options: BuildSceneOptions = {}
@@ -278,6 +285,7 @@ export function buildSceneGraph(
     const normalizedType = normalizeComponentType(component.type);
     const renderedSize = getRenderedSize(definition.size);
     const componentPins: WorldPinNode[] = [];
+    const visualState = getComponentVisualState(effectiveComponent, simulationState);
 
     if (normalizedType === 'ARDUINO_UNO') {
       definition.pins.forEach((pinDefinition) => {
@@ -331,12 +339,13 @@ export function buildSceneGraph(
 
     const isPowered = normalizedType === 'ARDUINO_UNO'
       ? Boolean(simulationState.ready || simulationState.running)
-      : Boolean(effectiveComponent.state?.outputHigh) || isComponentPowered(component.type, resolvedConnections[component.id], simulationState);
+      : Boolean(visualState.outputHigh) || isComponentPowered(component.type, resolvedConnections[component.id], simulationState);
 
     components.push({
       id: component.id,
       component: effectiveComponent,
       definition,
+      visualState,
       position: { x: effectiveComponent.x, y: effectiveComponent.y },
       rotation: effectiveComponent.rotation || 0,
       size: renderedSize,
@@ -381,6 +390,8 @@ export function buildSceneGraph(
         toPoint: toPin.position,
         color: net.color,
         points,
+        renderedPoints: points,
+        interactionPoints: points,
         waypoints,
         bendHandles: getWireHandles(net.id, fromPin.position, toPin.position, waypoints),
         isActive: signalState === 'HIGH',
@@ -393,12 +404,26 @@ export function buildSceneGraph(
     })
     .filter((wire): wire is WorldWireNode => Boolean(wire));
 
+  const renderedWirePoints = calculateRenderedWirePoints(
+    wires.map((wire) => ({ id: wire.id, points: wire.points }))
+  );
+  const finalizedWires = wires.map((wire) => {
+    const renderedPoints = renderedWirePoints.get(wire.id) ?? wire.points;
+    const interactionPoints = wire.isSelected ? wire.points : renderedPoints;
+
+    return {
+      ...wire,
+      renderedPoints,
+      interactionPoints,
+    };
+  });
+
   const componentById = components.reduce<Record<string, WorldComponentNode>>((record, component) => {
     record[component.id] = component;
     return record;
   }, {});
 
-  const wireById = wires.reduce<Record<string, WorldWireNode>>((record, wire) => {
+  const wireById = finalizedWires.reduce<Record<string, WorldWireNode>>((record, wire) => {
     record[wire.id] = wire;
     return record;
   }, {});
@@ -406,7 +431,7 @@ export function buildSceneGraph(
   return {
     components,
     pins,
-    wires,
+    wires: finalizedWires,
     componentById,
     pinById,
     pinsByNodeId,

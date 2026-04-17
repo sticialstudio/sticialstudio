@@ -1,44 +1,36 @@
 "use client";
 
-import React, { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useAuth } from "./AuthContext";
 import { useBoard } from "./BoardContext";
 import { apiFetch, safeJson } from "@/lib/api";
-import { parseProjectMeta, serializeProjectMeta } from "@/lib/projects/projectMeta";
+import { parseProjectMeta } from "@/lib/projects/projectMeta";
+import {
+  buildProjectPayload,
+  getStoredActiveProjectId,
+  mergeCircuitFileIntoProjectFiles,
+  persistActiveProjectId,
+  resolveProjectFilesState,
+  type PersistedProjectRecord,
+  UNTITLED_PROJECT_NAME,
+} from "@/lib/projects/projectPersistence";
+import { useCircuitStore } from "@/stores/circuitStore";
+import { useEditorStore, type FileItem } from "@/stores/editorStore";
 
-export interface FileItem {
-  id: string;
-  name: string;
-  content: string;
-  type: string;
-  parentId: string | null;
-}
+export type { FileItem } from "@/stores/editorStore";
 
 export interface ProjectContextValue {
   projectId: string | null;
   setProjectId: (id: string | null) => void;
   projectName: string;
   setProjectName: (name: string) => void;
-  files: FileItem[];
-  activeFileId: string | null;
-  setActiveFileId: (id: string | null) => void;
-  updateFileContent: (id: string, newContent: string) => void;
+  hasLoadedProjectFiles: boolean;
   refreshProjectFiles: () => Promise<void>;
-  createFile: (name: string, type: string, parentId?: string | null, content?: string) => Promise<void>;
   saveProject: () => Promise<void>;
-  bootstrapOfflineFiles: (sourceFileName: string, language: string, defaultCode?: string) => void;
-  hasUnsavedChanges: boolean;
-  setHasUnsavedChanges: (val: boolean) => void;
+  saveAsProject: (name: string) => Promise<string>;
 }
 
 const ProjectContext = createContext<ProjectContextValue | undefined>(undefined);
-
-function getPreferredSourceFileName(language: string | null, generator: string | null) {
-  if (language === "python" || generator === "micropython") {
-    return "main.py";
-  }
-  return "main.cpp";
-}
 
 function stashWorkspaceNotice(message: string) {
   if (typeof window === "undefined") return;
@@ -46,16 +38,11 @@ function stashWorkspaceNotice(message: string) {
 }
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
-  const [projectId, setProjectIdState] = useState<string | null>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("activeProjectId");
-    }
-    return null;
-  });
-  const [projectNameState, setProjectNameState] = useState("Untitled Project");
-  const [files, setFiles] = useState<FileItem[]>([]);
-  const [activeFileId, setActiveFileId] = useState<string | null>(null);
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [projectId, setProjectIdState] = useState<string | null>(() => getStoredActiveProjectId());
+  const [projectNameState, setProjectNameState] = useState(UNTITLED_PROJECT_NAME);
+  const [hasLoadedProjectFiles, setHasLoadedProjectFiles] = useState(() => !getStoredActiveProjectId());
+  const filesRef = useRef<FileItem[]>(useEditorStore.getState().files);
+  const activeFileIdRef = useRef<string | null>(useEditorStore.getState().activeFileId);
   const { token } = useAuth();
   const {
     currentBoard,
@@ -70,30 +57,85 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setEnvironment,
   } = useBoard();
 
+  useEffect(() => {
+    const unsubscribe = useEditorStore.subscribe((state) => {
+      filesRef.current = state.files;
+      activeFileIdRef.current = state.activeFileId;
+    });
+
+    return unsubscribe;
+  }, []);
+
+  const applyProjectMetaToBoardContext = useCallback(
+    (projectRecord: PersistedProjectRecord) => {
+      const projectMeta = parseProjectMeta(projectRecord);
+      if (!projectMeta) {
+        return { language, generator };
+      }
+
+      if (projectMeta.board !== currentBoard) setCurrentBoard(projectMeta.board as any);
+      if (projectMeta.mode !== codingMode) setCodingMode(projectMeta.mode);
+      if (projectMeta.language !== language) setLanguage(projectMeta.language);
+      if (projectMeta.generator !== generator) setGenerator(projectMeta.generator);
+      if (projectMeta.environment && projectMeta.environment !== environment) setEnvironment(projectMeta.environment);
+
+      return {
+        language: projectMeta.language ?? language,
+        generator: projectMeta.generator ?? generator,
+      };
+    },
+    [codingMode, currentBoard, environment, generator, language, setCodingMode, setCurrentBoard, setEnvironment, setGenerator, setLanguage],
+  );
+
+  const buildCurrentProjectFiles = useCallback(
+    () =>
+      mergeCircuitFileIntoProjectFiles({
+        files: filesRef.current,
+        environment,
+        circuitData: {
+          components: useCircuitStore.getState().components,
+          nets: useCircuitStore.getState().nets,
+        },
+      }),
+    [environment],
+  );
+
+  const buildCurrentProjectPayload = useCallback(
+    () =>
+      buildProjectPayload({
+        projectName: projectNameState,
+        files: buildCurrentProjectFiles(),
+        meta: {
+          board: currentBoard,
+          mode: codingMode ?? "block",
+          language,
+          generator,
+          environment,
+        },
+      }),
+    [buildCurrentProjectFiles, codingMode, currentBoard, environment, generator, language, projectNameState],
+  );
+
   const setProjectId = useCallback((id: string | null) => {
     setProjectIdState(id);
+    setHasLoadedProjectFiles(!id);
     if (!id) {
-      setProjectNameState("Untitled Project");
-      setFiles([]);
-      setActiveFileId(null);
+      setProjectNameState(UNTITLED_PROJECT_NAME);
+      useEditorStore.getState().resetEditorState();
     }
 
-    if (typeof window !== "undefined") {
-      if (id) {
-        localStorage.setItem("activeProjectId", id);
-      } else {
-        localStorage.removeItem("activeProjectId");
-      }
-    }
+    persistActiveProjectId(id);
   }, []);
 
   const setProjectName = useCallback((name: string) => {
     setProjectNameState(name);
-    setHasUnsavedChanges(true);
+    useEditorStore.getState().setHasUnsavedChanges(true);
   }, []);
 
   const refreshProjectFiles = useCallback(async () => {
     if (!projectId || !token) return;
+
+    setHasLoadedProjectFiles(false);
 
     try {
       const res = await apiFetch(`/api/projects/${projectId}`, {
@@ -109,137 +151,48 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
               : "That project is no longer available. Open another project or start a new one."
           );
           setProjectId(null);
+          setHasLoadedProjectFiles(true);
         } else {
           console.error("[ProjectContext] Unexpected error fetching project. Status:", res.status);
+          setHasLoadedProjectFiles(true);
         }
         return;
       }
 
-      const data = await safeJson<any>(res);
-      const projectFiles: FileItem[] = Array.isArray(data?.files) ? data.files : [];
-      const incomingProjectName = typeof data?.name === "string" && data.name.trim().length > 0 ? data.name : "Untitled Project";
-      const projectMeta = parseProjectMeta(data?.description);
-      const resolvedLanguage = projectMeta?.language ?? language;
-      const resolvedGenerator = projectMeta?.generator ?? generator;
-
-      if (projectMeta) {
-        if (projectMeta.board !== currentBoard) setCurrentBoard(projectMeta.board as any);
-        if (projectMeta.mode !== codingMode) setCodingMode(projectMeta.mode);
-        if (projectMeta.language !== language) setLanguage(projectMeta.language);
-        if (projectMeta.generator !== generator) setGenerator(projectMeta.generator);
-        if (projectMeta.environment && projectMeta.environment !== environment) setEnvironment(projectMeta.environment);
-      }
-
-      setProjectNameState(incomingProjectName);
-      setFiles(projectFiles);
-
-      if (projectFiles.length === 0) {
-        const virtualId = `virtual-${Date.now()}`;
-        setProjectNameState(incomingProjectName);
-        setFiles([{ id: virtualId, name: getPreferredSourceFileName(resolvedLanguage, resolvedGenerator), type: getPreferredSourceFileName(resolvedLanguage, resolvedGenerator) === "main.py" ? "python" : "cpp", content: "", parentId: null }]);
-        setActiveFileId(virtualId);
-        setHasUnsavedChanges(true);
-        return;
-      }
-
-      const preferredSourceFileName = getPreferredSourceFileName(resolvedLanguage, resolvedGenerator);
-
-      setActiveFileId((prev) => {
-        if (prev && projectFiles.some((file) => file.id === prev && file.type !== "folder")) {
-          return prev;
-        }
-
-        const preferredFile = projectFiles.find((file) => file.name === preferredSourceFileName && file.type !== "folder");
-        if (preferredFile) {
-          return preferredFile.id;
-        }
-
-        const firstCodeFile = projectFiles.find((file) => file.type !== "folder" && file.name !== "main.blockly");
-        if (firstCodeFile) {
-          return firstCodeFile.id;
-        }
-
-        const firstFile = projectFiles.find((file) => file.type !== "folder");
-        return firstFile ? firstFile.id : prev;
+      const data = await safeJson<PersistedProjectRecord | null>(res);
+      const resolvedMeta = applyProjectMetaToBoardContext(data ?? {});
+      const nextProjectState = resolveProjectFilesState({
+        record: data,
+        currentFiles: filesRef.current,
+        currentActiveFileId: activeFileIdRef.current,
+        language: resolvedMeta.language,
+        generator: resolvedMeta.generator,
       });
+
+      setProjectNameState(nextProjectState.projectName);
+
+      if (nextProjectState.fallbackFile) {
+        useEditorStore.getState().setFiles([nextProjectState.fallbackFile]);
+        useEditorStore.getState().setActiveFileId(nextProjectState.nextActiveFileId);
+        useEditorStore.getState().setHasUnsavedChanges(true);
+        setHasLoadedProjectFiles(true);
+        return;
+      }
+
+      useEditorStore.getState().setFiles(nextProjectState.projectFiles);
+      useEditorStore.getState().setActiveFileId(nextProjectState.nextActiveFileId);
+      setHasLoadedProjectFiles(true);
     } catch (error) {
       console.error("Failed to fetch project files:", error);
+      setHasLoadedProjectFiles(true);
     }
-  }, [codingMode, currentBoard, environment, generator, language, projectId, setCodingMode, setCurrentBoard, setEnvironment, setGenerator, setLanguage, setProjectId, token]);
+  }, [applyProjectMetaToBoardContext, projectId, setProjectId, token]);
 
   useEffect(() => {
     queueMicrotask(() => {
       void refreshProjectFiles();
     });
-  }, [refreshProjectFiles]);
-
-  const updateFileContent = useCallback((id: string, newContent: string) => {
-    setFiles((prevFiles) => {
-      let changed = false;
-
-      const nextFiles = prevFiles.map((file) => {
-        if (file.id !== id) {
-          return file;
-        }
-
-        if (file.content === newContent) {
-          return file;
-        }
-
-        changed = true;
-        return { ...file, content: newContent };
-      });
-
-      if (!changed) {
-        return prevFiles;
-      }
-
-      setHasUnsavedChanges(true);
-      return nextFiles;
-    });
-  }, []);
-
-  const createFile = useCallback(async (name: string, type: string, parentId: string | null = null, content = "") => {
-    if (!projectId) return;
-
-    try {
-      const normalizedName = name.trim();
-      if (!normalizedName) return;
-
-      let targetId: string | null = null;
-
-      setFiles((prevFiles) => {
-        const existing = prevFiles.find((file) => file.name === normalizedName && file.parentId === parentId);
-
-        if (existing) {
-          targetId = existing.id;
-          return prevFiles.map((file) =>
-            file.id === existing.id ? { ...file, type, content } : file
-          );
-        }
-
-        const newFileId = `temp-${Date.now()}`;
-        targetId = newFileId;
-        const nextFile: FileItem = {
-          id: newFileId,
-          name: normalizedName,
-          content,
-          type,
-          parentId,
-        };
-
-        return [...prevFiles, nextFile];
-      });
-
-      if (type !== "folder" && targetId) {
-        setActiveFileId(targetId);
-      }
-
-      setHasUnsavedChanges(true);
-    } catch (error) {
-      console.error("Failed creating file", error);
-    }
-  }, [projectId]);
+  }, [projectId, refreshProjectFiles, token]);
 
   const saveProject = useCallback(async () => {
     if (!projectId) {
@@ -250,14 +203,6 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       throw new Error("Your session ended. Sign in again to save this project.");
     }
 
-    const metaDescription = serializeProjectMeta({
-      board: currentBoard,
-      mode: codingMode ?? "block",
-      language,
-      generator,
-      environment,
-    });
-
     try {
       const res = await apiFetch(`/api/projects/${projectId}`, {
         method: "PUT",
@@ -265,11 +210,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          name: projectNameState.trim() || "Untitled Project",
-          files,
-          description: metaDescription,
-        }),
+        body: JSON.stringify(buildCurrentProjectPayload()),
       });
 
       if (!res.ok) {
@@ -283,47 +224,88 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
         throw new Error(data?.error || defaultMessage);
       }
 
-      setHasUnsavedChanges(false);
+      useEditorStore.getState().setHasUnsavedChanges(false);
       await refreshProjectFiles();
     } catch (error) {
       console.error("Save Project exception:", error);
       throw error instanceof Error ? error : new Error("Could not save the project right now.");
     }
-  }, [codingMode, currentBoard, environment, files, generator, language, projectId, projectNameState, refreshProjectFiles, token]);
+  }, [buildCurrentProjectPayload, projectId, refreshProjectFiles, token]);
 
-  const bootstrapOfflineFiles = useCallback((sourceFileName: string, languageName: string, defaultCode?: string) => {
-    if (files.length > 0) return;
+  const saveAsProject = useCallback(
+    async (name: string) => {
+      if (!token) {
+        throw new Error("Your session ended. Sign in again to save this project.");
+      }
 
-    const sourceId = `offline-src-${Date.now()}`;
-    const blocklyId = `offline-blockly-${Date.now() + 1}`;
-    const initialCode = defaultCode ??
-      (languageName === "python"
-        ? "import time\n\n# Setup\n\n# Loop\nwhile True:\n    pass\n"
-        : "void setup() {\n  // put your setup code here, to run once:\n\n}\n\nvoid loop() {\n  // put your main code here, to run repeatedly:\n\n}\n");
+      const trimmedName = name.trim();
+      if (!trimmedName) {
+        throw new Error("Enter a project name before saving.");
+      }
 
-    setProjectNameState("Untitled Project");
-    setFiles([
-      { id: sourceId, name: sourceFileName, type: languageName === "python" ? "python" : "cpp", content: initialCode, parentId: null },
-      { id: blocklyId, name: "main.blockly", type: "blockly", content: '<xml xmlns="https://developers.google.com/blockly/xml"></xml>', parentId: null },
-    ]);
-    setActiveFileId(sourceId);
-  }, [files.length]);
+      const projectPayload = buildProjectPayload({
+        projectName: trimmedName,
+        files: buildCurrentProjectFiles(),
+        meta: {
+          board: currentBoard,
+          mode: codingMode ?? "block",
+          language,
+          generator,
+          environment,
+        },
+      });
+
+      const createRes = await apiFetch("/api/projects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(projectPayload),
+      });
+
+      if (!createRes.ok) {
+        const data = await safeJson<{ error?: string }>(createRes);
+        throw new Error(data?.error || "Failed to create project.");
+      }
+
+      const newProject = await safeJson<{ id?: string }>(createRes);
+      const newId = newProject?.id;
+      if (!newId) {
+        throw new Error("Invalid response from the API.");
+      }
+
+      const putRes = await apiFetch(`/api/projects/${newId}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(projectPayload),
+      });
+
+      if (!putRes.ok) {
+        const data = await safeJson<{ error?: string }>(putRes);
+        throw new Error(data?.error || "Failed to upload files to the new project.");
+      }
+
+      setProjectId(newId);
+      setProjectNameState(trimmedName);
+      useEditorStore.getState().setHasUnsavedChanges(false);
+      return newId;
+    },
+    [buildCurrentProjectFiles, codingMode, currentBoard, environment, generator, language, setProjectId, token],
+  );
 
   const value: ProjectContextValue = {
     projectId,
     setProjectId,
     projectName: projectNameState,
     setProjectName,
-    files,
-    activeFileId,
-    setActiveFileId,
-    updateFileContent,
+    hasLoadedProjectFiles,
     refreshProjectFiles,
-    createFile,
     saveProject,
-    bootstrapOfflineFiles,
-    hasUnsavedChanges,
-    setHasUnsavedChanges,
+    saveAsProject,
   };
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;
@@ -336,4 +318,3 @@ export function useProject() {
   }
   return context;
 }
-

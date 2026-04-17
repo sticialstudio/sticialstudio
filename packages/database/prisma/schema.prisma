@@ -4,7 +4,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -21,6 +21,11 @@ model Project {
   id          String   @id @default(uuid())
   name        String
   description String?
+  board       String?
+  codingMode  String?
+  language    String?
+  generator   String?
+  environment String?
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   files       File[]
@@ -30,10 +35,10 @@ model Project {
 
 model File {
   id        String   @id @default(uuid())
-  name      String   
-  content   String   // Text content (cpp, python, blockly xml)
-  type      String   // 'folder', 'cpp', 'python', 'blockly'
-  parentId  String?  // Nullable for root files
+  name      String
+  content   String
+  type      String
+  parentId  String?
   parent    File?    @relation("FolderChildren", fields: [parentId], references: [id], onDelete: Cascade)
   children  File[]   @relation("FolderChildren")
   projectId String

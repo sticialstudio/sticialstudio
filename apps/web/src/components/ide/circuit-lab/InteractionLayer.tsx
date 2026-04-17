@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React from 'react';
 
@@ -7,6 +7,7 @@ import type { CanvasTransform, MountPreviewState, WireDraftState, WorldPinNode }
 interface InteractionLayerProps {
   transform: CanvasTransform;
   pins: WorldPinNode[];
+  visiblePinTargetIds: Set<string>;
   highlightedPinIds: Set<string>;
   validTargetPinId: string | null;
   mountPreview: MountPreviewState | null;
@@ -32,9 +33,9 @@ function AnchorHalo({
   strong?: boolean;
   pulse?: boolean;
 }) {
-  const outer = strong ? 30 : 22;
-  const middle = strong ? 16 : 12;
-  const inner = strong ? 9.4 : 8.4;
+  const outer = strong ? 24 : 18;
+  const middle = strong ? 12 : 9;
+  const inner = strong ? 7.4 : 6.8;
   return (
     <g className={pulse ? 'animate-pulse' : undefined}>
       <rect x={x - outer / 2} y={y - outer / 2} width={outer} height={outer} rx={strong ? 7 : 5} fill={color} opacity={strong ? 0.18 : 0.1} />
@@ -44,9 +45,20 @@ function AnchorHalo({
   );
 }
 
-function PreviewNodeMarker({ x, y, snapped }: { x: number; y: number; snapped: boolean }) {
+function PreviewNodeMarker({
+  x,
+  y,
+  snapped,
+  lockState,
+}: {
+  x: number;
+  y: number;
+  snapped: boolean;
+  lockState: WireDraftState['targetLockState'];
+}) {
   const color = snapped ? '#22c55e' : '#22d3ee';
-  return <AnchorHalo x={x} y={y} color={color} strong={snapped} pulse={snapped} />;
+  const isLocked = snapped && lockState === 'locked';
+  return <AnchorHalo x={x} y={y} color={color} strong={snapped} pulse={isLocked} />;
 }
 
 function SignalIndicator({ pin }: { pin: WorldPinNode }) {
@@ -131,11 +143,11 @@ function ContinuityTargetHighlights({ pins, validTargetPinId, highlightedPinIds 
             width={pin.continuityBounds.width}
             height={pin.continuityBounds.height}
             rx={pin.continuityKind === 'rail' ? 12 : 8}
-            fill={isTarget ? 'rgba(34,197,94,0.08)' : 'rgba(34,211,238,0.06)'}
+            fill={isTarget ? 'rgba(34,197,94,0.12)' : 'rgba(34,211,238,0.08)'}
             stroke={isTarget ? 'rgba(34,197,94,0.82)' : 'rgba(34,211,238,0.5)'}
             strokeWidth={pin.continuityKind === 'rail' ? 1.2 : 1.35}
             strokeDasharray={pin.continuityKind === 'rail' ? '10 10' : '7 7'}
-            opacity={isTarget ? 0.95 : 0.78}
+            opacity={isTarget ? 0.98 : 0.84}
           />
         );
       })}
@@ -143,9 +155,44 @@ function ContinuityTargetHighlights({ pins, validTargetPinId, highlightedPinIds 
   );
 }
 
+function BreadboardPinAffordances({
+  pins,
+  highlightedPinIds,
+  validTargetPinId,
+  active,
+}: {
+  pins: WorldPinNode[];
+  highlightedPinIds: Set<string>;
+  validTargetPinId: string | null;
+  active: boolean;
+}) {
+  return (
+    <g>
+      {pins
+        .filter((pin) => pin.kind === 'breadboard')
+        .map((pin) => {
+          const isTarget = validTargetPinId === pin.id;
+          const isHighlighted = highlightedPinIds.has(pin.id);
+          const outerOpacity = isTarget ? 0.44 : isHighlighted ? 0.24 : active ? 0.1 : 0.045;
+          const innerOpacity = isTarget ? 0.92 : isHighlighted ? 0.52 : active ? 0.16 : 0.08;
+          const stroke = isTarget ? '#22c55e' : isHighlighted ? '#22d3ee' : 'rgba(148,163,184,0.42)';
+          const fill = isTarget ? 'rgba(34,197,94,0.16)' : isHighlighted ? 'rgba(34,211,238,0.08)' : 'rgba(255,255,255,0.02)';
+
+          return (
+            <g key={`${pin.id}-breadboard-affordance`}>
+              <circle cx={pin.position.x} cy={pin.position.y} r={isTarget ? 6.6 : isHighlighted ? 5.2 : 4.2} fill={fill} opacity={outerOpacity} />
+              <circle cx={pin.position.x} cy={pin.position.y} r={isTarget ? 3.9 : isHighlighted ? 3.2 : 2.6} fill="transparent" stroke={stroke} strokeWidth={isTarget ? 1.35 : 0.95} opacity={innerOpacity} />
+            </g>
+          );
+        })}
+    </g>
+  );
+}
+
 function InteractionLayerImpl({
   transform,
   pins,
+  visiblePinTargetIds,
   highlightedPinIds,
   validTargetPinId,
   mountPreview,
@@ -168,11 +215,52 @@ function InteractionLayerImpl({
       onWheel={onWheel}
       data-canvas-interaction="true"
       data-wire-preview={wireDraft ? 'active' : 'idle'}
+      data-wire-lock-state={wireDraft?.targetLockState ?? 'none'}
+      data-wire-target-pin-id={wireDraft?.hoveredTargetPinId ?? ''}
+      data-wire-target-node-id={wireDraft?.hoveredTargetNodeId ?? ''}
+      data-wire-target-density={wireDraft?.crowdedTargets ? 'crowded' : 'clear'}
+      data-canvas-transform-x={transform.x}
+      data-canvas-transform-y={transform.y}
+      data-canvas-transform-scale={transform.scale}
     >
       <svg className="pointer-events-none absolute inset-0 h-full w-full overflow-visible" width="100%" height="100%" aria-hidden="true">
         <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
           {pins.map((pin) => (
             <SignalIndicator key={`${pin.id}-signal`} pin={pin} />
+          ))}
+
+          <BreadboardPinAffordances
+            pins={pins}
+            highlightedPinIds={highlightedPinIds}
+            validTargetPinId={validTargetPinId}
+            active={Boolean(mountPreview || wireDraft || highlightedPinIds.size > 0 || validTargetPinId)}
+          />
+
+          {pins
+            .filter((pin) => visiblePinTargetIds.has(pin.id) && pin.kind !== 'breadboard')
+            .map((pin) => {
+              const isActive = validTargetPinId === pin.id || highlightedPinIds.has(pin.id);
+              return (
+                <g key={`${pin.id}-visible-target`}>
+                  <circle cx={pin.position.x} cy={pin.position.y} r={isActive ? 9.5 : 7.25} fill={isActive ? 'rgba(34,211,238,0.2)' : 'rgba(148,163,184,0.16)'} />
+                  <circle cx={pin.position.x} cy={pin.position.y} r={isActive ? 4.8 : 3.4} fill={isActive ? '#22d3ee' : '#cbd5e1'} stroke={isActive ? '#ecfeff' : 'rgba(255,255,255,0.72)'} strokeWidth={1.05} />
+                </g>
+              );
+            })}
+
+          {pins.map((pin) => (
+            <g
+              key={`${pin.id}-test-marker`}
+              data-pin-id={pin.id}
+              data-node-id={pin.nodeId}
+              data-pin-kind={pin.kind}
+              data-component-id={pin.componentId ?? ''}
+              data-pin-mounted={String(Boolean(pin.isMounted))}
+              data-pin-x={pin.position.x}
+              data-pin-y={pin.position.y}
+            >
+              <circle cx={pin.position.x} cy={pin.position.y} r={5} fill="transparent" stroke="transparent" />
+            </g>
           ))}
 
           <ContinuityTargetHighlights pins={pins} validTargetPinId={validTargetPinId} highlightedPinIds={highlightedPinIds} />
@@ -191,9 +279,9 @@ function InteractionLayerImpl({
                   width={mountPreview.size.width + 12}
                   height={mountPreview.size.height + 12}
                   rx={18}
-                  fill={mountPreview.isValid ? 'rgba(34,211,238,0.08)' : 'rgba(248,113,113,0.09)'}
+                  fill={mountPreview.isValid ? 'rgba(34,211,238,0.12)' : 'rgba(248,113,113,0.11)'}
                   stroke={mountPreview.isValid ? 'rgba(34,211,238,0.9)' : 'rgba(248,113,113,0.95)'}
-                  strokeWidth={1.6}
+                  strokeWidth={1.9}
                   strokeDasharray={mountPreview.isValid ? '12 9' : '8 8'}
                 />
               </g>
@@ -204,7 +292,8 @@ function InteractionLayerImpl({
                   x={anchor.x}
                   y={anchor.y}
                   color={mountPreview.isValid ? '#22d3ee' : '#f87171'}
-                  strong={mountPreview.isValid}
+                  strong
+                  pulse={mountPreview.isValid}
                 />
               ))}
             </g>
@@ -213,7 +302,12 @@ function InteractionLayerImpl({
           {wireDraft ? (
             <g>
               <AnchorHalo x={wireDraft.fromPoint.x} y={wireDraft.fromPoint.y} color="#22d3ee" strong pulse />
-              <PreviewNodeMarker x={wireDraft.previewPoint.x} y={wireDraft.previewPoint.y} snapped={Boolean(wireDraft.hoveredTargetPinId)} />
+              <PreviewNodeMarker
+                x={wireDraft.previewPoint.x}
+                y={wireDraft.previewPoint.y}
+                snapped={Boolean(wireDraft.hoveredTargetPinId)}
+                lockState={wireDraft.targetLockState}
+              />
             </g>
           ) : null}
 
@@ -221,8 +315,9 @@ function InteractionLayerImpl({
             .filter((pin) => highlightedPinIds.has(pin.id) || validTargetPinId === pin.id)
             .map((pin) => {
               const isTarget = validTargetPinId === pin.id;
+              const isLockedTarget = isTarget && wireDraft?.targetLockState === 'locked';
               const color = isTarget ? '#22c55e' : '#22d3ee';
-              return <AnchorHalo key={pin.id} x={pin.position.x} y={pin.position.y} color={color} strong={isTarget} pulse={isTarget} />;
+              return <AnchorHalo key={pin.id} x={pin.position.x} y={pin.position.y} color={color} strong={isTarget} pulse={isLockedTarget} />;
             })}
         </g>
       </svg>

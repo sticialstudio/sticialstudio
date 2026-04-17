@@ -1,243 +1,301 @@
 "use client";
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import Editor, { useMonaco } from '@monaco-editor/react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Editor from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ThemeMode } from '@/contexts/ThemeContext';
 import { Plus, Minus } from 'lucide-react';
-
-// -----------------------------------------------------------------------------
-// Monaco theme definitions - one per platform theme
-// -----------------------------------------------------------------------------
+import { registerArduinoCompletions } from './monacoConfigs';
+import { ensureMonacoBootstrap } from '@/lib/monaco/bootstrap';
+import { normalizedRuntimeErrorToError } from '@/lib/runtime/normalizeRuntimeError';
+import { extractCompileFeedback } from '@/lib/simulator/compileFeedback';
+import { useSimulationStore } from '@/stores/simulationStore';
 
 const THEMES: Record<string, editor.IStandaloneThemeData> = {
-  // ── LIGHT ─────────────────────────────────────────────────────────────────
-  // Inspired by Arduino IDE 2 light mode & VS Code "Light+ (default light)"
   'sticial-light': {
     base: 'vs',
     inherit: true,
     rules: [
-      { token: 'comment',                foreground: '6a8a60', fontStyle: 'italic' },
-      { token: 'comment.block',          foreground: '6a8a60', fontStyle: 'italic' },
-      { token: 'keyword',                foreground: 'b5580c' },
-      { token: 'keyword.control',        foreground: 'b5580c' },
-      { token: 'storage.type',           foreground: 'b5580c' },   // int, float, char
-      { token: 'number',                 foreground: '0b6f9e' },
-      { token: 'number.float',           foreground: '0b6f9e' },
-      { token: 'number.hex',             foreground: '0b6f9e' },
-      { token: 'string',                 foreground: 'a44e00' },
-      { token: 'string.escape',          foreground: 'c16000' },
-      { token: 'entity.name.function',   foreground: '1a55a6' },
-      { token: 'support.function',       foreground: '1a55a6' },
-      { token: 'keyword.directive',      foreground: '7a3b8c' },
-      { token: 'meta.preprocessor',      foreground: '7a3b8c' },
-      { token: 'constant',               foreground: '0b6f9e' },
-      { token: 'variable',               foreground: '1e293b' },
-      { token: 'operator',               foreground: '2d3a8c' },
-      { token: 'delimiter.bracket',      foreground: '334155' },
-      { token: 'delimiter',              foreground: '334155' },
+      { token: 'comment', foreground: '6a8a60', fontStyle: 'italic' },
+      { token: 'comment.block', foreground: '6a8a60', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'b5580c' },
+      { token: 'keyword.control', foreground: 'b5580c' },
+      { token: 'storage.type', foreground: 'b5580c' },
+      { token: 'number', foreground: '0b6f9e' },
+      { token: 'number.float', foreground: '0b6f9e' },
+      { token: 'number.hex', foreground: '0b6f9e' },
+      { token: 'string', foreground: 'a44e00' },
+      { token: 'string.escape', foreground: 'c16000' },
+      { token: 'entity.name.function', foreground: '1a55a6' },
+      { token: 'support.function', foreground: '1a55a6' },
+      { token: 'keyword.directive', foreground: '7a3b8c' },
+      { token: 'meta.preprocessor', foreground: '7a3b8c' },
+      { token: 'constant', foreground: '0b6f9e' },
+      { token: 'variable', foreground: '1e293b' },
+      { token: 'operator', foreground: '2d3a8c' },
+      { token: 'delimiter.bracket', foreground: '334155' },
+      { token: 'delimiter', foreground: '334155' },
     ],
     colors: {
-      'editor.background':                   '#faf8f5',
-      'editor.foreground':                   '#1e293b',
-      'editor.lineHighlightBackground':      '#eff3fa',
-      'editor.lineHighlightBorder':          '#dde4f0',
-      'editor.selectionBackground':          '#ccd9f880',
-      'editor.inactiveSelectionBackground':  '#ccd9f840',
-      'editorLineNumber.foreground':         '#a0adc0',
-      'editorLineNumber.activeForeground':   '#3047a6',
-      'editorGutter.background':             '#f2efea',
-      'editorCursor.foreground':             '#3047a6',
-      'editorIndentGuide.background1':       '#e2e8f0',
+      'editor.background': '#faf8f5',
+      'editor.foreground': '#1e293b',
+      'editor.lineHighlightBackground': '#eff3fa',
+      'editor.lineHighlightBorder': '#dde4f0',
+      'editor.selectionBackground': '#ccd9f880',
+      'editor.inactiveSelectionBackground': '#ccd9f840',
+      'editorLineNumber.foreground': '#a0adc0',
+      'editorLineNumber.activeForeground': '#3047a6',
+      'editorGutter.background': '#f2efea',
+      'editorCursor.foreground': '#3047a6',
+      'editorIndentGuide.background1': '#e2e8f0',
       'editorIndentGuide.activeBackground1': '#c4cedf',
-      'editorBracketMatch.background':       '#ccd9f860',
-      'editorBracketMatch.border':           '#3047a6',
-      'editor.findMatchBackground':          '#ffe58080',
+      'editorBracketMatch.background': '#ccd9f860',
+      'editorBracketMatch.border': '#3047a6',
+      'editor.findMatchBackground': '#ffe58080',
       'editor.findMatchHighlightBackground': '#ffe58040',
-      'editorWidget.background':             '#ffffff',
-      'editorWidget.border':                 '#d1daea',
-      'scrollbarSlider.background':          '#3047a622',
-      'scrollbarSlider.hoverBackground':     '#3047a633',
-      'scrollbarSlider.activeBackground':    '#3047a644',
-      'minimap.background':                  '#f2efea',
+      'editorWidget.background': '#ffffff',
+      'editorWidget.border': '#d1daea',
+      'scrollbarSlider.background': '#3047a622',
+      'scrollbarSlider.hoverBackground': '#3047a633',
+      'scrollbarSlider.activeBackground': '#3047a644',
+      'minimap.background': '#f2efea',
     },
   },
-
-  // ── DARK ──────────────────────────────────────────────────────────────────
-  // Matches the platform's dark theme (--ui-color-background: #0d1526)
   'sticial-dark': {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'comment',                foreground: '6a8a7a', fontStyle: 'italic' },
-      { token: 'comment.block',          foreground: '6a8a7a', fontStyle: 'italic' },
-      { token: 'keyword',                foreground: 'e8834d' },
-      { token: 'keyword.control',        foreground: 'e8834d' },
-      { token: 'storage.type',           foreground: 'e8834d' },
-      { token: 'number',                 foreground: '52b8c8' },
-      { token: 'number.float',           foreground: '52b8c8' },
-      { token: 'number.hex',             foreground: '52b8c8' },
-      { token: 'string',                 foreground: 'eb9b78' },
-      { token: 'string.escape',          foreground: 'f0aa88' },
-      { token: 'entity.name.function',   foreground: '82aaff' },
-      { token: 'support.function',       foreground: '82aaff' },
-      { token: 'keyword.directive',      foreground: 'c792ea' },
-      { token: 'meta.preprocessor',      foreground: 'c792ea' },
-      { token: 'constant',               foreground: '7fdbca' },
-      { token: 'variable',               foreground: 'cdd5e0' },
-      { token: 'operator',               foreground: 'c3a6ff' },
-      { token: 'delimiter.bracket',      foreground: 'ffd700' },
-      { token: 'delimiter',              foreground: 'cdd5e0' },
+      { token: 'comment', foreground: '6a8a7a', fontStyle: 'italic' },
+      { token: 'comment.block', foreground: '6a8a7a', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'e8834d' },
+      { token: 'keyword.control', foreground: 'e8834d' },
+      { token: 'storage.type', foreground: 'e8834d' },
+      { token: 'number', foreground: '52b8c8' },
+      { token: 'number.float', foreground: '52b8c8' },
+      { token: 'number.hex', foreground: '52b8c8' },
+      { token: 'string', foreground: 'eb9b78' },
+      { token: 'string.escape', foreground: 'f0aa88' },
+      { token: 'entity.name.function', foreground: '82aaff' },
+      { token: 'support.function', foreground: '82aaff' },
+      { token: 'keyword.directive', foreground: 'c792ea' },
+      { token: 'meta.preprocessor', foreground: 'c792ea' },
+      { token: 'constant', foreground: '7fdbca' },
+      { token: 'variable', foreground: 'cdd5e0' },
+      { token: 'operator', foreground: 'c3a6ff' },
+      { token: 'delimiter.bracket', foreground: 'ffd700' },
+      { token: 'delimiter', foreground: 'cdd5e0' },
     ],
     colors: {
-      'editor.background':                   '#0d1526',
-      'editor.foreground':                   '#cdd5e0',
-      'editor.lineHighlightBackground':      '#16213a',
-      'editor.lineHighlightBorder':          '#1e3050',
-      'editor.selectionBackground':          '#5f7bf740',
-      'editor.inactiveSelectionBackground':  '#5f7bf720',
-      'editorLineNumber.foreground':         '#3a4d6a',
-      'editorLineNumber.activeForeground':   '#7f96ff',
-      'editorGutter.background':             '#09101e',
-      'editorCursor.foreground':             '#7f96ff',
-      'editorIndentGuide.background1':       '#1e3050',
+      'editor.background': '#0d1526',
+      'editor.foreground': '#cdd5e0',
+      'editor.lineHighlightBackground': '#16213a',
+      'editor.lineHighlightBorder': '#1e3050',
+      'editor.selectionBackground': '#5f7bf740',
+      'editor.inactiveSelectionBackground': '#5f7bf720',
+      'editorLineNumber.foreground': '#3a4d6a',
+      'editorLineNumber.activeForeground': '#7f96ff',
+      'editorGutter.background': '#09101e',
+      'editorCursor.foreground': '#7f96ff',
+      'editorIndentGuide.background1': '#1e3050',
       'editorIndentGuide.activeBackground1': '#2a4570',
-      'editorBracketMatch.background':       '#5f7bf730',
-      'editorBracketMatch.border':           '#5f7bf7',
-      'editor.findMatchBackground':          '#5f7bf750',
+      'editorBracketMatch.background': '#5f7bf730',
+      'editorBracketMatch.border': '#5f7bf7',
+      'editor.findMatchBackground': '#5f7bf750',
       'editor.findMatchHighlightBackground': '#5f7bf730',
-      'editorWidget.background':             '#111c30',
-      'editorWidget.border':                 '#1e3050',
-      'scrollbarSlider.background':          '#3a4d6a33',
-      'scrollbarSlider.hoverBackground':     '#3a4d6a55',
-      'scrollbarSlider.activeBackground':    '#5f7bf744',
-      'minimap.background':                  '#09101e',
+      'editorWidget.background': '#111c30',
+      'editorWidget.border': '#1e3050',
+      'scrollbarSlider.background': '#3a4d6a33',
+      'scrollbarSlider.hoverBackground': '#3a4d6a55',
+      'scrollbarSlider.activeBackground': '#5f7bf744',
+      'minimap.background': '#09101e',
     },
   },
-
-  // ── MAGMA ─────────────────────────────────────────────────────────────────
-  // Matches the platform's magma theme (--ui-color-background: #1a0f10)
   'sticial-magma': {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'comment',                foreground: '7a635f', fontStyle: 'italic' },
-      { token: 'comment.block',          foreground: '7a635f', fontStyle: 'italic' },
-      { token: 'keyword',                foreground: 'f97316' },
-      { token: 'keyword.control',        foreground: 'f97316' },
-      { token: 'storage.type',           foreground: 'f97316' },
-      { token: 'number',                 foreground: 'ffb347' },
-      { token: 'number.float',           foreground: 'ffb347' },
-      { token: 'number.hex',             foreground: 'ffb347' },
-      { token: 'string',                 foreground: 'fca97e' },
-      { token: 'string.escape',          foreground: 'ffb8a0' },
-      { token: 'entity.name.function',   foreground: 'ffd580' },
-      { token: 'support.function',       foreground: 'ffd580' },
-      { token: 'keyword.directive',      foreground: 'ff9070' },
-      { token: 'meta.preprocessor',      foreground: 'ff9070' },
-      { token: 'constant',               foreground: '5cd18d' },
-      { token: 'variable',               foreground: 'f7ede8' },
-      { token: 'operator',               foreground: 'ffc090' },
-      { token: 'delimiter.bracket',      foreground: 'ffb347' },
-      { token: 'delimiter',              foreground: 'f7ede8' },
+      { token: 'comment', foreground: '7a635f', fontStyle: 'italic' },
+      { token: 'comment.block', foreground: '7a635f', fontStyle: 'italic' },
+      { token: 'keyword', foreground: 'f97316' },
+      { token: 'keyword.control', foreground: 'f97316' },
+      { token: 'storage.type', foreground: 'f97316' },
+      { token: 'number', foreground: 'ffb347' },
+      { token: 'number.float', foreground: 'ffb347' },
+      { token: 'number.hex', foreground: 'ffb347' },
+      { token: 'string', foreground: 'fca97e' },
+      { token: 'string.escape', foreground: 'ffb8a0' },
+      { token: 'entity.name.function', foreground: 'ffd580' },
+      { token: 'support.function', foreground: 'ffd580' },
+      { token: 'keyword.directive', foreground: 'ff9070' },
+      { token: 'meta.preprocessor', foreground: 'ff9070' },
+      { token: 'constant', foreground: '5cd18d' },
+      { token: 'variable', foreground: 'f7ede8' },
+      { token: 'operator', foreground: 'ffc090' },
+      { token: 'delimiter.bracket', foreground: 'ffb347' },
+      { token: 'delimiter', foreground: 'f7ede8' },
     ],
     colors: {
-      'editor.background':                   '#1a0f10',
-      'editor.foreground':                   '#f7ede8',
-      'editor.lineHighlightBackground':      '#261518',
-      'editor.lineHighlightBorder':          '#3a1e20',
-      'editor.selectionBackground':          '#f9731640',
-      'editor.inactiveSelectionBackground':  '#f9731620',
-      'editorLineNumber.foreground':         '#5a3635',
-      'editorLineNumber.activeForeground':   '#f97316',
-      'editorGutter.background':             '#130b0c',
-      'editorCursor.foreground':             '#f97316',
-      'editorIndentGuide.background1':       '#3a1e20',
+      'editor.background': '#1a0f10',
+      'editor.foreground': '#f7ede8',
+      'editor.lineHighlightBackground': '#261518',
+      'editor.lineHighlightBorder': '#3a1e20',
+      'editor.selectionBackground': '#f9731640',
+      'editor.inactiveSelectionBackground': '#f9731620',
+      'editorLineNumber.foreground': '#5a3635',
+      'editorLineNumber.activeForeground': '#f97316',
+      'editorGutter.background': '#130b0c',
+      'editorCursor.foreground': '#f97316',
+      'editorIndentGuide.background1': '#3a1e20',
       'editorIndentGuide.activeBackground1': '#5a2e30',
-      'editorBracketMatch.background':       '#f9731630',
-      'editorBracketMatch.border':           '#f97316',
-      'editor.findMatchBackground':          '#f9731650',
+      'editorBracketMatch.background': '#f9731630',
+      'editorBracketMatch.border': '#f97316',
+      'editor.findMatchBackground': '#f9731650',
       'editor.findMatchHighlightBackground': '#f9731630',
-      'editorWidget.background':             '#2a1a1a',
-      'editorWidget.border':                 '#3a1e20',
-      'scrollbarSlider.background':          '#5a363522',
-      'scrollbarSlider.hoverBackground':     '#5a363544',
-      'scrollbarSlider.activeBackground':    '#f9731630',
-      'minimap.background':                  '#130b0c',
+      'editorWidget.background': '#2a1a1a',
+      'editorWidget.border': '#3a1e20',
+      'scrollbarSlider.background': '#5a363522',
+      'scrollbarSlider.hoverBackground': '#5a363544',
+      'scrollbarSlider.activeBackground': '#f9731630',
+      'minimap.background': '#130b0c',
     },
   },
 };
 
-// -- Map platform theme to Monaco theme name ---------------------------------
 function getMonacoThemeName(platformTheme: ThemeMode): string {
   switch (platformTheme) {
-    case 'dark':  return 'sticial-dark';
-    case 'magma': return 'sticial-magma';
-    default:      return 'sticial-light';
+    case 'dark':
+      return 'sticial-dark';
+    case 'magma':
+      return 'sticial-magma';
+    default:
+      return 'sticial-light';
   }
 }
 
-// -----------------------------------------------------------------------------
-// Header colors derived from each platform theme
-// -----------------------------------------------------------------------------
 const HEADER_STYLES: Record<ThemeMode, { bg: string; border: string; fg: string; badge: string; badgeText: string }> = {
   light: {
-    bg:        '#f2efea',
-    border:    '#dde4f0',
-    fg:        '#3047a6',
-    badge:     '#eff3fa',
+    bg: '#f2efea',
+    border: '#dde4f0',
+    fg: '#3047a6',
+    badge: '#eff3fa',
     badgeText: '#526173',
   },
   dark: {
-    bg:        '#09101e',
-    border:    '#1e3050',
-    fg:        '#7f96ff',
-    badge:     '#16213a',
+    bg: '#09101e',
+    border: '#1e3050',
+    fg: '#7f96ff',
+    badge: '#16213a',
     badgeText: '#7e8aa8',
   },
   magma: {
-    bg:        '#130b0c',
-    border:    '#3a1e20',
-    fg:        '#f97316',
-    badge:     '#261518',
+    bg: '#130b0c',
+    border: '#3a1e20',
+    fg: '#f97316',
+    badge: '#261518',
     badgeText: '#a98780',
   },
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
 
+const MONACO_THEME_REGISTRY_FLAG = "__sticial_monaco_themes_registered__";
+
+function hasRegisteredMonacoThemes() {
+  if (typeof window === "undefined") {
+    return false;
+  }
+
+  return Boolean((window as unknown as Record<string, unknown>)[MONACO_THEME_REGISTRY_FLAG]);
+}
+
+function markMonacoThemesRegistered() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  (window as unknown as Record<string, unknown>)[MONACO_THEME_REGISTRY_FLAG] = true;
+}
 interface TextEditorProps {
   code: string;
   language: string;
   onChange?: (val: string) => void;
+  onSave?: () => void;
   readOnly?: boolean;
   hideHeader?: boolean;
   fileName?: string;
   runtimeLabel?: string;
+  workspaceLabel?: string;
+  saveHint?: string;
 }
 
 export default function TextEditor({
   code,
   language,
   onChange,
+  onSave,
   readOnly = false,
   hideHeader = false,
   fileName,
   runtimeLabel,
+  workspaceLabel,
+  saveHint,
 }: TextEditorProps) {
-  const monaco = useMonaco();
+  const [monacoInstance, setMonacoInstance] = useState<typeof import('monaco-editor') | null>(null);
+  const [monacoLoadError, setMonacoLoadError] = useState<Error | null>(null);
   const { theme } = useTheme();
   const themesRegisteredRef = useRef(false);
+  const saveActionBoundEditorsRef = useRef(new WeakSet<editor.IStandaloneCodeEditor>());
+  const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof import('monaco-editor') | null>(null);
+  const compileDecorationsRef = useRef<editor.IEditorDecorationsCollection | null>(null);
+  const lastRevealedCompileLineRef = useRef<number | null>(null);
+  const compileFeedback = useSimulationStore((state) => state.compileFeedback);
+  const errorText = useSimulationStore((state) => state.simulationStatus?.errorText);
   const monacoThemeName = getMonacoThemeName(theme);
+  const resolvedCompileFeedback = useMemo(
+    () => compileFeedback ?? (errorText ? extractCompileFeedback(errorText, errorText) : null),
+    [compileFeedback, errorText]
+  );
 
   const [fontSize, setFontSize] = useState<number>(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('__sticial_editor_font_size');
-      if (saved) return parseInt(saved, 10);
+      if (saved) {
+        const parsed = parseInt(saved, 10);
+        if (!isNaN(parsed)) return Math.min(24, Math.max(10, parsed));
+      }
     }
-    return 14; // Default baseline font size
+    return 14;
   });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    ensureMonacoBootstrap()
+      .then((instance) => {
+        if (cancelled) {
+          return;
+        }
+        setMonacoInstance(instance);
+        setMonacoLoadError(null);
+      })
+      .catch((error: unknown) => {
+        if (cancelled) {
+          return;
+        }
+
+        const normalizedError = normalizedRuntimeErrorToError(error, 'Monaco failed to load local editor assets.');
+        console.error('Monaco bootstrap failed', {
+          error: normalizedError,
+          details: (normalizedError as Error & { details?: unknown }).details,
+        });
+        setMonacoLoadError(normalizedError);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -245,151 +303,247 @@ export default function TextEditor({
     }
   }, [fontSize]);
 
-  // Register all three themes once Monaco is ready
   const registerThemes = useCallback(() => {
-    if (!monaco || themesRegisteredRef.current) return;
+    if (!monacoInstance || themesRegisteredRef.current) return;
     themesRegisteredRef.current = true;
     Object.entries(THEMES).forEach(([name, def]) => {
-      monaco.editor.defineTheme(name, def);
+      monacoInstance.editor.defineTheme(name, def);
     });
-  }, [monaco]);
 
-  // On mount — register themes and apply current
+    registerArduinoCompletions(monacoInstance);
+  }, [monacoInstance]);
+
+  const handleEditorDidMount = useCallback(
+    (editorInstance: editor.IStandaloneCodeEditor, mountedMonaco: typeof import('monaco-editor')) => {
+      if (!mountedMonaco) return;
+
+      editorRef.current = editorInstance;
+      monacoRef.current = mountedMonaco;
+
+      if (saveActionBoundEditorsRef.current.has(editorInstance)) {
+        return;
+      }
+
+      if (editorInstance.getAction('save-file')) {
+        saveActionBoundEditorsRef.current.add(editorInstance);
+        return;
+      }
+
+      saveActionBoundEditorsRef.current.add(editorInstance);
+      editorInstance.addAction({
+        id: 'save-file',
+        label: 'Save Project',
+        keybindings: [mountedMonaco.KeyMod.CtrlCmd | mountedMonaco.KeyCode.KeyS],
+        run: () => {
+          if (onSave) onSave();
+        },
+      });
+    },
+    [onSave]
+  );
+
   useEffect(() => {
-    if (!monaco) return;
+    if (!monacoInstance) return;
     registerThemes();
-    monaco.editor.setTheme(monacoThemeName);
-  }, [monaco, monacoThemeName, registerThemes]);
+    monacoInstance.editor.setTheme(monacoThemeName);
+  }, [monacoInstance, monacoThemeName, registerThemes]);
 
-  // Dynamically switch theme whenever the platform theme changes
   useEffect(() => {
-    if (!monaco) return;
-    registerThemes();
-    monaco.editor.setTheme(monacoThemeName);
-  }, [monaco, monacoThemeName, registerThemes]);
+    if (!editorRef.current || !monacoRef.current) return;
+    const model = editorRef.current.getModel();
+    if (!model) return;
 
-  const monacoLang  = language === 'python' ? 'python' : 'cpp';
-  const label       = fileName || (language === 'python' ? 'main.py' : 'main.cpp');
-  const runtime     = runtimeLabel || (language === 'python' ? 'MicroPython' : 'Arduino C++');
+    const markers = (resolvedCompileFeedback?.diagnostics ?? []).map((diagnostic) => ({
+      startLineNumber: diagnostic.line ?? 1,
+      startColumn: diagnostic.column ?? 1,
+      endLineNumber: diagnostic.line ?? 1,
+      endColumn: Math.max((diagnostic.column ?? 1) + 1, 2),
+      message: diagnostic.message,
+      severity: diagnostic.severity === 'warning'
+        ? monacoRef.current!.MarkerSeverity.Warning
+        : monacoRef.current!.MarkerSeverity.Error,
+    }));
+
+    monacoRef.current.editor.setModelMarkers(model, 'compiler', markers);
+
+    if (!compileDecorationsRef.current) {
+      compileDecorationsRef.current = editorRef.current.createDecorationsCollection([]);
+    }
+
+    if (!resolvedCompileFeedback?.line) {
+      compileDecorationsRef.current.clear();
+      lastRevealedCompileLineRef.current = null;
+      return;
+    }
+
+    compileDecorationsRef.current.set([{
+      range: new monacoRef.current.Range(resolvedCompileFeedback.line, 1, resolvedCompileFeedback.line, 1),
+      options: {
+        isWholeLine: true,
+        className: 'sticial-compile-error-line',
+        glyphMarginClassName: 'sticial-compile-error-glyph',
+        linesDecorationsClassName: 'sticial-compile-error-line-decoration',
+      },
+    }]);
+
+    if (lastRevealedCompileLineRef.current !== resolvedCompileFeedback.line) {
+      editorRef.current.revealLineInCenterIfOutsideViewport(resolvedCompileFeedback.line);
+      lastRevealedCompileLineRef.current = resolvedCompileFeedback.line;
+    }
+  }, [monacoInstance, resolvedCompileFeedback]);
+
+  const monacoLang = language === 'python' ? 'python' : 'cpp';
+  const label = fileName || (language === 'python' ? 'main.py' : 'main.cpp');
+  const runtime = runtimeLabel || (language === 'python' ? 'MicroPython' : 'Arduino C++');
+  const workspace = workspaceLabel || 'Scratch workspace';
+  const shortcutHint = saveHint || (onSave ? 'Ctrl/Cmd+S Save' : null);
 
   const hs = HEADER_STYLES[theme];
   const editorBg = THEMES[monacoThemeName]?.colors?.['editor.background'] as string | undefined;
-  const bgStyle   = editorBg ? `#${editorBg}` : 'var(--ui-color-background)';
+  const bgStyle = editorBg ? `${editorBg}` : 'var(--ui-color-background)';
+
+  if (monacoLoadError) {
+    throw monacoLoadError;
+  }
 
   return (
-    <div
-      className="flex h-full w-full flex-col overflow-hidden"
-      style={{ background: bgStyle }}
-    >
-      {/* ── Tab header ──────────────────────────────────────────── */}
+    <div className="flex h-full w-full flex-col overflow-hidden" style={{ background: bgStyle }}>
       {!hideHeader ? (
         <div
-          className="flex h-10 flex-shrink-0 items-center justify-between border-b px-4"
+          className="flex min-h-12 flex-shrink-0 items-center justify-between gap-3 border-b px-4 py-2"
           style={{ background: hs.bg, borderColor: hs.border }}
         >
-          <div className="flex items-center gap-3">
-            {/* Active-tab style filename chip */}
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <span
-              className="inline-flex items-center gap-2 rounded-[6px] border px-3 py-1 text-xs font-semibold"
-              style={{
-                background:   bgStyle,
-                borderColor:  hs.border,
-                color:        hs.fg,
-              }}
+              className="inline-flex items-center rounded-[8px] border px-3 py-1 text-xs font-semibold"
+              style={{ background: bgStyle, borderColor: hs.border, color: hs.fg }}
+              title={label}
             >
               {label}
             </span>
+            <span
+              className="rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em]"
+              style={{ background: hs.badge, borderColor: hs.border, color: hs.badgeText }}
+              title={runtime}
+            >
+              {runtime}
+            </span>
+            <span
+              className="max-w-[18rem] truncate rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.14em]"
+              style={{ background: hs.badge, borderColor: hs.border, color: hs.badgeText }}
+              title={workspace}
+            >
+              {workspace}
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
-            
-            {/* Font Size controls */}
-            <div 
-              className="mr-3 flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] font-semibold transition-colors"
+          <div className="flex flex-shrink-0 items-center gap-2">
+            {shortcutHint ? (
+              <span
+                className="hidden rounded-full border px-3 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] lg:inline-flex"
+                style={{ background: hs.badge, borderColor: hs.border, color: hs.badgeText }}
+              >
+                {shortcutHint}
+              </span>
+            ) : null}
+
+            <div
+              className="flex items-center gap-1 rounded-md px-1 py-0.5 text-[11px] font-semibold transition-colors"
               style={{ color: hs.fg, background: hs.badge }}
             >
-              <button 
-                onClick={() => setFontSize(f => Math.max(8, f - 1))} 
+              <button
+                onClick={() => setFontSize((f) => Math.max(10, f - 1))}
                 className="rounded p-1 hover:bg-black/10 dark:hover:bg-white/10"
-                title="Decrease Font Size"
+                title="Decrease font size"
+                disabled={fontSize <= 10}
               >
                 <Minus size={13} strokeWidth={2.5} />
               </button>
               <span className="w-5 text-center font-mono text-[10px]">{fontSize}</span>
-              <button 
-                onClick={() => setFontSize(f => Math.min(32, f + 1))} 
+              <button
+                onClick={() => setFontSize((f) => Math.min(24, f + 1))}
                 className="rounded p-1 hover:bg-black/10 dark:hover:bg-white/10"
-                title="Increase Font Size"
+                title="Increase font size"
+                disabled={fontSize >= 24}
               >
                 <Plus size={13} strokeWidth={2.5} />
               </button>
             </div>
-
-            <span
-              className="rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[0.16em]"
-              style={{ background: hs.badge, borderColor: hs.border, color: hs.badgeText }}
-            >
-              {runtime}
-            </span>
           </div>
         </div>
       ) : null}
 
-      {/* ── Monaco editor ───────────────────────────────────────── */}
+      {resolvedCompileFeedback ? (
+        <div className="flex items-start gap-3 border-b border-rose-500/18 bg-rose-500/10 px-4 py-2 text-sm text-rose-200">
+          <div className="mt-0.5 h-2.5 w-2.5 shrink-0 rounded-full bg-rose-400 shadow-[0_0_10px_rgba(248,113,113,0.45)]" />
+          <div className="min-w-0">
+            <p className="font-semibold text-rose-100">
+              {resolvedCompileFeedback.line ? `Compiler found an issue on line ${resolvedCompileFeedback.line}.` : 'Compiler found an issue.'}
+            </p>
+            <p className="mt-0.5 break-words text-xs text-rose-200/90">{resolvedCompileFeedback.message}</p>
+          </div>
+        </div>
+      ) : null}
+
       <div className="min-h-0 flex-1 overflow-hidden" style={{ background: bgStyle }}>
-        <Editor
-          height="100%"
-          language={monacoLang}
-          theme={monacoThemeName}
-          value={code}
-          onChange={(val) => {
-            if (onChange && val !== undefined && !readOnly) {
-              onChange(val);
-            }
-          }}
-          options={{
-            readOnly,
-            // Typography
-            fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace",
-            fontLigatures: true,
-            fontSize: fontSize,
-            lineHeight: 22,
-            letterSpacing: 0.3,
-            // Chrome
-            minimap:               { enabled: false },
-            scrollBeyondLastLine:  false,
-            smoothScrolling:       true,
-            cursorBlinking:        'smooth',
-            cursorSmoothCaretAnimation: 'on',
-            automaticLayout:       true,
-            // Gutter
-            lineNumbersMinChars:   3,
-            lineDecorationsWidth:  8,
-            glyphMargin:           false,
-            folding:               true,
-            foldingHighlight:      true,
-            // Highlights & guides
-            renderLineHighlightOnlyWhenFocus: false,
-            bracketPairColorization: { enabled: true },
-            matchBrackets:         'always',
-            guides:                { indentation: true, bracketPairs: true },
-            // Scrollbars
-            overviewRulerBorder:   false,
-            scrollbar: {
-              verticalScrollbarSize:   8,
-              horizontalScrollbarSize: 8,
-              useShadows:              false,
-            },
-            // Layout
-            wordWrap:             'off',
-            renderWhitespace:     'none',
-            padding:              { top: 14, bottom: 24 },
-            // Intellisense
-            quickSuggestionsDelay: 100,
-            suggest:              { showKeywords: true, showSnippets: true },
-          }}
-        />
+        {monacoInstance ? (
+          <Editor
+            height="100%"
+            language={monacoLang}
+            theme={monacoThemeName}
+            value={code}
+            onMount={handleEditorDidMount}
+            onChange={(val) => {
+              if (onChange && val !== undefined && !readOnly) {
+                onChange(val);
+              }
+            }}
+            options={{
+              readOnly,
+              fontFamily: "var(--font-jetbrains-mono), 'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+              fontLigatures: true,
+              fontSize,
+              lineHeight: Math.round(fontSize * 1.65),
+              letterSpacing: 0.3,
+              minimap: { enabled: false },
+              scrollBeyondLastLine: false,
+              smoothScrolling: true,
+              cursorBlinking: 'smooth',
+              cursorSmoothCaretAnimation: 'on',
+              automaticLayout: true,
+              lineNumbersMinChars: 3,
+              lineDecorationsWidth: 12,
+              glyphMargin: true,
+              folding: true,
+              foldingHighlight: true,
+              renderLineHighlightOnlyWhenFocus: false,
+              bracketPairColorization: { enabled: true },
+              matchBrackets: 'always',
+              guides: { indentation: true, bracketPairs: true },
+              overviewRulerBorder: false,
+              scrollbar: {
+                verticalScrollbarSize: 8,
+                horizontalScrollbarSize: 8,
+                useShadows: false,
+              },
+              wordWrap: 'off',
+              renderWhitespace: 'none',
+              padding: { top: 14, bottom: 24 },
+              quickSuggestionsDelay: 100,
+              suggest: { showKeywords: true, showSnippets: true },
+            }}
+          />
+        ) : (
+          <div className="flex h-full items-center justify-center px-6 text-center">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--ui-color-text-soft)]">Loading editor</p>
+              <p className="text-xs leading-6 text-[var(--ui-color-text-muted)]">Preparing local Monaco editor assets for offline-safe editing.</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
+
+

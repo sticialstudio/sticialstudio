@@ -1,0 +1,137 @@
+{
+  "categoryOrder": ["Basic", "Sensors", "Actuators", "Displays", "Boards"],
+  "categoryLabels": {
+    "Basic": "Basic",
+    "Sensors": "Sensors",
+    "Actuators": "Actuators",
+    "Displays": "Displays",
+    "Boards": "Boards"
+  },
+  "components": {
+    "BREADBOARD": {
+      "singleton": true,
+      "keywords": ["protoboard", "solderless", "starter"],
+      "propertySchema": {
+        "fields": []
+      }
+    },
+    "ARDUINO_UNO": {
+      "singleton": true,
+      "keywords": ["arduino", "microcontroller", "uno", "board", "starter"],
+      "propertySchema": {
+        "fields": []
+      }
+    },
+    "LED": {
+      "keywords": ["light", "diode", "indicator"],
+      "propertySchema": {
+        "fields": []
+      }
+    },
+    "BUTTON": {
+      "keywords": ["pushbutton", "switch", "input"],
+      "propertySchema": {
+        "fields": [
+          {
+            "key": "pressed",
+            "label": "Pressed",
+            "type": "boolean",
+            "description": "Simulated button press state."
+          }
+        ]
+      }
+    },
+    "RESISTOR": {
+      "keywords": ["resistance", "ohm", "passive"],
+      "propertySchema": {
+        "fields": []
+      }
+    },
+    "POTENTIOMETER": {
+      "keywords": ["pot", "knob", "analog", "variable resistor"],
+      "propertySchema": {
+        "fields": [
+          {
+            "key": "value",
+            "label": "Value",
+            "type": "number",
+            "description": "Analog reading reported by the potentiometer.",
+            "min": 0,
+            "max": 1023,
+            "step": 1
+          }
+        ]
+      }
+    },
+    "SERVO": {
+      "keywords": ["motor", "sg90", "rotation", "actuator"],
+      "propertySchema": {
+        "fields": [
+          {
+            "key": "angle",
+            "label": "Angle",
+            "type": "number",
+            "description": "Servo angle in degrees.",
+            "min": 0,
+            "max": 180,
+            "step": 1
+          }
+        ]
+      }
+    },
+    "ULTRASONIC": {
+      "keywords": ["distance", "hcsr04", "range finder", "sonar"],
+      "propertySchema": {
+        "fields": [
+          {
+            "key": "distance",
+            "label": "Distance",
+            "type": "number",
+            "description": "Measured distance in centimeters.",
+            "min": 2,
+            "max": 400,
+            "step": 1
+          }
+        ]
+      }
+    },
+    "DHT": {
+      "keywords": ["temperature", "humidity", "climate", "dht22"],
+      "propertySchema": {
+        "fields": [
+          {
+            "key": "temperature",
+            "label": "Temperature",
+            "type": "number",
+            "description": "Simulated temperature in degrees Celsius.",
+            "min": -40,
+            "max": 80,
+            "step": 1
+          },
+          {
+            "key": "humidity",
+            "label": "Humidity",
+            "type": "number",
+            "description": "Simulated relative humidity percentage.",
+            "min": 0,
+            "max": 100,
+            "step": 1
+          }
+        ]
+      }
+    },
+    "OLED": {
+      "keywords": ["screen", "ssd1306", "display", "i2c"],
+      "propertySchema": {
+        "fields": [
+          {
+            "key": "label",
+            "label": "Label",
+            "type": "text",
+            "description": "Display label used by the simulator."
+          }
+        ]
+      }
+    }
+  }
+}

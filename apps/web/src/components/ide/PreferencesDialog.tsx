@@ -198,7 +198,7 @@ export default function PreferencesDialog({
                   />
                   <PreferenceToggle
                     title="Advanced Blocks"
-                    description="Keep Messaging, Color, and More Blocks visible. Turn this off for a simpler starter toolbox."
+                    description="Keep Messaging and Color visible. Turn this off for a simpler starter toolbox."
                     enabled={showAdvancedBlocks}
                     onToggle={onShowAdvancedBlocksChange}
                   />

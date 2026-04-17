@@ -1,8 +1,10 @@
-﻿import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCircuitStore } from '@/stores/circuitStore';
+import type { PointerEvent as ReactPointerEvent, RefObject, WheelEvent as ReactWheelEvent } from 'react';
 
 import type { Point } from './types';
 import type { HitResult, SceneGraph, WireHandleNode } from './sceneTypes';
-import { hitTestScene } from './hitTesting';
+import { hitTestScene, resolveBiasedPinTarget, type WireIntentAxis, type WireTargetLockState } from './hitTesting';
 import { moveWireHandle } from './wireRouting';
 import type { CanvasTransform } from './useCanvasViewport';
 
@@ -18,11 +20,28 @@ export type InteractionMode =
       previewPoint: Point;
       hoveredTargetNodeId: string | null;
       hoveredTargetPinId: string | null;
+      targetLockState: WireTargetLockState | null;
+      crowdedTargets: boolean;
+      previewAxis: WireIntentAxis;
+    }
+  | {
+      type: 'REWIRING_WIRE_ENDPOINT';
+      wireId: string;
+      endpoint: 'from' | 'to';
+      fixedPoint: Point;
+      fixedNodeId: string;
+      fixedPinId: string;
+      previewPoint: Point;
+      hoveredTargetNodeId: string | null;
+      hoveredTargetPinId: string | null;
+      targetLockState: WireTargetLockState | null;
+      crowdedTargets: boolean;
+      previewAxis: WireIntentAxis;
     }
   | {
       type: 'MOVING_WIRE_HANDLE';
       wireId: string;
-      handle: Pick<WireHandleNode, 'axis' | 'kind' | 'waypointIndex' | 'segmentIndex'>;
+      handle: Pick<WireHandleNode, 'axis' | 'kind' | 'waypointIndex' | 'segmentIndex' | 'routeIndex' | 'endpoint'>;
       initialWaypoints: Point[];
     };
 
@@ -33,12 +52,28 @@ export interface WireConnectionRequest {
   toPinId: string;
 }
 
+export interface WireEndpointReconnectRequest {
+  wireId: string;
+  endpoint: 'from' | 'to';
+  targetNodeId: string;
+  targetPinId: string;
+  targetPoint: Point;
+}
+
 interface DragMoveMeta {
   client: Point;
   moved: boolean;
 }
 
+interface ActiveWireContext {
+  sourceNodeId: string;
+  sourcePinId: string;
+  sourcePoint: Point;
+  previousTargetPinId: string | null;
+}
+
 interface InteractionManagerOptions {
+  containerRef?: RefObject<HTMLDivElement | null>;
   scene: SceneGraph;
   transform: CanvasTransform;
   selectedComponentId: string | null;
@@ -52,6 +87,7 @@ interface InteractionManagerOptions {
   onDeleteComponent: (id: string) => void;
   onDeleteWire: (id: string) => void;
   onAddWire: (request: WireConnectionRequest) => void;
+  onRewireWireEndpoint: (request: WireEndpointReconnectRequest) => void;
   onPreviewWireWaypoints: (id: string, waypoints: Point[] | null) => void;
   onCommitWireWaypoints: (id: string, waypoints: Point[]) => void;
   beginPan: (x: number, y: number) => void;
@@ -61,8 +97,10 @@ interface InteractionManagerOptions {
 }
 
 const DRAG_THRESHOLD = 5;
+const INITIAL_WIRE_COMMIT_DRAG_THRESHOLD = 12;
 
 export function useInteractionManager({
+  containerRef: externalContainerRef,
   scene,
   transform,
   selectedComponentId,
@@ -76,6 +114,7 @@ export function useInteractionManager({
   onDeleteComponent,
   onDeleteWire,
   onAddWire,
+  onRewireWireEndpoint,
   onPreviewWireWaypoints,
   onCommitWireWaypoints,
   beginPan,
@@ -85,13 +124,21 @@ export function useInteractionManager({
 }: InteractionManagerOptions) {
   const [mode, setMode] = useState<InteractionMode>({ type: 'IDLE' });
   const [hoveredHit, setHoveredHit] = useState<HitResult>(null);
-  const containerRef = useRef<HTMLDivElement | null>(null);
+  const fallbackContainerRef = useRef<HTMLDivElement | null>(null);
+  const containerRef = externalContainerRef ?? fallbackContainerRef;
   const activePointerIdRef = useRef<number | null>(null);
   const wireJustStartedRef = useRef(false);
   const dragFrameRef = useRef<number | null>(null);
   const wireFrameRef = useRef<number | null>(null);
   const pendingDragRef = useRef<{ id: string; position: Point; meta: DragMoveMeta } | null>(null);
-  const pendingWireRef = useRef<{ previewPoint: Point; targetPinId: string | null; targetNodeId: string | null } | null>(null);
+  const pendingWireRef = useRef<{
+    previewPoint: Point;
+    targetPinId: string | null;
+    targetNodeId: string | null;
+    targetLockState: WireTargetLockState | null;
+    crowdedTargets: boolean;
+    previewAxis: WireIntentAxis;
+  } | null>(null);
   const pendingHandleWaypointsRef = useRef<{ wireId: string; waypoints: Point[] } | null>(null);
 
   const screenToWorld = useCallback(
@@ -166,8 +213,22 @@ export function useInteractionManager({
     [onMoveComponent]
   );
 
-  const scheduleWirePreview = useCallback((previewPoint: Point, targetPinId: string | null, targetNodeId: string | null) => {
-    pendingWireRef.current = { previewPoint, targetPinId, targetNodeId };
+  const scheduleWirePreview = useCallback((
+    previewPoint: Point,
+    targetPinId: string | null,
+    targetNodeId: string | null,
+    targetLockState: WireTargetLockState | null,
+    crowdedTargets: boolean,
+    previewAxis: WireIntentAxis
+  ) => {
+    pendingWireRef.current = {
+      previewPoint,
+      targetPinId,
+      targetNodeId,
+      targetLockState,
+      crowdedTargets,
+      previewAxis,
+    };
     if (wireFrameRef.current !== null) {
       return;
     }
@@ -180,12 +241,15 @@ export function useInteractionManager({
       }
 
       setMode((previous) =>
-        previous.type === 'DRAWING_WIRE'
+        previous.type === 'DRAWING_WIRE' || previous.type === 'REWIRING_WIRE_ENDPOINT'
           ? {
               ...previous,
               previewPoint: pending.previewPoint,
               hoveredTargetPinId: pending.targetPinId,
               hoveredTargetNodeId: pending.targetNodeId,
+              targetLockState: pending.targetLockState,
+              crowdedTargets: pending.crowdedTargets,
+              previewAxis: pending.previewAxis,
             }
           : previous
       );
@@ -200,22 +264,55 @@ export function useInteractionManager({
     }
   }, []);
 
-  const resolveWireTarget = useCallback((hit: HitResult, fromNodeId: string) => {
-    if (hit?.type !== 'pin' || hit.pin.nodeId === fromNodeId) {
-      return null;
+  const resolveWireTargetFromContext = useCallback((worldPoint: Point, context: ActiveWireContext) => {
+    return resolveBiasedPinTarget(scene, worldPoint, transform.scale, {
+      excludeNodeId: context.sourceNodeId,
+      sourcePinId: context.sourcePinId,
+      sourcePoint: context.sourcePoint,
+      previousTargetPinId: context.previousTargetPinId,
+    });
+  }, [scene, transform.scale]);
+
+  const getActiveWireContext = useCallback((currentMode: InteractionMode): ActiveWireContext | null => {
+    if (currentMode.type === 'DRAWING_WIRE') {
+      return {
+        sourceNodeId: currentMode.fromNodeId,
+        sourcePinId: currentMode.fromPinId,
+        sourcePoint: currentMode.fromPoint,
+        previousTargetPinId: currentMode.hoveredTargetPinId,
+      };
     }
 
-    return hit.pin;
+    if (currentMode.type === 'REWIRING_WIRE_ENDPOINT') {
+      return {
+        sourceNodeId: currentMode.fixedNodeId,
+        sourcePinId: currentMode.fixedPinId,
+        sourcePoint: currentMode.fixedPoint,
+        previousTargetPinId: currentMode.hoveredTargetPinId,
+      };
+    }
+
+    return null;
   }, []);
 
   const updateWirePreviewFromClient = useCallback(
-    (clientX: number, clientY: number, fromNodeId: string) => {
+    (clientX: number, clientY: number, context: ActiveWireContext) => {
       const worldPoint = screenToWorld(clientX, clientY);
-      const hit = hitTestScene(scene, worldPoint, transform.scale, null, selectedComponentId);
-      const targetPin = resolveWireTarget(hit, fromNodeId);
-      scheduleWirePreview(targetPin?.position ?? worldPoint, targetPin?.id ?? null, targetPin?.nodeId ?? null);
+      const effectiveContext = pendingWireRef.current?.targetPinId
+        ? { ...context, previousTargetPinId: pendingWireRef.current.targetPinId }
+        : context;
+      const target = resolveWireTargetFromContext(worldPoint, effectiveContext);
+      scheduleWirePreview(
+        target?.pin.position ?? worldPoint,
+        target?.pin.id ?? null,
+        target?.pin.nodeId ?? null,
+        target?.lockState ?? null,
+        target?.crowded ?? false,
+        target?.axis ?? 'free'
+      );
+      return target;
     },
-    [resolveWireTarget, scene, scheduleWirePreview, screenToWorld, transform.scale]
+    [resolveWireTargetFromContext, scheduleWirePreview, screenToWorld]
   );
 
   const completeWire = useCallback(
@@ -234,41 +331,66 @@ export function useInteractionManager({
     return () => clearScheduledFrames();
   }, [clearScheduledFrames]);
 
-  const activeWireNodeId = mode.type === 'DRAWING_WIRE' ? mode.fromNodeId : null;
+  const activeWireContext = useMemo(() => getActiveWireContext(mode), [getActiveWireContext, mode]);
+
+  const resolveInteractiveHit = useCallback((worldPoint: Point) => {
+    const selectedWire = selectedWireId ? scene.wireById[selectedWireId] : null;
+    const baseHit = hitTestScene(scene, worldPoint, transform.scale, selectedWire, selectedComponentId);
+
+    if (baseHit?.type !== 'pin') {
+      return baseHit;
+    }
+
+    const previousTargetPinId = hoveredHit?.type === 'pin' ? hoveredHit.pin.id : null;
+    const biasedTarget = resolveBiasedPinTarget(scene, worldPoint, transform.scale, { previousTargetPinId });
+    return biasedTarget ? ({ type: 'pin', pin: biasedTarget.pin } as HitResult) : baseHit;
+  }, [hoveredHit, scene, selectedComponentId, selectedWireId, transform.scale]);
 
   useEffect(() => {
-    if (!activeWireNodeId) {
+    if (!activeWireContext) {
       return;
     }
 
     const handleWindowPointerMove = (event: PointerEvent) => {
-      updateWirePreviewFromClient(event.clientX, event.clientY, activeWireNodeId);
+      updateWirePreviewFromClient(event.clientX, event.clientY, activeWireContext);
     };
 
     window.addEventListener('pointermove', handleWindowPointerMove);
     return () => window.removeEventListener('pointermove', handleWindowPointerMove);
-  }, [activeWireNodeId, updateWirePreviewFromClient]);
+  }, [activeWireContext, updateWirePreviewFromClient]);
 
   const handlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
+    (e: ReactPointerEvent<HTMLDivElement>) => {
       activePointerIdRef.current = e.pointerId;
       if (!e.currentTarget.hasPointerCapture(e.pointerId)) {
         e.currentTarget.setPointerCapture(e.pointerId);
       }
 
       const worldPoint = screenToWorld(e.clientX, e.clientY);
-      const selectedWire = selectedWireId ? scene.wireById[selectedWireId] : null;
-      const hit = hitTestScene(scene, worldPoint, transform.scale, selectedWire, selectedComponentId);
+      const hit = resolveInteractiveHit(worldPoint);
+
+      if (e.button === 2 && (mode.type === 'DRAWING_WIRE' || mode.type === 'REWIRING_WIRE_ENDPOINT')) {
+        setHoveredHit(null);
+        releasePointerCapture(e.currentTarget, e.pointerId);
+        resetInteraction();
+        e.preventDefault();
+        return;
+      }
 
       if (mode.type === 'DRAWING_WIRE' && e.button === 0) {
-        const targetPin = resolveWireTarget(hit, mode.fromNodeId);
-        if (targetPin) {
+        const target = resolveWireTargetFromContext(worldPoint, {
+          sourceNodeId: mode.fromNodeId,
+          sourcePinId: mode.fromPinId,
+          sourcePoint: mode.fromPoint,
+          previousTargetPinId: mode.hoveredTargetPinId,
+        });
+        if (target) {
           completeWire(
             {
               fromNodeId: mode.fromNodeId,
-              toNodeId: targetPin.nodeId,
+              toNodeId: target.pin.nodeId,
               fromPinId: mode.fromPinId,
-              toPinId: targetPin.id,
+              toPinId: target.pin.id,
             },
             e.currentTarget,
             e.pointerId
@@ -294,8 +416,34 @@ export function useInteractionManager({
 
       if (hit?.type === 'wire-handle') {
         const wire = scene.wireById[hit.handle.wireId];
+        if (!wire) {
+          return;
+        }
+
         onSelectWire(hit.handle.wireId);
         onSelectComponent(null);
+
+        if (hit.handle.kind === 'endpoint' && hit.handle.endpoint) {
+          const isFromEndpoint = hit.handle.endpoint === 'from';
+          pendingHandleWaypointsRef.current = null;
+          setHoveredHit(hit);
+          setMode({
+            type: 'REWIRING_WIRE_ENDPOINT',
+            wireId: hit.handle.wireId,
+            endpoint: hit.handle.endpoint,
+            fixedPoint: isFromEndpoint ? wire.toPoint : wire.fromPoint,
+            fixedNodeId: isFromEndpoint ? wire.toNodeId : wire.fromNodeId,
+            fixedPinId: isFromEndpoint ? wire.toAnchorId ?? wire.toNodeId : wire.fromAnchorId ?? wire.fromNodeId,
+            previewPoint: hit.handle.position,
+            hoveredTargetNodeId: null,
+            hoveredTargetPinId: null,
+            targetLockState: null,
+            crowdedTargets: false,
+            previewAxis: 'free',
+          });
+          return;
+        }
+
         pendingHandleWaypointsRef.current = null;
         setMode({
           type: 'MOVING_WIRE_HANDLE',
@@ -305,8 +453,10 @@ export function useInteractionManager({
             kind: hit.handle.kind,
             waypointIndex: hit.handle.waypointIndex,
             segmentIndex: hit.handle.segmentIndex,
+            routeIndex: hit.handle.routeIndex,
+            endpoint: hit.handle.endpoint,
           },
-          initialWaypoints: wire?.waypoints ?? [],
+          initialWaypoints: wire.waypoints,
         });
         return;
       }
@@ -324,6 +474,9 @@ export function useInteractionManager({
           previewPoint: hit.pin.position,
           hoveredTargetNodeId: null,
           hoveredTargetPinId: null,
+          targetLockState: null,
+          crowdedTargets: false,
+          previewAxis: 'free',
         });
         return;
       }
@@ -386,23 +539,21 @@ export function useInteractionManager({
       onSelectWire,
       releasePointerCapture,
       resetInteraction,
-      resolveWireTarget,
+      resolveInteractiveHit,
+      resolveWireTargetFromContext,
       scene,
       screenToWorld,
-      selectedWireId,
-      transform.scale,
       transform.x,
       transform.y,
     ]
   );
 
   const handlePointerMove = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
+    (e: ReactPointerEvent<HTMLDivElement>) => {
       const worldPoint = screenToWorld(e.clientX, e.clientY);
 
       if (mode.type === 'IDLE') {
-        const selectedWire = selectedWireId ? scene.wireById[selectedWireId] : null;
-        setHoveredHit(hitTestScene(scene, worldPoint, transform.scale, selectedWire, selectedComponentId));
+        setHoveredHit(resolveInteractiveHit(worldPoint));
         return;
       }
 
@@ -431,7 +582,22 @@ export function useInteractionManager({
       }
 
       if (mode.type === 'DRAWING_WIRE') {
-        updateWirePreviewFromClient(e.clientX, e.clientY, mode.fromNodeId);
+        updateWirePreviewFromClient(e.clientX, e.clientY, {
+          sourceNodeId: mode.fromNodeId,
+          sourcePinId: mode.fromPinId,
+          sourcePoint: mode.fromPoint,
+          previousTargetPinId: mode.hoveredTargetPinId,
+        });
+        return;
+      }
+
+      if (mode.type === 'REWIRING_WIRE_ENDPOINT') {
+        updateWirePreviewFromClient(e.clientX, e.clientY, {
+          sourceNodeId: mode.fixedNodeId,
+          sourcePinId: mode.fixedPinId,
+          sourcePoint: mode.fixedPoint,
+          previousTargetPinId: mode.hoveredTargetPinId,
+        });
         return;
       }
 
@@ -449,11 +615,11 @@ export function useInteractionManager({
         onPreviewWireWaypoints(mode.wireId, nextWaypoints);
       }
     },
-    [mode, onPreviewWireWaypoints, scene, scheduleDragPreview, screenToWorld, selectedWireId, transform.scale, updatePan, updateWirePreviewFromClient]
+    [mode, onPreviewWireWaypoints, resolveInteractiveHit, scene, scheduleDragPreview, screenToWorld, selectedComponentId, selectedWireId, transform.scale, updatePan, updateWirePreviewFromClient]
   );
 
   const handlePointerUp = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
+    (e: ReactPointerEvent<HTMLDivElement>) => {
       if (mode.type === 'DRAGGING_COMPONENT') {
         if (mode.moved) {
           const dx = (e.clientX - mode.startClient.x) / transform.scale;
@@ -472,20 +638,52 @@ export function useInteractionManager({
         return;
       }
 
+      if (mode.type === 'REWIRING_WIRE_ENDPOINT') {
+        const worldPoint = screenToWorld(e.clientX, e.clientY);
+        const target = resolveWireTargetFromContext(worldPoint, {
+          sourceNodeId: mode.fixedNodeId,
+          sourcePinId: mode.fixedPinId,
+          sourcePoint: mode.fixedPoint,
+          previousTargetPinId: mode.hoveredTargetPinId,
+        });
+
+        if (target) {
+          onRewireWireEndpoint({
+            wireId: mode.wireId,
+            endpoint: mode.endpoint,
+            targetNodeId: target.pin.nodeId,
+            targetPinId: target.pin.id,
+            targetPoint: target.pin.position,
+          });
+        }
+
+        releasePointerCapture(e.currentTarget, e.pointerId);
+        resetInteraction();
+        return;
+      }
+
       if (mode.type === 'DRAWING_WIRE') {
         const worldPoint = screenToWorld(e.clientX, e.clientY);
-        const hit = hitTestScene(scene, worldPoint, transform.scale, null, selectedComponentId);
-        const targetPin = resolveWireTarget(hit, mode.fromNodeId);
+        const target = resolveWireTargetFromContext(worldPoint, {
+          sourceNodeId: mode.fromNodeId,
+          sourcePinId: mode.fromPinId,
+          sourcePoint: mode.fromPoint,
+          previousTargetPinId: mode.hoveredTargetPinId,
+        });
 
         if (wireJustStartedRef.current) {
           wireJustStartedRef.current = false;
-          if (targetPin) {
+          const initialDragDistance = Math.hypot(
+            (worldPoint.x - mode.fromPoint.x) * transform.scale,
+            (worldPoint.y - mode.fromPoint.y) * transform.scale
+          );
+          if (target && initialDragDistance >= INITIAL_WIRE_COMMIT_DRAG_THRESHOLD) {
             completeWire(
               {
                 fromNodeId: mode.fromNodeId,
-                toNodeId: targetPin.nodeId,
+                toNodeId: target.pin.nodeId,
                 fromPinId: mode.fromPinId,
-                toPinId: targetPin.id,
+                toPinId: target.pin.id,
               },
               e.currentTarget,
               e.pointerId
@@ -500,6 +698,9 @@ export function useInteractionManager({
                   previewPoint: worldPoint,
                   hoveredTargetPinId: null,
                   hoveredTargetNodeId: null,
+                  targetLockState: null,
+                  crowdedTargets: false,
+                  previewAxis: 'free',
                 }
               : previous
           );
@@ -520,11 +721,11 @@ export function useInteractionManager({
       releasePointerCapture(e.currentTarget, e.pointerId);
       resetInteraction();
     },
-    [commitHandlePreview, completeWire, mode, onCommitComponentMove, releasePointerCapture, resetInteraction, resolveWireTarget, scene, screenToWorld, transform.scale]
+    [commitHandlePreview, completeWire, mode, onCommitComponentMove, onRewireWireEndpoint, releasePointerCapture, resetInteraction, resolveWireTargetFromContext, screenToWorld, transform.scale]
   );
 
   const handlePointerCancel = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
+    (e: ReactPointerEvent<HTMLDivElement>) => {
       if (mode.type === 'MOVING_WIRE_HANDLE') {
         clearHandlePreview(mode.wireId);
       }
@@ -536,7 +737,7 @@ export function useInteractionManager({
   );
 
   const handleWheel = useCallback(
-    (e: React.WheelEvent) => {
+    (e: ReactWheelEvent) => {
       if (!containerRef.current) return;
       zoomAt(e.deltaY, e.clientX, e.clientY, containerRef.current.getBoundingClientRect());
     },
@@ -546,6 +747,22 @@ export function useInteractionManager({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      const isMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform);
+      const ctrlOrCmd = isMac ? e.metaKey : e.ctrlKey;
+
+      // Ctrl+Z / Cmd+Z — circuit undo
+      if (ctrlOrCmd && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        useCircuitStore.getState().undo();
+        return;
+      }
+      // Ctrl+Y / Cmd+Shift+Z — circuit redo
+      if ((ctrlOrCmd && e.key.toLowerCase() === 'y') || (ctrlOrCmd && e.shiftKey && e.key.toLowerCase() === 'z')) {
+        e.preventDefault();
+        useCircuitStore.getState().redo();
+        return;
+      }
 
       const key = e.key.toLowerCase();
       if (key === 'escape') {
@@ -557,7 +774,7 @@ export function useInteractionManager({
           return;
         }
 
-        if (mode.type === 'DRAWING_WIRE' || mode.type === 'DRAGGING_COMPONENT' || mode.type === 'PANNING') {
+        if (mode.type === 'DRAWING_WIRE' || mode.type === 'REWIRING_WIRE_ENDPOINT' || mode.type === 'DRAGGING_COMPONENT' || mode.type === 'PANNING') {
           setHoveredHit(null);
           resetInteraction();
           return;
@@ -608,6 +825,13 @@ export function useInteractionManager({
     selectedWireId,
   ]);
 
+  const cancelWireDrawing = useCallback(() => {
+    if (mode.type === 'DRAWING_WIRE' || mode.type === 'REWIRING_WIRE_ENDPOINT') {
+      setHoveredHit(null);
+      resetInteraction();
+    }
+  }, [mode.type, resetInteraction]);
+
   return {
     mode,
     hoveredHit,
@@ -617,6 +841,10 @@ export function useInteractionManager({
     handlePointerUp,
     handlePointerCancel,
     handleWheel,
+    cancelWireDrawing,
   };
 }
+
+
+
 

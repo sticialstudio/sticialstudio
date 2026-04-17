@@ -1,10 +1,11 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { CircuitBoard, Download, File, RefreshCw } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/Button';
 import { fadeInUp } from '@/components/ui/motion';
-import { useProject } from '@/contexts/ProjectContext';
+import { useEditorStore } from '@/stores/editorStore';
 import { useBoard } from '@/contexts/BoardContext';
+import type { useWebSerial } from '@/hooks/useWebSerial';
 
 interface DeviceFile {
     name: string;
@@ -19,14 +20,14 @@ function inferFileType(filename: string): string {
     return 'text';
 }
 
-export default function DeviceFiles({ webSerial }: { webSerial: any }) {
+export default function DeviceFiles({ webSerial }: { webSerial: ReturnType<typeof useWebSerial> }) {
     const { isConnected, runMicroPythonCommand, isFlashing } = webSerial;
     const { compileStrategy } = useBoard();
     const [files, setFiles] = useState<DeviceFile[]>([]);
     const [isLoading, setIsLoading] = useState(false);
-    const { createFile } = useProject();
+    const createFile = useEditorStore((state) => state.createFile);
 
-    const fetchFiles = async () => {
+    const fetchFiles = useCallback(async () => {
         if (!isConnected || compileStrategy !== 'micropython-flash' || isFlashing) {
             setFiles([]);
             return;
@@ -60,15 +61,11 @@ _ls()
         } finally {
             setIsLoading(false);
         }
-    };
+    }, [isConnected, compileStrategy, isFlashing, runMicroPythonCommand]);
 
     useEffect(() => {
-        if (isConnected) {
-            fetchFiles();
-        } else {
-            setFiles([]);
-        }
-    }, [isConnected, compileStrategy, isFlashing]);
+        fetchFiles();
+    }, [fetchFiles]);
 
     const handleReadFile = async (filename: string) => {
         setIsLoading(true);
@@ -176,3 +173,4 @@ except Exception as e:
         </motion.div>
     );
 }
+

@@ -1,0 +1,44 @@
+﻿On branch codex/release-cleanup
+Your branch is up to date with 'origin/codex/release-cleanup'.
+
+Changes not staged for commit:
+  (use "git add <file>..." to update what will be committed)
+  (use "git restore <file>..." to discard changes in working directory)
+	modified:   apps/api/.env.example
+	modified:   apps/api/index.js
+	modified:   apps/api/lib/loadLocalEnv.js
+	modified:   apps/api/routes/compile.js
+	modified:   apps/api/routes/libraries.js
+	modified:   apps/web/scripts/validate-blockly-generators.mjs
+	modified:   apps/web/src/app/globals.css
+	modified:   apps/web/src/components/ide/BlockEditor.tsx
+	modified:   apps/web/src/components/ide/ConsolePanel.tsx
+	modified:   apps/web/src/components/ide/SplitView.tsx
+	modified:   apps/web/src/components/ide/TopToolbar.tsx
+	modified:   apps/web/src/lib/blockly/generator.ts
+	modified:   apps/web/src/lib/blockly/theme.ts
+	modified:   apps/web/src/proxy.ts
+	modified:   packages/database/package.json
+	modified:   packages/database/prisma/schema.prisma
+
+Untracked files:
+  (use "git add <file>..." to include in what will be committed)
+	apps/api/blink.txt
+	apps/api/lib/arduinoCli.js
+	apps/web/extract_uno.js
+	apps/web/fix_display.js
+	apps/web/fix_generator.py
+	apps/web/package-lock.json
+	apps/web/src/app/projects/select-environment/
+	apps/web/src/app/projects/start/
+	apps/web/src/components/ide/BlockTerminalShell.tsx
+	apps/web/update_glass.js
+	generate_svgs.js
+	generate_svgs.mjs
+	infrastructure_report.md
+	next-env.d.ts
+	recent_commits.txt
+	render.yaml
+	status.txt
+
+no changes added to commit (use "git add" and/or "git commit -a")

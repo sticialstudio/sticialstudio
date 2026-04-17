@@ -1,4 +1,4 @@
-﻿import { BOARD_CONFIG } from "@/lib/boards/boardConfig";
+import { BOARD_CONFIG } from "@/lib/boards/boardConfig";
 
 export type PersistedCodingMode = "block" | "text";
 export type PersistedHardwareEnvironment = "virtual" | "physical";
@@ -10,6 +10,16 @@ export interface ProjectMeta {
   language: string | null;
   generator: string | null;
   environment: PersistedHardwareEnvironment | null;
+}
+
+export interface ProjectMetaSource {
+  board?: unknown;
+  mode?: unknown;
+  codingMode?: unknown;
+  language?: unknown;
+  generator?: unknown;
+  environment?: unknown;
+  description?: string | null;
 }
 
 const META_PREFIX = "EDTECH_META::";
@@ -36,6 +46,12 @@ function deriveEnvironment(board: string, environment: unknown): PersistedHardwa
   }
 
   return BOARD_CONFIG[board]?.supportsBrowserSimulation ? "virtual" : "physical";
+}
+
+function hasDirectMetaFields(source: ProjectMetaSource) {
+  return [source.board, source.mode, source.codingMode, source.language, source.generator, source.environment].some(
+    (value) => value !== undefined && value !== null && value !== "",
+  );
 }
 
 function normalizeMeta(raw: Partial<ProjectMeta> | null | undefined): ProjectMeta | null {
@@ -68,17 +84,7 @@ function parseLegacyDescription(description: string): ProjectMeta | null {
   });
 }
 
-export function serializeProjectMeta(meta: Omit<ProjectMeta, "version"> | ProjectMeta): string {
-  const normalized = normalizeMeta(meta);
-
-  if (!normalized) {
-    return "";
-  }
-
-  return `${META_PREFIX}${JSON.stringify(normalized)}`;
-}
-
-export function parseProjectMeta(description?: string | null): ProjectMeta | null {
+function parseProjectMetaDescription(description?: string | null): ProjectMeta | null {
   if (!description || typeof description !== "string") {
     return null;
   }
@@ -93,6 +99,51 @@ export function parseProjectMeta(description?: string | null): ProjectMeta | nul
   }
 
   return parseLegacyDescription(description);
+}
+
+export function buildProjectMetaPayload(meta: Omit<ProjectMeta, "version"> | ProjectMeta) {
+  const normalized = normalizeMeta(meta);
+
+  return {
+    board: normalized?.board ?? null,
+    codingMode: normalized?.mode ?? null,
+    language: normalized?.language ?? null,
+    generator: normalized?.generator ?? null,
+    environment: normalized?.environment ?? null,
+  };
+}
+
+export function serializeProjectMeta(meta: Omit<ProjectMeta, "version"> | ProjectMeta): string {
+  const normalized = normalizeMeta(meta);
+
+  if (!normalized) {
+    return "";
+  }
+
+  return `${META_PREFIX}${JSON.stringify(normalized)}`;
+}
+
+export function parseProjectMeta(source?: string | null | ProjectMetaSource): ProjectMeta | null {
+  if (typeof source === "string" || source == null) {
+    return parseProjectMetaDescription(source);
+  }
+
+  const rawMode = source.mode ?? source.codingMode;
+  const directMeta = hasDirectMetaFields(source)
+    ? normalizeMeta({
+        board: typeof source.board === "string" ? source.board : undefined,
+        mode: isCodingMode(rawMode) ? rawMode : undefined,
+        language: typeof source.language === "string" ? source.language : undefined,
+        generator: typeof source.generator === "string" ? source.generator : undefined,
+        environment: isEnvironment(source.environment) ? source.environment : undefined,
+      })
+    : null;
+
+  if (directMeta) {
+    return directMeta;
+  }
+
+  return parseProjectMetaDescription(source.description);
 }
 
 export function getProjectMetaSummary(meta: ProjectMeta | null): string {
@@ -111,4 +162,7 @@ export function getProjectMetaSummary(meta: ProjectMeta | null): string {
 
   return `${meta.board} · ${codingLabel} · ${environmentLabel}`;
 }
+
+
+
 

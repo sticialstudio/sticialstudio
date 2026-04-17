@@ -49,7 +49,7 @@ const shadowNumber = (name: string, value: number | string) =>
   `<value name="${name}"><shadow type="math_number"><field name="NUM">${value}</field></shadow></value>`;
 
 const registryEntries: BlocklyRegistryEntry[] = [
-  { type: 'arduino_setup_loop', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'basic' },
+  { type: 'arduino_setup_loop', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'control' },
   { type: 'arduino_on_start', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'basic' },
   { type: 'arduino_forever', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'basic' },
 
@@ -146,8 +146,8 @@ const registryEntries: BlocklyRegistryEntry[] = [
   { type: 'arduino_ir_obstacle_read', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
   { type: 'arduino_bme280_init', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
   { type: 'arduino_bme280_read', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
-  { type: 'arduino_bh1750_init', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
-  { type: 'arduino_bh1750_read', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
+  { type: 'arduino_bh1750_init', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors' },
+  { type: 'arduino_bh1750_read', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors' },
   { type: 'arduino_max30102_init', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
   { type: 'arduino_max30102_read', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
   { type: 'arduino_color_sensor_read', supportedBoards: ['arduino'], generators: ['arduino'], category: 'sensors-actuators' },
@@ -155,10 +155,10 @@ const registryEntries: BlocklyRegistryEntry[] = [
   { type: 'arduino_ir_read_code', supportedBoards: ['arduino'], generators: ['arduino'], category: 'sensors-actuators' },
   { type: 'arduino_keypad_init', supportedBoards: ['arduino'], generators: ['arduino'], category: 'sensors-actuators' },
   { type: 'arduino_keypad_get_key', supportedBoards: ['arduino'], generators: ['arduino'], category: 'sensors-actuators' },
-  { type: 'arduino_relay_write', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
+  { type: 'arduino_relay_write', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'io' },
   { type: 'arduino_buzzer_tone', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
   { type: 'arduino_buzzer_stop', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
-  { type: 'arduino_active_buzzer_set', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'sensors-actuators' },
+  { type: 'arduino_active_buzzer_set', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'io' },
   { type: 'arduino_dc_motor_set', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'motors' },
   { type: 'arduino_water_pump_set', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'motors' },
   { type: 'arduino_rgb_set', supportedBoards: ALL_BOARDS, generators: ['arduino', 'micropython'], category: 'lights' },
@@ -239,7 +239,7 @@ export const TOOLBOX_CATEGORY_DEFINITIONS: ToolboxCategoryDefinition[] = [
       block('arduino_board_led'), block('arduino_led_set'), sep(), block('arduino_pinMode'), block('arduino_digitalWrite'), block('arduino_analogWrite'),
       sep(), block('arduino_digitalRead'), block('arduino_analogRead'), block('arduino_pin_state'),
       sep(), block('arduino_button_add'), block('arduino_button_is_pressed'), block('arduino_button_was_pressed'),
-      sep(), block('arduino_tone_pin', shadowNumber('FREQ', 440)), block('arduino_tone_pin_duration', `${shadowNumber('FREQ', 440)}${shadowNumber('DUR', 500)}`), block('arduino_no_tone_pin'), block('arduino_buzzer_tone'), block('arduino_buzzer_stop'),
+      sep(), block('arduino_tone_pin', shadowNumber('FREQ', 440)), block('arduino_tone_pin_duration', `${shadowNumber('FREQ', 440)}${shadowNumber('DUR', 500)}`), block('arduino_no_tone_pin'), block('arduino_buzzer_tone'), block('arduino_buzzer_stop'), block('arduino_relay_write'), block('arduino_active_buzzer_set'),
     ],
   },
   {
@@ -252,6 +252,7 @@ export const TOOLBOX_CATEGORY_DEFINITIONS: ToolboxCategoryDefinition[] = [
       block('arduino_pir_read'), block('arduino_touch_read'), sep(),
       block('arduino_sound_sensor_read'), block('arduino_photo_sensor_read'), block('arduino_potentiometer_read'), block('arduino_button_read'), block('arduino_ir_obstacle_read'), sep(),
       block('arduino_bme280_init'), block('arduino_bme280_read'), sep(),
+      block('arduino_bh1750_init'), block('arduino_bh1750_read'), sep(),
       block('arduino_soil_moisture_read'), block('arduino_rain_read'), block('arduino_water_level_read'), sep(),
       block('arduino_max30102_init'), block('arduino_max30102_read'),
     ],
@@ -271,7 +272,7 @@ export const TOOLBOX_CATEGORY_DEFINITIONS: ToolboxCategoryDefinition[] = [
   },
   {
     id: 'Control', name: 'Control', categoryStyle: 'control_category', entries: [
-      block('arduino_on_start'), block('arduino_forever'), sep(16), block('time_wait_seconds', shadowNumber('SECONDS', 1)), block('time_delay', shadowNumber('MS', 1000)), block('time_wait_until'), block('arduino_millis'),
+      block('arduino_on_start'), block('arduino_forever'), block('arduino_setup_loop'), sep(16), block('time_wait_seconds', shadowNumber('SECONDS', 1)), block('time_delay', shadowNumber('MS', 1000)), block('time_wait_until'), block('arduino_millis'),
     ],
   },
   {
@@ -307,9 +308,6 @@ export const TOOLBOX_CATEGORY_DEFINITIONS: ToolboxCategoryDefinition[] = [
       block('oled_draw_pixel', `${shadowNumber('X', 0)}${shadowNumber('Y', 0)}`), block('oled_draw_line', `${shadowNumber('X0', 0)}${shadowNumber('Y0', 0)}${shadowNumber('X1', 10)}${shadowNumber('Y1', 10)}`), block('oled_draw_rect', `${shadowNumber('X', 0)}${shadowNumber('Y', 0)}${shadowNumber('W', 10)}${shadowNumber('H', 10)}`), block('oled_draw_circle', `${shadowNumber('X', 10)}${shadowNumber('Y', 10)}${shadowNumber('R', 5)}`), block('oled_draw_triangle', `${shadowNumber('X0', 0)}${shadowNumber('Y0', 10)}${shadowNumber('X1', 10)}${shadowNumber('Y1', 0)}${shadowNumber('X2', 20)}${shadowNumber('Y2', 10)}`), sep(),
       block('arduino_tft_init'), block('arduino_tft_clear'), block('arduino_tft_print'),
     ],
-  },
-  {
-    id: 'More', name: 'More Blocks', categoryStyle: 'more_category', advanced: true, entries: [block('arduino_relay_write'), block('arduino_active_buzzer_set'), sep(), block('arduino_bh1750_init'), block('arduino_bh1750_read'), sep(), { kind: 'label', text: 'Legacy root blocks' }, block('arduino_setup_loop')],
   },
 ];
 

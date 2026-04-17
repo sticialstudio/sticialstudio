@@ -91,6 +91,23 @@ arduinoGenerator.INDENT = '  ';
     return `  digitalWrite(${pin}, ${state});\n`;
 };
 
+(arduinoGenerator as any).forBlock['arduino_board_led'] = function (block: Blockly.Block) {
+    const state = block.getFieldValue('STATE') || 'LOW';
+    (arduinoGenerator as any).setups_['board_led_pin'] = '  pinMode(LED_BUILTIN, OUTPUT);';
+    return `  digitalWrite(LED_BUILTIN, ${state});\n`;
+};
+
+function getArduinoLedPin(block: Blockly.Block) {
+    const rawSensor = block.getFieldValue('SENSOR') || block.getFieldValue('PIN') || '2';
+    return resolveComponentNamedPinOrPin(rawSensor, 'SIG', resolveComponentOrPin(rawSensor, '2'));
+}
+
+(arduinoGenerator as any).forBlock['arduino_led_set'] = function (block: Blockly.Block) {
+    const pin = getArduinoLedPin(block);
+    const state = block.getFieldValue('STATE') || 'LOW';
+    (arduinoGenerator as any).setups_[`led_pin_${pin}`] = `  pinMode(${pin}, OUTPUT);`;
+    return `  digitalWrite(${pin}, ${state});\n`;
+};
 (arduinoGenerator as any).forBlock['arduino_delay'] = function (block: Blockly.Block) {
     const ms = block.getFieldValue('MS');
     return `  delay(${ms});\n`;
@@ -205,12 +222,31 @@ arduinoGenerator.INDENT = '  ';
     return `  tone(${pin}, ${freq}, ${duration});\n`;
 };
 
+(arduinoGenerator as any).forBlock['arduino_tone_pin'] = function (block: Blockly.Block) {
+    const pin = block.getFieldValue('PIN');
+    const freq = (arduinoGenerator as any).valueToCode(block, 'FREQ', (arduinoGenerator as any).ORDER_NONE) || '1000';
+    (arduinoGenerator as any).setups_[`tone_pin_${pin}`] = `  pinMode(${pin}, OUTPUT);`;
+    return `  tone(${pin}, ${freq});\n`;
+};
+
+(arduinoGenerator as any).forBlock['arduino_tone_pin_duration'] = function (block: Blockly.Block) {
+    const pin = block.getFieldValue('PIN');
+    const freq = (arduinoGenerator as any).valueToCode(block, 'FREQ', (arduinoGenerator as any).ORDER_NONE) || '1000';
+    const duration = (arduinoGenerator as any).valueToCode(block, 'DUR', (arduinoGenerator as any).ORDER_NONE) || '250';
+    (arduinoGenerator as any).setups_[`tone_pin_${pin}`] = `  pinMode(${pin}, OUTPUT);`;
+    return `  tone(${pin}, ${freq}, ${duration});\n`;
+};
 (arduinoGenerator as any).forBlock['arduino_buzzer_stop'] = function (block: Blockly.Block) {
     const pin = block.getFieldValue('PIN');
     (arduinoGenerator as any).setups_[`buzzer_pin_${pin}`] = `  pinMode(${pin}, OUTPUT);`;
     return `  noTone(${pin});\n`;
 };
 
+(arduinoGenerator as any).forBlock['arduino_no_tone_pin'] = function (block: Blockly.Block) {
+    const pin = block.getFieldValue('PIN');
+    (arduinoGenerator as any).setups_[`tone_pin_${pin}`] = `  pinMode(${pin}, OUTPUT);`;
+    return `  noTone(${pin});\n`;
+};
 (arduinoGenerator as any).forBlock['arduino_pir_read'] = function (block: Blockly.Block) {
     const pin = block.getFieldValue('PIN');
     (arduinoGenerator as any).setups_[`pir_pin_${pin}`] = `  pinMode(${pin}, INPUT);`;
@@ -681,6 +717,36 @@ function dedentMicroPython(code: string) {
     return `pin_${pin}.value(${state})\n`;
 };
 
+(micropythonGenerator as any).forBlock['arduino_board_led'] = function (block: Blockly.Block) {
+    const state = getMicroPythonState(micropythonGenerator);
+    state.imports_.add('machine');
+    state.setups_['board_led_helper'] = `def _sticial_board_led():
+    for candidate in ("LED", 25, 2):
+        try:
+            return machine.Pin(candidate, machine.Pin.OUT)
+        except Exception:
+            pass
+    raise RuntimeError("Built-in LED pin is not available on this board")`;
+    state.setups_['board_led_init'] = 'board_led = _sticial_board_led()';
+    return `board_led.value(${block.getFieldValue('STATE') === 'HIGH' ? '1' : '0'})\n`;
+};
+
+function getMicroPythonLedConfig(block: Blockly.Block) {
+    const rawSensor = block.getFieldValue('SENSOR') || block.getFieldValue('PIN') || '2';
+    const pin = resolveComponentNamedPinOrPin(rawSensor, 'SIG', resolveComponentOrPin(rawSensor, '2'));
+    return {
+        identifier: getInstanceIdentifier(rawSensor, 'led', pin),
+        pin,
+    };
+}
+
+(micropythonGenerator as any).forBlock['arduino_led_set'] = function (block: Blockly.Block) {
+    const state = getMicroPythonState(micropythonGenerator);
+    const { identifier, pin } = getMicroPythonLedConfig(block);
+    state.imports_.add('machine');
+    state.setups_[`led_${identifier}`] = `led_${identifier} = machine.Pin(${pin}, machine.Pin.OUT)`;
+    return `led_${identifier}.value(${block.getFieldValue('STATE') === 'HIGH' ? '1' : '0'})\n`;
+};
 (micropythonGenerator as any).forBlock['arduino_delay'] = function (block: Blockly.Block) {
     const ms = block.getFieldValue('MS');
     getMicroPythonState(micropythonGenerator).imports_.add('time');
@@ -714,6 +780,33 @@ function dedentMicroPython(code: string) {
     return `pwm_${pin}.duty(int(${value}) * 4)\n`;
 };
 
+(micropythonGenerator as any).forBlock['arduino_tone_pin'] = function (block: Blockly.Block) {
+    const pin = block.getFieldValue('PIN');
+    const freq = (micropythonGenerator as any).valueToCode(block, 'FREQ', (micropythonGenerator as any).ORDER_NONE) || '1000';
+    const state = getMicroPythonState(micropythonGenerator);
+    state.imports_.add('machine');
+    state.setups_[`tone_pwm_${pin}`] = `tone_pwm_${pin} = machine.PWM(machine.Pin(${pin}))\ntone_pwm_${pin}.duty_u16(0)`;
+    return `tone_pwm_${pin}.freq(int(${freq}))\ntone_pwm_${pin}.duty_u16(32768)\n`;
+};
+
+(micropythonGenerator as any).forBlock['arduino_tone_pin_duration'] = function (block: Blockly.Block) {
+    const pin = block.getFieldValue('PIN');
+    const freq = (micropythonGenerator as any).valueToCode(block, 'FREQ', (micropythonGenerator as any).ORDER_NONE) || '1000';
+    const duration = (micropythonGenerator as any).valueToCode(block, 'DUR', (micropythonGenerator as any).ORDER_NONE) || '250';
+    const state = getMicroPythonState(micropythonGenerator);
+    state.imports_.add('machine');
+    state.imports_.add('time');
+    state.setups_[`tone_pwm_${pin}`] = `tone_pwm_${pin} = machine.PWM(machine.Pin(${pin}))\ntone_pwm_${pin}.duty_u16(0)`;
+    return `tone_pwm_${pin}.freq(int(${freq}))\ntone_pwm_${pin}.duty_u16(32768)\ntime.sleep_ms(int(${duration}))\ntone_pwm_${pin}.duty_u16(0)\n`;
+};
+
+(micropythonGenerator as any).forBlock['arduino_no_tone_pin'] = function (block: Blockly.Block) {
+    const pin = block.getFieldValue('PIN');
+    const state = getMicroPythonState(micropythonGenerator);
+    state.imports_.add('machine');
+    state.setups_[`tone_pwm_${pin}`] = `tone_pwm_${pin} = machine.PWM(machine.Pin(${pin}))\ntone_pwm_${pin}.duty_u16(0)`;
+    return `tone_pwm_${pin}.duty_u16(0)\n`;
+};
 (micropythonGenerator as any).forBlock['arduino_millis'] = function (block: Blockly.Block) {
     getMicroPythonState(micropythonGenerator).imports_.add('time');
     return [`time.ticks_ms()`, (micropythonGenerator as any).ORDER_ATOMIC];
@@ -1822,42 +1915,3 @@ export function getGenerator(type: string): Blockly.CodeGenerator {
     if (type === "micropython") return micropythonGenerator;
     return arduinoGenerator;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

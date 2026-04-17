@@ -1,11 +1,82 @@
 const express = require('express');
 const { prisma } = require('../../../packages/database/dist');
 const authMiddleware = require('../middleware/authMiddleware');
+const { logApiEvent, sendApiError, serializeError } = require('../lib/telemetry');
 
 const router = express.Router();
+const LEGACY_META_PREFIX = 'EDTECH_META::';
 
 function getPathKey(parentId, name) {
     return `${parentId || 'root'}::${name}`;
+}
+
+function hasOwn(payload, key) {
+    return Object.prototype.hasOwnProperty.call(payload, key);
+}
+
+function normalizeOptionalText(value) {
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeIncomingProjectMeta(payload) {
+    const update = {};
+    let hasProjectMetaUpdate = false;
+
+    if (hasOwn(payload, 'board')) {
+        update.board = normalizeOptionalText(payload.board);
+        hasProjectMetaUpdate = true;
+    }
+
+    if (hasOwn(payload, 'codingMode')) {
+        update.codingMode = normalizeOptionalText(payload.codingMode);
+        hasProjectMetaUpdate = true;
+    }
+
+    if (hasOwn(payload, 'language')) {
+        update.language = normalizeOptionalText(payload.language);
+        hasProjectMetaUpdate = true;
+    }
+
+    if (hasOwn(payload, 'generator')) {
+        update.generator = normalizeOptionalText(payload.generator);
+        hasProjectMetaUpdate = true;
+    }
+
+    if (hasOwn(payload, 'environment')) {
+        update.environment = normalizeOptionalText(payload.environment);
+        hasProjectMetaUpdate = true;
+    }
+
+    return { update, hasProjectMetaUpdate };
+}
+
+function isLegacyProjectMetaDescription(description) {
+    if (typeof description !== 'string' || description.trim().length === 0) {
+        return false;
+    }
+
+    if (description.startsWith(LEGACY_META_PREFIX)) {
+        return true;
+    }
+
+    return /Board: .* \|/.test(description) && /Mode: .*$/m.test(description);
+}
+
+function resolveProjectDescription(payload, existingDescription, hasProjectMetaUpdate) {
+    if (hasOwn(payload, 'description')) {
+        return typeof payload.description === 'string' ? payload.description : '';
+    }
+
+    if (hasProjectMetaUpdate && isLegacyProjectMetaDescription(existingDescription)) {
+        return '';
+    }
+
+    return undefined;
 }
 
 function normalizeIncomingProjectFile(rawFile) {
@@ -62,10 +133,8 @@ function addToPathIndex(index, file) {
     }
 }
 
-// Protect all project routes
 router.use(authMiddleware);
 
-// Get all projects for a user
 router.get('/', async (req, res) => {
     try {
         const userId = req.user.id;
@@ -76,12 +145,11 @@ router.get('/', async (req, res) => {
         });
         res.json(projects);
     } catch (error) {
-        console.error('Error fetching projects:', error);
-        res.status(500).json({ error: 'Failed to fetch projects' });
+        logApiEvent('error', 'Error fetching projects', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to fetch projects', code: 'PROJECT_LIST_FAILED', requestId: req.requestId });
     }
 });
 
-// Get a specific project with all its files
 router.get('/:id', async (req, res) => {
     try {
         const project = await prisma.project.findFirst({
@@ -89,27 +157,28 @@ router.get('/:id', async (req, res) => {
             include: { files: true }
         });
 
-        if (!project) return res.status(404).json({ error: 'Project not found' });
+        if (!project) return sendApiError(res, 404, { message: 'Project not found', code: 'PROJECT_NOT_FOUND', requestId: req.requestId });
 
         res.json(project);
     } catch (error) {
-        console.error('Error fetching project:', error);
-        res.status(500).json({ error: 'Failed to fetch project' });
+        logApiEvent('error', 'Error fetching project', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to fetch project', code: 'PROJECT_FETCH_FAILED', requestId: req.requestId });
     }
 });
 
-// Create a new project (Instantiates main.blockly and main.cpp defaults)
 router.post('/', async (req, res) => {
     try {
-        const { name, description } = req.body;
+        const { name } = req.body;
         const userId = req.user.id;
+        const { update: projectMetaFields, hasProjectMetaUpdate } = normalizeIncomingProjectMeta(req.body);
+        const description = resolveProjectDescription(req.body, '', hasProjectMetaUpdate);
 
-        // 1. Create the Project and Root Folder first
         const project = await prisma.project.create({
             data: {
                 name: name || 'Untitled Project',
-                description: description || '',
-                userId: userId
+                description: typeof description === 'string' ? description : '',
+                userId: userId,
+                ...projectMetaFields,
             }
         });
 
@@ -122,7 +191,6 @@ router.post('/', async (req, res) => {
             }
         });
 
-        // Scaffold inner files linking to the `src` folder
         await Promise.all([
             prisma.file.create({ data: { projectId: project.id, parentId: srcFolder.id, name: 'main.blockly', content: '<xml xmlns="https://developers.google.com/blockly/xml"></xml>', type: 'blockly' } }),
             prisma.file.create({ data: { projectId: project.id, parentId: srcFolder.id, name: 'main.cpp', content: '', type: 'cpp' } }),
@@ -136,32 +204,32 @@ router.post('/', async (req, res) => {
 
         res.status(201).json(finalProject);
     } catch (error) {
-        console.error('Error creating project:', error);
-        res.status(500).json({ error: 'Failed to create project' });
+        logApiEvent('error', 'Error creating project', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to create project', code: 'PROJECT_CREATE_FAILED', requestId: req.requestId });
     }
 });
 
-// Bulk Save / Update Project Files
 router.put('/:id', async (req, res) => {
     try {
         const projectId = req.params.id;
-        const { name, description, files } = req.body;
+        const { name, files } = req.body;
         const userId = req.user.id;
 
-        // Verify ownership
         const project = await prisma.project.findFirst({ where: { id: projectId, userId } });
-        if (!project) return res.status(404).json({ error: 'Project not found or unauthorized' });
+        if (!project) return sendApiError(res, 404, { message: 'Project not found or unauthorized', code: 'PROJECT_NOT_FOUND', requestId: req.requestId });
 
-        // Update Project Metadata
+        const { update: projectMetaFields, hasProjectMetaUpdate } = normalizeIncomingProjectMeta(req.body);
+        const description = resolveProjectDescription(req.body, project.description, hasProjectMetaUpdate);
+
         await prisma.project.update({
             where: { id: projectId },
             data: {
                 name: name !== undefined ? name : undefined,
-                description: description !== undefined ? description : undefined
+                description,
+                ...projectMetaFields,
             }
         });
 
-        // Bulk upsert files and remove stale entries so reloads stay in sync.
         if (Array.isArray(files)) {
             const incomingFiles = files
                 .map(normalizeIncomingProjectFile)
@@ -255,31 +323,33 @@ router.put('/:id', async (req, res) => {
             });
         }
 
-        res.status(200).json({ message: 'Project saved successfully', projectId });
+        res.status(200).json({ message: 'Project saved successfully', projectId, requestId: req.requestId });
     } catch (error) {
-        console.error('Error saving project:', error);
-        res.status(500).json({ error: 'Failed to save project' });
+        logApiEvent('error', 'Error saving project', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to save project', code: 'PROJECT_SAVE_FAILED', requestId: req.requestId });
     }
 });
 
-// Delete a project
 router.delete('/:id', async (req, res) => {
     try {
         const projectId = req.params.id;
         const userId = req.user.id;
 
-        // Verify ownership before deleting
         const project = await prisma.project.findFirst({ where: { id: projectId, userId } });
-        if (!project) return res.status(404).json({ error: 'Project not found or unauthorized' });
+        if (!project) return sendApiError(res, 404, { message: 'Project not found or unauthorized', code: 'PROJECT_NOT_FOUND', requestId: req.requestId });
+
+        await prisma.file.deleteMany({
+            where: { projectId: projectId }
+        });
 
         await prisma.project.delete({
             where: { id: projectId }
         });
 
-        res.status(200).json({ message: 'Project deleted successfully' });
+        res.status(200).json({ message: 'Project deleted successfully', requestId: req.requestId });
     } catch (error) {
-        console.error('Error deleting project:', error);
-        res.status(500).json({ error: 'Failed to delete project' });
+        logApiEvent('error', 'Error deleting project', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to delete project', code: 'PROJECT_DELETE_FAILED', requestId: req.requestId });
     }
 });
 

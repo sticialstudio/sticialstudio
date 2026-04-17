@@ -1,7 +1,6 @@
 import type { ComponentData, NetData } from '@/contexts/CircuitContext';
 import { getNetFromNodeId, getNetToNodeId } from '@/lib/circuit/netData';
 import { getBreadboardContinuityEdges, isBreadboardNodeId } from '@/lib/wiring/breadboardModel';
-import { getBreadboardMountPreview } from '@/lib/wiring/breadboardMounting';
 import { getComponentDefinition, normalizeComponentType } from '@/lib/wiring/componentDefinitions';
 import { getBoardPinFromNodeId, isBoardNodeId } from '@/lib/wiring/boardNodes';
 
@@ -62,29 +61,7 @@ export class NetlistEngine {
         ] as [string, string]);
       }
 
-      const definition = getComponentDefinition(component.type);
-      if (!definition || normalizeComponentType(component.type) === 'BREADBOARD' || definition.mountStyle !== 'breadboard') {
-        return [];
-      }
-
-      const preview = getBreadboardMountPreview(
-        component,
-        {
-          x: component.x,
-          y: component.y,
-          rotation: component.rotation || 0,
-        },
-        components
-      );
-
-      if (!preview?.isValid || !preview.mappedPins?.length) {
-        return [];
-      }
-
-      return preview.mappedPins.map((mapping) => [
-        `${component.id}.${mapping.pinId}`,
-        mapping.nodeId,
-      ] as [string, string]);
+      return [];
     });
   }
 

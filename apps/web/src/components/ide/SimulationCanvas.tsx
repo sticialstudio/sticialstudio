@@ -4,9 +4,11 @@ import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from '
 import { AlertCircle, CheckCircle2, Cpu, Download, Info, Loader2, Play, RotateCcw, Square, Zap } from 'lucide-react';
 import { useAvrSimulation } from '@/hooks/useAvrSimulation';
 import { compileToHex } from '@/lib/simulator/compiler';
+import { CompileToHexError, extractCompileFeedback } from '@/lib/simulator/compileFeedback';
 import { createSimulationRuntimeState, simulateCircuitTick } from '@/lib/simulator/circuitSimulation';
 import { exportTraceEventsToVcd } from '@/lib/simulator/trace';
 import { useCircuitStore } from '@/stores/circuitStore';
+import { useSimulationStore, type SimulationCanvasControls, type SimulationCanvasStatus } from '@/stores/simulationStore';
 import {
   isComponentPowered,
   normalizeConnectedBoardPin,
@@ -41,21 +43,6 @@ const LedRow = memo(function LedRow({ pin13High }: LedRowProps) {
   );
 });
 
-export interface SimulationCanvasControls {
-  start: () => Promise<void>;
-  stop: () => void;
-  reset: () => void;
-}
-
-export interface SimulationCanvasStatus {
-  isCompiling: boolean;
-  isRunning: boolean;
-  isReady: boolean;
-  canStart: boolean;
-  isLoaded: boolean;
-  errorText: string | null;
-}
-
 export interface SimulationCanvasProps {
   sourceCode: string;
   boardName?: string;
@@ -81,15 +68,16 @@ export default function SimulationCanvas({
   const [wokwiLoaded, setWokwiLoaded] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isCompiling, setIsCompiling] = useState(false);
-  const [compileError, setCompileError] = useState<string | null>(null);
   const [simulationTick, setSimulationTick] = useState(0);
 
   const components = useCircuitStore((state) => state.components);
   const netlist = useCircuitStore((state) => state.netlist);
   const resolvedConnections = useCircuitStore((state) => state.resolvedConnections);
-  const updateComponentState = useCircuitStore((state) => state.updateComponentState);
-  const setSimulationState = useCircuitStore((state) => state.setSimulationState);
-  const resetSimulationState = useCircuitStore((state) => state.resetSimulationState);
+  const setSimulationState = useSimulationStore((state) => state.setSimulationState);
+  const resetSimulationState = useSimulationStore((state) => state.resetSimulationState);
+  const compileFeedback = useSimulationStore((state) => state.compileFeedback);
+  const setCompileFeedback = useSimulationStore((state) => state.setCompileFeedback);
+  const clearCompileFeedback = useSimulationStore((state) => state.clearCompileFeedback);
 
   const {
     digitalPins,
@@ -110,7 +98,7 @@ export default function SimulationCanvas({
     setAnalogInput,
   } = useAvrSimulation();
 
-  const errorText = loadError || compileError || error || null;
+  const errorText = loadError || compileFeedback?.message || error || null;
   const canStart = wokwiLoaded && !isCompiling && !loadError;
   const isSimulationActive = isRunning || isReady;
   const avrDigitalPinState = useMemo(() => Object.fromEntries(digitalPins), [digitalPins]);
@@ -243,6 +231,7 @@ export default function SimulationCanvas({
       netStates: simulationSnapshot.netStates,
       electricalPins: livePinState.electricalPins,
       pinDetails: livePinState.pinDetails,
+      componentVisuals: simulationSnapshot.componentStatePatches,
       busEvents: simulationSnapshot.busEvents,
       traceEvents: simulationSnapshot.traceEvents,
       warnings: simulationSnapshot.warnings,
@@ -303,56 +292,6 @@ export default function SimulationCanvas({
   }, [analogInputs, isSimulationActive, setAnalogInput]);
 
   useEffect(() => {
-    Object.entries(simulationSnapshot.componentStatePatches).forEach(([componentId, patch]) => {
-      updateComponentState(componentId, patch);
-    });
-  }, [simulationSnapshot.componentStatePatches, updateComponentState]);
-
-  const resetComponentSimulationState = useCallback(
-    (resetInputs: boolean) => {
-      components.forEach((component) => {
-        const definition = getComponentDefinition(component.type);
-        if (!definition?.simulation) {
-          return;
-        }
-
-        let patch: Record<string, unknown> | null = null;
-        const defaults = definition.defaultProperties ?? {};
-
-        if (definition.simulation.type === 'led') {
-          patch = { outputHigh: false };
-        } else if (definition.simulation.type === 'button') {
-          patch = { pressed: resetInputs ? Boolean(defaults.pressed ?? false) : Boolean(component.state?.pressed ?? defaults.pressed ?? false) };
-        } else if (definition.simulation.type === 'pot') {
-          patch = { value: resetInputs ? Number(defaults.value ?? 512) : Number(component.state?.value ?? defaults.value ?? 512) };
-        } else if (definition.simulation.type === 'servo') {
-          patch = { angle: Number(defaults.angle ?? 90) };
-        } else if (definition.simulation.type === 'ultrasonic') {
-          patch = {
-            distance: resetInputs ? Number(defaults.distance ?? 100) : Number(component.state?.distance ?? defaults.distance ?? 100),
-            echoActive: false,
-          };
-        } else if (definition.simulation.model === 'dht22') {
-          patch = {
-            temperature: resetInputs ? Number(defaults.temperature ?? 24) : Number(component.state?.temperature ?? defaults.temperature ?? 24),
-            humidity: resetInputs ? Number(defaults.humidity ?? 40) : Number(component.state?.humidity ?? defaults.humidity ?? 40),
-            dataReady: false,
-          };
-        } else if (definition.simulation.type === 'display') {
-          patch = {
-            displayLines: [String(defaults.label ?? 'OLED').toUpperCase(), 'SIM OFF', '', '', ''],
-          };
-        }
-
-        if (patch) {
-          updateComponentState(component.id, patch);
-        }
-      });
-    },
-    [components, updateComponentState]
-  );
-
-  useEffect(() => {
     return () => {
       resetSimulationState();
       lastDrivenInputsRef.current = {};
@@ -378,27 +317,30 @@ export default function SimulationCanvas({
   const handleStart = useCallback(async () => {
     const cppCode = sourceCode?.trim();
     if (!cppCode) {
-      setCompileError('No source code to compile.');
+      const feedback = extractCompileFeedback('No source code to compile.', 'No source code to compile.');
+      setCompileFeedback(feedback);
       return;
     }
 
-    setCompileError(null);
+    clearCompileFeedback();
     setIsCompiling(true);
     setSimulationTick(0);
     runtimeStateRef.current = createSimulationRuntimeState();
-    resetComponentSimulationState(false);
     reset();
 
     try {
       const hex = await compileToHex(cppCode, boardName);
+      clearCompileFeedback();
       runHex(hex);
     } catch (buildError) {
-      const message = buildError instanceof Error ? buildError.message : 'Compilation failed.';
-      setCompileError(message);
+      const feedback = buildError instanceof CompileToHexError
+        ? buildError.feedback
+        : extractCompileFeedback(buildError instanceof Error ? buildError.message : null, 'Compilation failed.');
+      setCompileFeedback(feedback);
     } finally {
       setIsCompiling(false);
     }
-  }, [boardName, reset, resetComponentSimulationState, runHex, sourceCode]);
+  }, [boardName, clearCompileFeedback, reset, runHex, setCompileFeedback, sourceCode]);
 
   const handleStop = useCallback(() => {
     stop();
@@ -409,11 +351,10 @@ export default function SimulationCanvas({
     lastDrivenInputsRef.current = {};
     runtimeStateRef.current = createSimulationRuntimeState();
     setSimulationTick(0);
-    setCompileError(null);
+    clearCompileFeedback();
     reset();
     resetSimulationState();
-    resetComponentSimulationState(true);
-  }, [reset, resetComponentSimulationState, resetSimulationState, setDigitalInput]);
+  }, [clearCompileFeedback, reset, resetSimulationState, setDigitalInput]);
 
   useEffect(() => {
     onRegisterControls?.({
@@ -435,11 +376,12 @@ export default function SimulationCanvas({
       canStart,
       isLoaded: wokwiLoaded,
       errorText,
+      compileFeedback,
     });
-  }, [canStart, errorText, isCompiling, isReady, isRunning, onStatusChange, wokwiLoaded]);
+  }, [canStart, compileFeedback, errorText, isCompiling, isReady, isRunning, onStatusChange, wokwiLoaded]);
 
   const statusEl = (() => {
-    if (compileError) {
+    if (compileFeedback) {
       return (
         <span className="flex items-center gap-1.5 text-xs text-rose-400">
           <AlertCircle size={12} />
@@ -565,9 +507,9 @@ export default function SimulationCanvas({
           </div>
         ) : null}
 
-        {compileError ? (
+        {compileFeedback ? (
           <div className="w-full max-w-lg overflow-x-auto whitespace-pre-wrap rounded-xl border border-rose-500/30 bg-rose-500/10 px-6 py-4 font-mono text-xs text-rose-300 shadow-lg">
-            {compileError}
+            {compileFeedback.log || compileFeedback.message}
           </div>
         ) : null}
 
@@ -650,7 +592,7 @@ export default function SimulationCanvas({
               </div>
             ) : null}
 
-            {!isSimulationActive && !isCompiling && !compileError ? (
+            {!isSimulationActive && !isCompiling && !compileFeedback ? (
               <p className="max-w-md text-center text-[11px] leading-relaxed text-slate-600">
                 Circuit Lab now resolves electrical states, captures bus traffic, and exports logic traces while keeping the browser simulation deterministic and classroom-friendly.
               </p>
@@ -661,6 +603,7 @@ export default function SimulationCanvas({
     </div>
   );
 }
+
 
 
 

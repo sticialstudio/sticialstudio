@@ -3,6 +3,8 @@ import type { CircuitSimulationState } from '@/contexts/CircuitContext';
 import type { ComponentPinMapping } from './NetlistEngine';
 import { getComponentDefinition, type CircuitPinType } from './componentDefinitions';
 
+type BoardPinSimulationState = Pick<CircuitSimulationState, 'running' | 'ready' | 'digitalPins'>;
+
 const SIGNAL_PIN_TYPES = new Set<CircuitPinType>(['digital', 'analog', 'pwm']);
 const SUPPLY_PINS = new Set(['5V', '3.3V', '3V3', 'VIN', 'IOREF']);
 
@@ -109,7 +111,7 @@ export function hasResolvedPin(componentType: string, pinMapping: ComponentPinMa
   return getBoardPinsForAlias(componentType, pinMapping, pinAlias).length > 0;
 }
 
-export function isBoardPinHigh(pinId: string | null | undefined, simulationState: CircuitSimulationState) {
+export function isBoardPinHigh(pinId: string | null | undefined, simulationState: BoardPinSimulationState) {
   const normalized = normalizeBoardPinId(pinId);
   if (!normalized) {
     return false;
@@ -122,7 +124,7 @@ export function isBoardPinHigh(pinId: string | null | undefined, simulationState
   return Boolean(simulationState.digitalPins[normalized]);
 }
 
-export function isBoardPinLow(pinId: string | null | undefined, simulationState: CircuitSimulationState) {
+export function isBoardPinLow(pinId: string | null | undefined, simulationState: BoardPinSimulationState) {
   const normalized = normalizeBoardPinId(pinId);
   if (!normalized) {
     return false;
@@ -142,7 +144,7 @@ export function isBoardPinLow(pinId: string | null | undefined, simulationState:
 export function isComponentPowered(
   componentType: string,
   pinMapping: ComponentPinMapping | undefined,
-  simulationState: CircuitSimulationState
+  simulationState: BoardPinSimulationState
 ) {
   const powerPins = getBoardPinsForAlias(componentType, pinMapping, 'POWER');
   const groundPins = getBoardPinsForAlias(componentType, pinMapping, 'GND');

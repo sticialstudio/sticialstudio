@@ -1,0 +1,282 @@
+﻿commit dd0f877015276bf33c1f0c3beee2475dc9b6de8a
+Author: STEMAIDE <stemaide@users.noreply.github.com>
+Date:   Fri Apr 3 17:06:48 2026 -0700
+
+    Fix Vercel web project build inputs
+
+M	.gitignore
+A	apps/web/src/lib/projects/projectFlow.ts
+A	apps/web/src/lib/projects/projectMeta.ts
+
+commit 04e95cc6625250b720797715b5553e664af94f57
+Author: STEMAIDE <stemaide@users.noreply.github.com>
+Date:   Fri Apr 3 16:29:23 2026 -0700
+
+    Prepare release cleanup and IDE updates
+
+M	.gitignore
+M	apps/api/index.js
+A	apps/api/lib/loadLocalEnv.js
+A	apps/api/lib/prisma.js
+M	apps/api/package.json
+M	apps/api/routes/auth.js
+M	apps/api/routes/compile.js
+A	apps/api/routes/libraries.js
+M	apps/api/routes/projects.js
+A	apps/api/scripts/seed-dev-user.js
+A	apps/web/docs/blocks/README.md
+M	apps/web/eslint.config.mjs
+A	apps/web/examples/Arduino_HardwareTest.ino
+A	apps/web/examples/MicroPython_HardwareTest.py
+M	apps/web/next.config.ts
+M	apps/web/package.json
+A	apps/web/public/blockly/media/1x1.gif
+A	apps/web/public/blockly/media/click.mp3
+A	apps/web/public/blockly/media/delete-icon.svg
+A	apps/web/public/blockly/media/delete.mp3
+A	apps/web/public/blockly/media/disconnect.mp3
+A	apps/web/public/blockly/media/dropdown-arrow.svg
+A	apps/web/public/blockly/media/foldout-icon.svg
+A	apps/web/public/blockly/media/handclosed.cur
+A	apps/web/public/blockly/media/handdelete.cur
+A	apps/web/public/blockly/media/handopen.cur
+A	apps/web/public/blockly/media/pilcrow.png
+A	apps/web/public/blockly/media/quote0.png
+A	apps/web/public/blockly/media/quote1.png
+A	apps/web/public/blockly/media/resize-handle.svg
+A	apps/web/public/blockly/media/sprites.png
+A	apps/web/public/blockly/media/sprites.svg
+A	apps/web/public/boards/Pico-2-W-1-scaled.jpg
+A	apps/web/public/boards/Raspberry-Pi-3.jpg
+A	apps/web/public/boards/Raspberry-Pi-4.jpg
+A	apps/web/public/boards/Raspberry-Pi-5.png
+A	apps/web/public/boards/Raspberry-Pi-Pico-2W.jpg
+A	apps/web/public/boards/Raspberry-Pi-Pico.jpg
+A	apps/web/public/boards/Raspberry-Pi-Zero-2W.jpg
+A	apps/web/public/boards/board_arduino_leonardo.png
+A	apps/web/public/boards/board_arduino_mega.png
+A	apps/web/public/boards/board_arduino_nano.png
+A	apps/web/public/boards/board_arduino_uno.png
+A	apps/web/public/boards/board_esp32.png
+A	apps/web/public/boards/board_esp8266.png
+A	apps/web/public/boards/board_pi3.svg
+A	apps/web/public/boards/board_pi4.svg
+A	apps/web/public/boards/board_pi5.svg
+A	apps/web/public/boards/board_pi_zero.svg
+A	apps/web/public/boards/board_pico.svg
+A	apps/web/public/boards/board_pico_2w.svg
+A	apps/web/public/boards/board_pico_w.svg
+A	apps/web/public/dashboard/build_banner.png
+A	apps/web/public/dashboard/learn_banner.png
+A	apps/web/public/dashboard/projects_banner.png
+A	apps/web/public/home/block-coding-preview.png
+A	apps/web/public/home/blocks-visual.svg
+A	apps/web/public/home/circuit-lab-preview.png
+A	apps/web/public/home/code-visual.svg
+A	apps/web/public/home/hardware-visual.svg
+A	apps/web/public/home/hero-platform.svg
+A	apps/web/public/home/text-coding-preview.png
+M	apps/web/scripts/validate-blockly-generators.mjs
+A	apps/web/src/app/auth/callback/page.tsx
+M	apps/web/src/app/courses/[track]/page.tsx
+M	apps/web/src/app/courses/page.tsx
+M	apps/web/src/app/dashboard/page.tsx
+A	apps/web/src/app/design-system/page.tsx
+M	apps/web/src/app/globals.css
+M	apps/web/src/app/layout.tsx
+M	apps/web/src/app/login/page.tsx
+M	apps/web/src/app/page.tsx
+M	apps/web/src/app/projects/ide/page.tsx
+M	apps/web/src/app/projects/select-board/page.tsx
+M	apps/web/src/app/projects/select-language/page.tsx
+M	apps/web/src/app/projects/select-mode/page.tsx
+M	apps/web/src/app/register/page.tsx
+A	apps/web/src/boards/boardTypes.ts
+A	apps/web/src/boards/boards.ts
+A	apps/web/src/boards/pinCapabilities.ts
+A	apps/web/src/components/auth/AuthPageShell.tsx
+A	apps/web/src/components/courses/CourseTrackView.tsx
+A	apps/web/src/components/courses/CoursesCatalogView.tsx
+A	apps/web/src/components/ide/AiChatPanel.tsx
+M	apps/web/src/components/ide/BlockEditor.tsx
+M	apps/web/src/components/ide/BlocklyWorkspace.tsx
+A	apps/web/src/components/ide/BlocksPanel.tsx
+M	apps/web/src/components/ide/BoardStatusPanel.tsx
+M	apps/web/src/components/ide/BreadboardCanvas.tsx
+M	apps/web/src/components/ide/CodeViewer.tsx
+A	apps/web/src/components/ide/ComponentManagerPanel.tsx
+M	apps/web/src/components/ide/ConsolePanel.tsx
+M	apps/web/src/components/ide/DeviceFiles.tsx
+M	apps/web/src/components/ide/FileExplorer.tsx
+A	apps/web/src/components/ide/IdeActivityBar.tsx
+M	apps/web/src/components/ide/IdeLeftRail.tsx
+M	apps/web/src/components/ide/IdeRightContextPanel.tsx
+A	apps/web/src/components/ide/IdeStatusBar.tsx
+A	apps/web/src/components/ide/LibraryHub.tsx
+A	apps/web/src/components/ide/PreferencesDialog.tsx
+A	apps/web/src/components/ide/SimulationCanvas.tsx
+M	apps/web/src/components/ide/SplitView.tsx
+M	apps/web/src/components/ide/TerminalPanel.tsx
+M	apps/web/src/components/ide/TextEditor.tsx
+M	apps/web/src/components/ide/TopToolbar.tsx
+A	apps/web/src/components/ide/VirtualProjectRail.tsx
+A	apps/web/src/components/ide/WiringDiagramViewer.tsx
+M	apps/web/src/components/ide/WorkspaceGuidance.tsx
+A	apps/web/src/components/ide/WorkspaceSidebar.tsx
+M	apps/web/src/components/ide/WorkspaceStageRail.tsx
+A	apps/web/src/components/ide/blocklyStyles.css
+A	apps/web/src/components/ide/circuit-lab/CanvasEngine.tsx
+A	apps/web/src/components/ide/circuit-lab/CanvasWorkspace.tsx
+A	apps/web/src/components/ide/circuit-lab/ComponentPreview.tsx
+A	apps/web/src/components/ide/circuit-lab/ComponentRenderer.tsx
+A	apps/web/src/components/ide/circuit-lab/GridLayer.tsx
+A	apps/web/src/components/ide/circuit-lab/InteractionLayer.tsx
+A	apps/web/src/components/ide/circuit-lab/InteractionManager.tsx
+A	apps/web/src/components/ide/circuit-lab/SidebarComponents.tsx
+M	apps/web/src/components/ide/circuit-lab/TopBar.tsx
+A	apps/web/src/components/ide/circuit-lab/WireEngine.tsx
+A	apps/web/src/components/ide/circuit-lab/hitTesting.ts
+A	apps/web/src/components/ide/circuit-lab/sceneModel.ts
+M	apps/web/src/components/ide/circuit-lab/sceneTypes.ts
+A	apps/web/src/components/ide/circuit-lab/types.ts
+A	apps/web/src/components/ide/circuit-lab/useCanvasViewport.ts
+A	apps/web/src/components/ide/circuit-lab/useInteractionManager.ts
+A	apps/web/src/components/ide/circuit-lab/wireRouting.ts
+A	apps/web/src/components/ide/coding-environment/CircuitSummary.tsx
+M	apps/web/src/components/ide/coding-environment/TopBar.tsx
+A	apps/web/src/components/ide/hardware/CircuitComponentRenderer.tsx
+A	apps/web/src/components/ide/hardware/CustomHardwareWrapper.tsx
+A	apps/web/src/components/ide/hardware/DraggableNode.tsx
+A	apps/web/src/components/ide/hardware/WokwiComponentFactory.tsx
+M	apps/web/src/components/layout/MainLayout.tsx
+M	apps/web/src/components/layout/Navbar.tsx
+M	apps/web/src/components/layout/Sidebar.tsx
+M	apps/web/src/components/layout/ThemeToggle.tsx
+A	apps/web/src/components/onboarding/OnboardingShell.tsx
+A	apps/web/src/components/ui/Button.tsx
+A	apps/web/src/components/ui/Card.tsx
+A	apps/web/src/components/ui/ConfirmDialog.tsx
+A	apps/web/src/components/ui/JourneyProgress.tsx
+M	apps/web/src/components/ui/LanguageCard.tsx
+A	apps/web/src/components/ui/PageLayout.tsx
+A	apps/web/src/components/ui/SectionHeader.tsx
+A	apps/web/src/components/ui/StatusBanner.tsx
+A	apps/web/src/components/ui/Surface.tsx
+A	apps/web/src/components/ui/motion.ts
+M	apps/web/src/contexts/AuthContext.tsx
+M	apps/web/src/contexts/BoardContext.tsx
+M	apps/web/src/contexts/CircuitContext.tsx
+M	apps/web/src/contexts/ProjectContext.tsx
+A	apps/web/src/contexts/StudioPreferencesContext.tsx
+M	apps/web/src/contexts/ThemeContext.tsx
+A	apps/web/src/hooks/useAvrSimulation.ts
+M	apps/web/src/hooks/useWebSerial.ts
+M	apps/web/src/lib/blockly/blockSupport.ts
+M	apps/web/src/lib/blockly/blocks.ts
+A	apps/web/src/lib/blockly/blocks/actuators.ts
+A	apps/web/src/lib/blockly/blocks/core.ts
+A	apps/web/src/lib/blockly/blocks/display.ts
+A	apps/web/src/lib/blockly/blocks/hardware_instances.ts
+A	apps/web/src/lib/blockly/blocks/io_advanced.ts
+A	apps/web/src/lib/blockly/blocks/math.ts
+A	apps/web/src/lib/blockly/blocks/robot.ts
+A	apps/web/src/lib/blockly/blocks/sensors.ts
+A	apps/web/src/lib/blockly/circuitAwareness.ts
+A	apps/web/src/lib/blockly/codegen.ts
+A	apps/web/src/lib/blockly/dropdowns.ts
+M	apps/web/src/lib/blockly/generator.ts
+A	apps/web/src/lib/blockly/instanceRegistry.ts
+A	apps/web/src/lib/blockly/registry.ts
+M	apps/web/src/lib/blockly/theme.ts
+A	apps/web/src/lib/blockly/toolbox.ts
+M	apps/web/src/lib/boards/boardConfig.ts
+M	apps/web/src/lib/circuit/circuitSerializer.ts
+A	apps/web/src/lib/circuit/netData.ts
+A	apps/web/src/lib/courses/catalog.ts
+A	apps/web/src/lib/simulator/avrWorker.ts
+A	apps/web/src/lib/simulator/boardAdapters.ts
+A	apps/web/src/lib/simulator/circuitSimulation.ts
+A	apps/web/src/lib/simulator/compiler.ts
+A	apps/web/src/lib/simulator/componentSimulators.ts
+A	apps/web/src/lib/simulator/simulationTypes.ts
+A	apps/web/src/lib/simulator/trace.ts
+A	apps/web/src/lib/supabase/client.ts
+A	apps/web/src/lib/ui/cn.ts
+A	apps/web/src/lib/wiring/BreadboardSVG.tsx
+A	apps/web/src/lib/wiring/HardwareSvgLibrary.tsx
+M	apps/web/src/lib/wiring/NetlistEngine.ts
+A	apps/web/src/lib/wiring/arduinoUnoBoard.tsx
+A	apps/web/src/lib/wiring/boardNodes.ts
+M	apps/web/src/lib/wiring/breadboardModel.ts
+M	apps/web/src/lib/wiring/breadboardMounting.ts
+A	apps/web/src/lib/wiring/componentConnectivity.ts
+M	apps/web/src/lib/wiring/componentDefinitions.ts
+A	apps/web/src/lib/wiring/componentRegistry.ts
+M	apps/web/src/lib/wiring/mountingTypes.ts
+A	apps/web/src/lib/wiring/wokwiGeometry.ts
+A	apps/web/src/lib/wiring/workspaceParser.ts
+A	apps/web/src/proxy.ts
+M	apps/web/src/stores/circuitStore.ts
+M	apps/web/src/templates/codeTemplates.ts
+A	apps/web/src/types/webserial.d.ts
+A	apps/web/src/types/wokwi.d.ts
+A	apps/web/src/utils/boardUtils.ts
+M	next.config.js
+M	package-lock.json
+M	package.json
+D	packages/database/prisma/dev.db
+M	postcss.config.js
+A	scripts/dev-fast.ps1
+A	scripts/stable-local.ps1
+M	tailwind.config.js
+M	tsconfig.json
+
+commit 8007151b6ecc165dfea4d8af0117ef8fcafc41aa
+Author: STEMAIDE <stemaide@users.noreply.github.com>
+Date:   Wed Mar 25 10:37:33 2026 -0700
+
+    UI-4 IDE shell chrome redesign
+
+A	apps/web/src/components/ide/BoardStatusPanel.tsx
+A	apps/web/src/components/ide/IdeBottomDock.tsx
+A	apps/web/src/components/ide/IdeLeftRail.tsx
+A	apps/web/src/components/ide/IdeRightContextPanel.tsx
+A	apps/web/src/components/ide/IdeShellFrame.tsx
+M	apps/web/src/components/ide/SplitView.tsx
+M	apps/web/src/components/ide/TerminalPanel.tsx
+M	apps/web/src/components/ide/TopToolbar.tsx
+M	apps/web/src/components/ide/WorkspaceGuidance.tsx
+A	apps/web/src/components/ide/WorkspaceStageRail.tsx
+M	apps/web/src/components/ide/circuit-lab/TopBar.tsx
+M	apps/web/src/components/ide/coding-environment/TopBar.tsx
+
+commit 0246c282481d4ebf0244cff6249b0112790eba82
+Author: STEMAIDE <stemaide@users.noreply.github.com>
+Date:   Wed Mar 25 00:44:38 2026 -0700
+
+    Phase 10: release-readiness hardening (errors, auth, recovery)
+
+M	apps/web/src/app/dashboard/page.tsx
+M	apps/web/src/app/login/page.tsx
+M	apps/web/src/app/projects/ide/page.tsx
+M	apps/web/src/components/ide/SplitView.tsx
+M	apps/web/src/contexts/AuthContext.tsx
+M	apps/web/src/contexts/ProjectContext.tsx
+
+commit 57d0d2898a41efde9fe5567e2c20f6224459ea2c
+Author: STEMAIDE <stemaide@users.noreply.github.com>
+Date:   Tue Mar 24 23:01:06 2026 -0700
+
+    Phase 9.5 microcopy and onboarding clarity pass
+
+A	apps/web/src/app/courses/[track]/page.tsx
+M	apps/web/src/app/courses/page.tsx
+M	apps/web/src/app/dashboard/page.tsx
+M	apps/web/src/app/page.tsx
+M	apps/web/src/app/projects/select-board/page.tsx
+M	apps/web/src/app/projects/select-language/page.tsx
+M	apps/web/src/app/projects/select-mode/page.tsx
+M	apps/web/src/components/ide/SplitView.tsx
+M	apps/web/src/components/ide/TopToolbar.tsx
+M	apps/web/src/components/ide/circuit-lab/TopBar.tsx
+M	apps/web/src/components/ide/coding-environment/TopBar.tsx

@@ -6,7 +6,8 @@ import { Blocks, CircuitBoard, Code2, FolderOpen, Save, Settings2, Trash2 } from
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { fadeInUp } from '@/components/ui/motion';
-import { useCircuit } from '@/contexts/CircuitContext';
+import { useCircuitStore } from '@/stores/circuitStore';
+import { SimulationWarningBar } from './SimulationWarningBar';
 
 interface CircuitLabTopBarProps {
   projectName: string;
@@ -54,7 +55,7 @@ export default function TopBar({
   saveStatusText,
   saveStatusTone = 'neutral',
 }: CircuitLabTopBarProps) {
-  const { clearCircuit } = useCircuit();
+  const clearCircuit = useCircuitStore((state) => state.clearCircuit);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
   const nextWorkspaceLabel = useMemo(() => (codingMode === 'block' ? 'Open Blocks' : 'Open Code'), [codingMode]);
@@ -161,6 +162,10 @@ export default function TopBar({
         </div>
       </motion.header>
 
+      <div className="mt-2">
+        <SimulationWarningBar />
+      </div>
+
       <ConfirmDialog
         open={confirmOpen}
         title="Clear the whole circuit?"
@@ -176,4 +181,3 @@ export default function TopBar({
     </>
   );
 }
-
