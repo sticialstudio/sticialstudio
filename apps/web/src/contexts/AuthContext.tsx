@@ -13,23 +13,42 @@ interface AuthContextValue {
     user: User | null;
     token: string | null;
     isLoading: boolean;
-    login: (token: string, user: User, options?: { redirectTo?: string }) => void;
-    logout: () => void;
+    login: (token: string, user: User, options?: { redirectTo?: string }) => Promise<void>;
+    logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 function persistToken(token: string) {
     localStorage.setItem('token', token);
-    document.cookie = `token=${token}; path=/; SameSite=Lax`;
 }
 
 function clearPersistedAuth() {
     try {
         localStorage.removeItem('token');
         localStorage.removeItem('activeProjectId');
-        document.cookie = 'token=; path=/; max-age=0; SameSite=Lax';
     } catch {}
+}
+
+async function syncSessionCookie(token: string) {
+    const response = await fetch('/api/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ token }),
+    });
+
+    if (!response.ok) {
+        const payload = await safeJson<{ error?: string }>(response);
+        throw new Error(payload?.error || 'Could not establish the protected app session.');
+    }
+}
+
+async function clearSessionCookie() {
+    await fetch('/api/session', {
+        method: 'DELETE',
+        credentials: 'same-origin',
+    }).catch(() => undefined);
 }
 
 function stashAuthNotice(message: string) {
@@ -46,10 +65,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const publicRoutes = ['/', '/login', '/register', '/auth/callback'];
 
-    const clearAuthState = useCallback(() => {
+    const clearAuthState = useCallback(async () => {
         clearPersistedAuth();
         setToken(null);
         setUser(null);
+        await clearSessionCookie();
     }, []);
 
     useEffect(() => {
@@ -62,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             }
 
             if (!storedToken) {
-                try { clearAuthState(); } catch (e) {}
+                await clearSessionCookie();
                 setIsLoading(false);
                 return;
             }
@@ -78,12 +98,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 if (res.ok) {
                     const data = await safeJson<{ user: User }>(res);
                     if (data?.user) {
+                        await syncSessionCookie(storedToken);
                         persistToken(storedToken);
                         setUser(data.user);
                         setToken(storedToken);
                     } else {
                         stashAuthNotice('Your session ended. Sign in again to keep working.');
-                        clearAuthState();
+                        await clearAuthState();
                     }
                 } else {
                     stashAuthNotice(
@@ -91,12 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                             ? 'Your session ended. Sign in again to keep working.'
                             : 'We could not reconnect to your session. Sign in again to continue.'
                     );
-                    clearAuthState();
+                    await clearAuthState();
                 }
             } catch (e) {
                 console.error('Failed to verify token', e);
                 stashAuthNotice('We could not reconnect to your session. Sign in again to continue.');
-                clearAuthState();
+                await clearAuthState();
             } finally {
                 window.clearTimeout(timeoutId);
                 setIsLoading(false);
@@ -104,7 +125,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         };
 
         if (typeof window !== 'undefined') {
-            initAuth();
+            void initAuth();
         }
     }, [clearAuthState, pathname]);
 
@@ -118,15 +139,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, [isLoading, user, pathname, router]);
 
-    const login = (newToken: string, userData: User, options?: { redirectTo?: string }) => {
+    const login = async (newToken: string, userData: User, options?: { redirectTo?: string }) => {
         persistToken(newToken);
+        await syncSessionCookie(newToken);
         setToken(newToken);
         setUser(userData);
         router.push(options?.redirectTo ?? '/dashboard');
     };
 
-    const logout = () => {
-        clearAuthState();
+    const logout = async () => {
+        await clearAuthState();
         router.push('/login');
     };
 
