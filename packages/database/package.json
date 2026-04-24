@@ -4,7 +4,7 @@
   "description": "Prisma ORM and Database Client",
   "main": "./dist/index.js",
   "scripts": {
-    "db:push": "prisma db push",
+    "db:push": "prisma db push --skip-generate",
     "db:generate": "prisma generate",
     "db:studio": "prisma studio",
     "build": "tsc -p tsconfig.json"

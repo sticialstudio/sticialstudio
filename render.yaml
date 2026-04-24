@@ -4,8 +4,8 @@ services:
     runtime: node
     plan: starter
     healthCheckPath: /api/health
-    buildCommand: npm ci && npm --workspace packages/database run db:generate && npm --workspace packages/database run build
-    startCommand: node apps/api/index.js
+    buildCommand: npm ci --include=dev && npm --workspace packages/database run db:generate && npm --workspace packages/database run build
+    startCommand: npm --workspace packages/database run db:push && node apps/api/index.js
     envVars:
       - key: NODE_ENV
         value: production
