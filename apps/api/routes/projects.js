@@ -1,13 +1,140 @@
 const express = require('express');
 const { prisma } = require('../../../packages/database/dist');
 const authMiddleware = require('../middleware/authMiddleware');
+const { logApiEvent, sendApiError, serializeError } = require('../lib/telemetry');
 
 const router = express.Router();
+const LEGACY_META_PREFIX = 'EDTECH_META::';
 
-// Protect all project routes
+function getPathKey(parentId, name) {
+    return `${parentId || 'root'}::${name}`;
+}
+
+function hasOwn(payload, key) {
+    return Object.prototype.hasOwnProperty.call(payload, key);
+}
+
+function normalizeOptionalText(value) {
+    if (typeof value !== 'string') {
+        return null;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeIncomingProjectMeta(payload) {
+    const update = {};
+    let hasProjectMetaUpdate = false;
+
+    if (hasOwn(payload, 'board')) {
+        update.board = normalizeOptionalText(payload.board);
+        hasProjectMetaUpdate = true;
+    }
+
+    if (hasOwn(payload, 'codingMode')) {
+        update.codingMode = normalizeOptionalText(payload.codingMode);
+        hasProjectMetaUpdate = true;
+    }
+
+    if (hasOwn(payload, 'language')) {
+        update.language = normalizeOptionalText(payload.language);
+        hasProjectMetaUpdate = true;
+    }
+
+    if (hasOwn(payload, 'generator')) {
+        update.generator = normalizeOptionalText(payload.generator);
+        hasProjectMetaUpdate = true;
+    }
+
+    if (hasOwn(payload, 'environment')) {
+        update.environment = normalizeOptionalText(payload.environment);
+        hasProjectMetaUpdate = true;
+    }
+
+    return { update, hasProjectMetaUpdate };
+}
+
+function isLegacyProjectMetaDescription(description) {
+    if (typeof description !== 'string' || description.trim().length === 0) {
+        return false;
+    }
+
+    if (description.startsWith(LEGACY_META_PREFIX)) {
+        return true;
+    }
+
+    return /Board: .* \|/.test(description) && /Mode: .*$/m.test(description);
+}
+
+function resolveProjectDescription(payload, existingDescription, hasProjectMetaUpdate) {
+    if (hasOwn(payload, 'description')) {
+        return typeof payload.description === 'string' ? payload.description : '';
+    }
+
+    if (hasProjectMetaUpdate && isLegacyProjectMetaDescription(existingDescription)) {
+        return '';
+    }
+
+    return undefined;
+}
+
+function normalizeIncomingProjectFile(rawFile) {
+    if (!rawFile || typeof rawFile.name !== 'string' || rawFile.name.trim().length === 0) {
+        return null;
+    }
+
+    return {
+        incomingId: typeof rawFile.id === 'string' && rawFile.id.trim().length > 0 ? rawFile.id : null,
+        name: rawFile.name.trim(),
+        type: typeof rawFile.type === 'string' && rawFile.type.trim().length > 0 ? rawFile.type.trim() : 'text',
+        content: typeof rawFile.content === 'string' ? rawFile.content : '',
+        parentId: typeof rawFile.parentId === 'string' && rawFile.parentId.trim().length > 0 ? rawFile.parentId : null,
+    };
+}
+
+function getIncomingDepth(file, incomingById, memo, trail = new Set()) {
+    const currentId = file.incomingId;
+    if (!currentId) return 0;
+    if (memo.has(currentId)) return memo.get(currentId);
+
+    if (!file.parentId || !incomingById.has(file.parentId) || trail.has(currentId)) {
+        memo.set(currentId, 0);
+        return 0;
+    }
+
+    trail.add(currentId);
+    const parent = incomingById.get(file.parentId);
+    const depth = 1 + getIncomingDepth(parent, incomingById, memo, trail);
+    trail.delete(currentId);
+    memo.set(currentId, depth);
+    return depth;
+}
+
+function removeFromPathIndex(index, file) {
+    const pathKey = getPathKey(file.parentId, file.name);
+    const bucket = index.get(pathKey);
+    if (!bucket) return;
+
+    const nextBucket = bucket.filter((entry) => entry.id !== file.id);
+    if (nextBucket.length > 0) {
+        index.set(pathKey, nextBucket);
+    } else {
+        index.delete(pathKey);
+    }
+}
+
+function addToPathIndex(index, file) {
+    const pathKey = getPathKey(file.parentId, file.name);
+    const bucket = index.get(pathKey) || [];
+    if (!bucket.some((entry) => entry.id === file.id)) {
+        bucket.push(file);
+        index.set(pathKey, bucket);
+    }
+}
+
 router.use(authMiddleware);
 
-// Get all projects for a user
 router.get('/', async (req, res) => {
     try {
         const userId = req.user.id;
@@ -18,12 +145,11 @@ router.get('/', async (req, res) => {
         });
         res.json(projects);
     } catch (error) {
-        console.error('Error fetching projects:', error);
-        res.status(500).json({ error: 'Failed to fetch projects' });
+        logApiEvent('error', 'Error fetching projects', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to fetch projects', code: 'PROJECT_LIST_FAILED', requestId: req.requestId });
     }
 });
 
-// Get a specific project with all its files
 router.get('/:id', async (req, res) => {
     try {
         const project = await prisma.project.findFirst({
@@ -31,27 +157,28 @@ router.get('/:id', async (req, res) => {
             include: { files: true }
         });
 
-        if (!project) return res.status(404).json({ error: 'Project not found' });
+        if (!project) return sendApiError(res, 404, { message: 'Project not found', code: 'PROJECT_NOT_FOUND', requestId: req.requestId });
 
         res.json(project);
     } catch (error) {
-        console.error('Error fetching project:', error);
-        res.status(500).json({ error: 'Failed to fetch project' });
+        logApiEvent('error', 'Error fetching project', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to fetch project', code: 'PROJECT_FETCH_FAILED', requestId: req.requestId });
     }
 });
 
-// Create a new project (Instantiates main.blockly and main.cpp defaults)
 router.post('/', async (req, res) => {
     try {
-        const { name, description } = req.body;
+        const { name } = req.body;
         const userId = req.user.id;
+        const { update: projectMetaFields, hasProjectMetaUpdate } = normalizeIncomingProjectMeta(req.body);
+        const description = resolveProjectDescription(req.body, '', hasProjectMetaUpdate);
 
-        // 1. Create the Project and Root Folder first
         const project = await prisma.project.create({
             data: {
                 name: name || 'Untitled Project',
-                description: description || '',
-                userId: userId
+                description: typeof description === 'string' ? description : '',
+                userId: userId,
+                ...projectMetaFields,
             }
         });
 
@@ -64,7 +191,6 @@ router.post('/', async (req, res) => {
             }
         });
 
-        // Scaffold inner files linking to the `src` folder
         await Promise.all([
             prisma.file.create({ data: { projectId: project.id, parentId: srcFolder.id, name: 'main.blockly', content: '<xml xmlns="https://developers.google.com/blockly/xml"></xml>', type: 'blockly' } }),
             prisma.file.create({ data: { projectId: project.id, parentId: srcFolder.id, name: 'main.cpp', content: '', type: 'cpp' } }),
@@ -78,139 +204,153 @@ router.post('/', async (req, res) => {
 
         res.status(201).json(finalProject);
     } catch (error) {
-        console.error('Error creating project:', error);
-        res.status(500).json({ error: 'Failed to create project' });
+        logApiEvent('error', 'Error creating project', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to create project', code: 'PROJECT_CREATE_FAILED', requestId: req.requestId });
     }
 });
 
-// Bulk Save / Update Project Files
 router.put('/:id', async (req, res) => {
     try {
         const projectId = req.params.id;
-        const { name, description, files } = req.body;
+        const { name, files } = req.body;
         const userId = req.user.id;
 
-        // Verify ownership
         const project = await prisma.project.findFirst({ where: { id: projectId, userId } });
-        if (!project) return res.status(404).json({ error: 'Project not found or unauthorized' });
+        if (!project) return sendApiError(res, 404, { message: 'Project not found or unauthorized', code: 'PROJECT_NOT_FOUND', requestId: req.requestId });
 
-        // Update Project Metadata
+        const { update: projectMetaFields, hasProjectMetaUpdate } = normalizeIncomingProjectMeta(req.body);
+        const description = resolveProjectDescription(req.body, project.description, hasProjectMetaUpdate);
+
         await prisma.project.update({
             where: { id: projectId },
             data: {
                 name: name !== undefined ? name : undefined,
-                description: description !== undefined ? description : undefined
+                description,
+                ...projectMetaFields,
             }
         });
 
-        // Bulk upsert files if provided
         if (Array.isArray(files)) {
+            const incomingFiles = files
+                .map(normalizeIncomingProjectFile)
+                .filter(Boolean);
+            const incomingById = new Map(incomingFiles.filter((file) => file.incomingId).map((file) => [file.incomingId, file]));
+            const incomingDepthMemo = new Map();
+            const sortedIncomingFiles = [...incomingFiles].sort((left, right) => {
+                const depthDiff = getIncomingDepth(left, incomingById, incomingDepthMemo) - getIncomingDepth(right, incomingById, incomingDepthMemo);
+                if (depthDiff !== 0) return depthDiff;
+                if (left.type === 'folder' && right.type !== 'folder') return -1;
+                if (left.type !== 'folder' && right.type === 'folder') return 1;
+                return left.name.localeCompare(right.name);
+            });
+
             const existingFiles = await prisma.file.findMany({ where: { projectId } });
             const existingById = new Map(existingFiles.map((file) => [file.id, file]));
             const existingByPath = new Map();
+            const incomingToPersistedId = new Map();
+            const persistedIdsToKeep = new Set();
 
             for (const file of existingFiles) {
-                const pathKey = `${file.parentId || 'root'}::${file.name}`;
-                const bucket = existingByPath.get(pathKey) || [];
-                bucket.push(file);
-                existingByPath.set(pathKey, bucket);
+                addToPathIndex(existingByPath, file);
             }
 
-            for (const rawFile of files) {
-                if (!rawFile || typeof rawFile.name !== 'string' || rawFile.name.trim().length === 0) {
-                    continue;
-                }
-
-                const normalizedName = rawFile.name.trim();
-                const normalizedType = typeof rawFile.type === 'string' && rawFile.type.trim().length > 0
-                    ? rawFile.type.trim()
-                    : 'text';
-                const normalizedContent = typeof rawFile.content === 'string' ? rawFile.content : '';
-                const normalizedParentId = typeof rawFile.parentId === 'string' && rawFile.parentId.trim().length > 0
-                    ? rawFile.parentId
+            for (const incomingFile of sortedIncomingFiles) {
+                const resolvedParentId = incomingFile.parentId
+                    ? incomingToPersistedId.get(incomingFile.parentId) || (existingById.has(incomingFile.parentId) ? incomingFile.parentId : null)
                     : null;
-                const incomingId = typeof rawFile.id === 'string' ? rawFile.id : null;
-
                 let targetFile = null;
 
-                if (incomingId && existingById.has(incomingId)) {
-                    targetFile = existingById.get(incomingId);
+                if (incomingFile.incomingId) {
+                    const remappedId = incomingToPersistedId.get(incomingFile.incomingId);
+                    if (remappedId && existingById.has(remappedId)) {
+                        targetFile = existingById.get(remappedId);
+                    } else if (existingById.has(incomingFile.incomingId)) {
+                        targetFile = existingById.get(incomingFile.incomingId);
+                    }
                 }
 
-                // Fallback for temporary client IDs: match by logical path only when unique.
                 if (!targetFile) {
-                    const pathKey = `${normalizedParentId || 'root'}::${normalizedName}`;
-                    const pathMatches = existingByPath.get(pathKey) || [];
+                    const pathMatches = existingByPath.get(getPathKey(resolvedParentId, incomingFile.name)) || [];
                     if (pathMatches.length === 1) {
                         targetFile = pathMatches[0];
                     }
                 }
 
                 if (targetFile) {
+                    removeFromPathIndex(existingByPath, targetFile);
                     const updated = await prisma.file.update({
                         where: { id: targetFile.id },
                         data: {
-                            name: normalizedName,
-                            type: normalizedType,
-                            content: normalizedContent,
-                            parentId: normalizedParentId
+                            name: incomingFile.name,
+                            type: incomingFile.type,
+                            content: incomingFile.content,
+                            parentId: resolvedParentId
                         }
                     });
 
                     existingById.set(updated.id, updated);
-                    const pathKey = `${updated.parentId || 'root'}::${updated.name}`;
-                    const bucket = existingByPath.get(pathKey) || [];
-                    if (!bucket.some((file) => file.id === updated.id)) {
-                        bucket.push(updated);
-                        existingByPath.set(pathKey, bucket);
+                    addToPathIndex(existingByPath, updated);
+                    persistedIdsToKeep.add(updated.id);
+                    if (incomingFile.incomingId) {
+                        incomingToPersistedId.set(incomingFile.incomingId, updated.id);
                     }
-                } else {
-                    const created = await prisma.file.create({
-                        data: {
-                            projectId,
-                            name: normalizedName,
-                            type: normalizedType,
-                            content: normalizedContent,
-                            parentId: normalizedParentId
-                        }
-                    });
+                    continue;
+                }
 
-                    existingById.set(created.id, created);
-                    const pathKey = `${created.parentId || 'root'}::${created.name}`;
-                    const bucket = existingByPath.get(pathKey) || [];
-                    bucket.push(created);
-                    existingByPath.set(pathKey, bucket);
+                const created = await prisma.file.create({
+                    data: {
+                        projectId,
+                        name: incomingFile.name,
+                        type: incomingFile.type,
+                        content: incomingFile.content,
+                        parentId: resolvedParentId
+                    }
+                });
+
+                existingById.set(created.id, created);
+                addToPathIndex(existingByPath, created);
+                persistedIdsToKeep.add(created.id);
+                if (incomingFile.incomingId) {
+                    incomingToPersistedId.set(incomingFile.incomingId, created.id);
                 }
             }
+
+            await prisma.file.deleteMany({
+                where: {
+                    projectId,
+                    id: { notIn: Array.from(persistedIdsToKeep) }
+                }
+            });
         }
 
-        res.status(200).json({ message: 'Project saved successfully', projectId });
+        res.status(200).json({ message: 'Project saved successfully', projectId, requestId: req.requestId });
     } catch (error) {
-        console.error('Error saving project:', error);
-        res.status(500).json({ error: 'Failed to save project' });
+        logApiEvent('error', 'Error saving project', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to save project', code: 'PROJECT_SAVE_FAILED', requestId: req.requestId });
     }
 });
 
-// Delete a project
 router.delete('/:id', async (req, res) => {
     try {
         const projectId = req.params.id;
         const userId = req.user.id;
 
-        // Verify ownership before deleting
         const project = await prisma.project.findFirst({ where: { id: projectId, userId } });
-        if (!project) return res.status(404).json({ error: 'Project not found or unauthorized' });
+        if (!project) return sendApiError(res, 404, { message: 'Project not found or unauthorized', code: 'PROJECT_NOT_FOUND', requestId: req.requestId });
+
+        await prisma.file.deleteMany({
+            where: { projectId: projectId }
+        });
 
         await prisma.project.delete({
             where: { id: projectId }
         });
 
-        res.status(200).json({ message: 'Project deleted successfully' });
+        res.status(200).json({ message: 'Project deleted successfully', requestId: req.requestId });
     } catch (error) {
-        console.error('Error deleting project:', error);
-        res.status(500).json({ error: 'Failed to delete project' });
+        logApiEvent('error', 'Error deleting project', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
+        sendApiError(res, 500, { message: 'Failed to delete project', code: 'PROJECT_DELETE_FAILED', requestId: req.requestId });
     }
 });
 
 module.exports = router;
-

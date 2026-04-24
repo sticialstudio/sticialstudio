@@ -2,11 +2,12 @@
   "name": "@edtech/database",
   "version": "1.0.0",
   "description": "Prisma ORM and Database Client",
-  "main": "./src/index.ts",
+  "main": "./dist/index.js",
   "scripts": {
     "db:push": "prisma db push",
     "db:generate": "prisma generate",
-    "db:studio": "prisma studio"
+    "db:studio": "prisma studio",
+    "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@prisma/client": "^5.10.0"
