@@ -5,12 +5,24 @@ services:
     plan: starter
     healthCheckPath: /api/health
     buildCommand: npm ci --include=dev --workspace apps/api --workspace packages/database --include-workspace-root=false && npm --workspace packages/database run db:generate && npm --workspace packages/database run build
-    startCommand: npm --workspace packages/database run db:push && node apps/api/index.js
+    startCommand: sh apps/api/scripts/start-render-api.sh
     envVars:
       - key: NODE_ENV
         value: production
       - key: DATABASE_URL
         value: file:/var/data/dev.db
+      - key: ARDUINO_CLI_PATH
+        value: /var/data/arduino-cli/bin/arduino-cli
+      - key: ARDUINO_DIRECTORIES_DATA
+        value: /var/data/arduino-cli/data
+      - key: ARDUINO_DIRECTORIES_DOWNLOADS
+        value: /var/data/arduino-cli/staging
+      - key: ARDUINO_DIRECTORIES_USER
+        value: /var/data/arduino-cli/user
+      - key: ARDUINO_CORE_PACKAGE
+        value: arduino:avr
+      - key: ARDUINO_UPDATER_ENABLE_NOTIFICATION
+        value: "false"
       - key: JWT_SECRET
         sync: false
       - key: NEXT_PUBLIC_SUPABASE_URL
