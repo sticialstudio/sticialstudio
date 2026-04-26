@@ -49,7 +49,7 @@ const actionCards = [
     id: 'start',
     eyebrow: 'Build',
     title: 'Start Project',
-    description: 'Open the builder and choose your setup.',
+    description: 'Go to the home chooser and pick the workspace you want.',
     icon: <Plus size={24} />,
     image: '/dashboard/build_banner.png',
   },
@@ -86,9 +86,9 @@ const quickStartCards = [
   },
   {
     title: 'Start from Scratch',
-    caption: 'Walk through the builder flow',
+    caption: 'Return to the home chooser and pick your path',
     icon: <Zap size={18} />,
-    actionLabel: 'Begin',
+    actionLabel: 'Choose',
   },
 ] as const;
 
@@ -209,7 +209,7 @@ export default function DashboardPage() {
 
   const handleStartBuild = () => {
     setProjectId(null);
-    router.push('/projects/select-environment');
+    router.push('/');
   };
 
   const handleContinueLearning = () => {
@@ -615,5 +615,6 @@ export default function DashboardPage() {
     </MainLayout>
   );
 }
+
 
 
