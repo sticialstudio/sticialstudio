@@ -133,16 +133,50 @@ function addToPathIndex(index, file) {
     }
 }
 
+async function fetchProjectSummaries(userId, requestId) {
+    try {
+        return await prisma.project.findMany({
+            where: { userId: userId },
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                board: true,
+                codingMode: true,
+                language: true,
+                generator: true,
+                environment: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+            orderBy: { updatedAt: 'desc' }
+        });
+    } catch (error) {
+        logApiEvent('warn', 'Primary project summary query failed, falling back to minimal fields', {
+            requestId,
+            error: serializeError(error),
+        });
+
+        return prisma.project.findMany({
+            where: { userId: userId },
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+            orderBy: { updatedAt: 'desc' }
+        });
+    }
+}
+
 router.use(authMiddleware);
 
 router.get('/', async (req, res) => {
     try {
         const userId = req.user.id;
-        const projects = await prisma.project.findMany({
-            where: { userId: userId },
-            include: { files: true },
-            orderBy: { updatedAt: 'desc' }
-        });
+        const projects = await fetchProjectSummaries(userId, req.requestId);
         res.json(projects);
     } catch (error) {
         logApiEvent('error', 'Error fetching projects', { requestId: req.requestId, path: req.originalUrl, error: serializeError(error) });
