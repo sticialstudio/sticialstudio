@@ -31,7 +31,8 @@ export default function AuthPageShell({
 }: AuthPageShellProps) {
   return (
     <OnboardingShell
-      contentClassName="justify-center py-6 lg:py-8"
+      bodyClassName="min-h-[100svh]"
+      contentClassName="justify-center py-4 lg:py-6"
       headerActions={
         <div className="flex items-center gap-3">
           <Link
@@ -116,5 +117,8 @@ export default function AuthPageShell({
     </OnboardingShell>
   );
 }
+
+
+
 
 
