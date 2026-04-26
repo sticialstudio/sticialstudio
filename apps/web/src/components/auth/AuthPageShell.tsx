@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ArrowRight, BookOpen, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpen, Sparkles } from "lucide-react";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
 import { Surface } from "@/components/ui/Surface";
 
@@ -31,9 +31,7 @@ export default function AuthPageShell({
 }: AuthPageShellProps) {
   return (
     <OnboardingShell
-      backHref="/"
-      backLabel="Back home"
-      contentClassName="justify-center py-8 lg:py-12"
+      contentClassName="justify-center py-6 lg:py-8"
       headerActions={
         <div className="flex items-center gap-3">
           <Link
@@ -56,6 +54,14 @@ export default function AuthPageShell({
       <div className="grid gap-10 lg:grid-cols-[minmax(0,1.05fr)_460px] lg:items-center">
         {/* ── Left: Hero copy ─────────────────────────────────────── */}
         <div className="space-y-8 pr-0 lg:pr-8">
+          <Link
+            href="/"
+            className="ui-foundation-panel-quiet inline-flex min-h-[46px] items-center gap-2 px-5 py-2.5 text-sm font-bold tracking-tight text-[color:var(--ui-color-text)] transition-transform duration-300 hover:-translate-y-1 hover:shadow-lg"
+          >
+            <ArrowLeft size={16} />
+            Back home
+          </Link>
+
           <div className="inline-flex items-center gap-2 rounded-full border border-[color:var(--ui-color-accent)]/20 bg-[color:var(--ui-color-accent)]/8 px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--ui-color-accent)]">
             <Sparkles size={14} />
             {helperTitle}
@@ -110,4 +116,5 @@ export default function AuthPageShell({
     </OnboardingShell>
   );
 }
+
 
