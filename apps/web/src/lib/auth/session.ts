@@ -1,23 +1,23 @@
-﻿import { jwtVerify } from 'jose';
+import { buildUpstreamApiUrl } from '@/lib/api/upstream';
 
 export const APP_SESSION_COOKIE = 'sticial_session';
 export const LEGACY_SESSION_COOKIE = 'token';
 
-const DEV_FALLBACK_SECRET = 'edtech-local-dev-jwt-secret';
+export async function validateAppSessionToken(token: string) {
+  const response = await fetch(buildUpstreamApiUrl('/api/auth/me'), {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    cache: 'no-store',
+  });
 
-export function getAppSessionSecret() {
-  const envSecret = process.env.JWT_SECRET;
-  const isProduction = process.env.NODE_ENV === 'production';
-
-  if (!envSecret && isProduction) {
-    throw new Error('Missing required environment variable: JWT_SECRET');
+  if (!response.ok) {
+    const payload = await response.json().catch(() => null);
+    throw new Error(payload?.error || 'Session token is invalid or expired.');
   }
 
-  return new TextEncoder().encode(envSecret || DEV_FALLBACK_SECRET);
-}
-
-export async function verifyAppSessionToken(token: string) {
-  return jwtVerify(token, getAppSessionSecret());
+  return response.json().catch(() => null);
 }
 
 export function getAppSessionCookieOptions() {

@@ -25,6 +25,7 @@ interface EditorStoreActions {
   renameFile: (id: string, newName: string) => void;
   deleteFile: (id: string) => void;
   createFile: (name: string, type: string, parentId?: string | null, content?: string) => string | null;
+  initializeWorkspaceFiles: (sourceFileName: string, language: string, defaultCode?: string) => void;
   bootstrapOfflineFiles: (sourceFileName: string, language: string, defaultCode?: string) => void;
 }
 
@@ -65,6 +66,31 @@ function buildDefaultCode(language: string, defaultCode?: string) {
   }
 
   return "void setup() {\n  // put your setup code here, to run once:\n\n}\n\nvoid loop() {\n  // put your main code here, to run repeatedly:\n\n}\n";
+}
+
+function buildStarterFiles(sourceFileName: string, language: string, defaultCode?: string) {
+  const sourceId = `offline-src-${Date.now()}`;
+  const blocklyId = `offline-blockly-${Date.now() + 1}`;
+
+  return {
+    sourceId,
+    files: [
+      {
+        id: sourceId,
+        name: sourceFileName,
+        type: language === "python" ? "python" : "cpp",
+        content: buildDefaultCode(language, defaultCode),
+        parentId: null,
+      },
+      {
+        id: blocklyId,
+        name: "main.blockly",
+        type: "blockly",
+        content: '<xml xmlns="https://developers.google.com/blockly/xml"></xml>',
+        parentId: null,
+      },
+    ] as FileItem[],
+  };
 }
 
 export const useEditorStore = create<EditorStore>((set) => ({
@@ -222,32 +248,27 @@ export const useEditorStore = create<EditorStore>((set) => ({
     return targetId;
   },
 
+  initializeWorkspaceFiles: (sourceFileName, language, defaultCode) =>
+    set(() => {
+      const starter = buildStarterFiles(sourceFileName, language, defaultCode);
+      return {
+        files: starter.files,
+        activeFileId: starter.sourceId,
+        hasUnsavedChanges: false,
+      };
+    }),
+
   bootstrapOfflineFiles: (sourceFileName, language, defaultCode) =>
     set((state) => {
       if (state.files.length > 0) {
         return state;
       }
 
-      const sourceId = `offline-src-${Date.now()}`;
-      const blocklyId = `offline-blockly-${Date.now() + 1}`;
+      const starter = buildStarterFiles(sourceFileName, language, defaultCode);
       return {
-        files: [
-          {
-            id: sourceId,
-            name: sourceFileName,
-            type: language === "python" ? "python" : "cpp",
-            content: buildDefaultCode(language, defaultCode),
-            parentId: null,
-          },
-          {
-            id: blocklyId,
-            name: "main.blockly",
-            type: "blockly",
-            content: '<xml xmlns="https://developers.google.com/blockly/xml"></xml>',
-            parentId: null,
-          },
-        ],
-        activeFileId: sourceId,
+        files: starter.files,
+        activeFileId: starter.sourceId,
+        hasUnsavedChanges: false,
       };
     }),
 }));

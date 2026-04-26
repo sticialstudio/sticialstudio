@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
@@ -55,7 +55,10 @@ export default function RegisterPage() {
         setError(data?.error || "Registration failed. Review your details and try again.");
       }
     } catch (err) {
-      setError("Could not reach the account service right now. Try again in a moment.");
+      const message = err instanceof Error && err.message
+        ? err.message
+        : "Could not reach the account service right now. Try again in a moment.";
+      setError(message);
     } finally {
       setIsLoading(false);
     }

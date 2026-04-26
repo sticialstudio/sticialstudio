@@ -65,11 +65,13 @@ function SelectBoardContent() {
         ? modeParam
         : codingMode;
 
-  const resolvedEnvironment: HardwareEnvironment = isCircuitEntry || isVirtualEntry || environmentParam === "virtual"
-    ? "virtual"
-    : environmentParam === "physical"
-      ? "physical"
-      : environment ?? "physical";
+  const resolvedEnvironment: HardwareEnvironment = isDirectHomeEntry
+    ? "physical"
+    : isCircuitEntry || isVirtualEntry || environmentParam === "virtual"
+      ? "virtual"
+      : environmentParam === "physical"
+        ? "physical"
+        : environment ?? "physical";
 
   const isVirtualFlow = resolvedEnvironment === "virtual";
 
@@ -172,6 +174,11 @@ function SelectBoardContent() {
     }
 
     setPendingProjectIntent({ source: "wizard" });
+
+    if (!isCircuitEntry && typeof window !== "undefined") {
+      window.sessionStorage.setItem("edtech:ide-start-view", "code");
+    }
+
     router.push("/projects/ide");
   };
 

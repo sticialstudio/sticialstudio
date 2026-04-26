@@ -36,6 +36,7 @@ import LibraryHub from '../LibraryHub';
 import PreferencesDialog from '../PreferencesDialog';
 import { IDEErrorBoundary } from '../ErrorBoundary';
 import SaveProjectModal from './SaveProjectModal';
+import NewSketchDialog from './NewSketchDialog';
 import { LEFT_PANEL_WIDTH, RIGHT_PANEL_WIDTH } from './constants';
 import { useSplitViewEventBus } from './SplitViewEventBus';
 import { useEditorOrchestrator } from './EditorOrchestrator';
@@ -107,14 +108,20 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
   const {
     autoSave,
     showAdvancedBlocks,
+    editorFontSize,
+    editorWordWrap,
+    editorReadabilityMode,
     isPreferencesOpen,
     openPreferences,
     closePreferences,
     setAutoSave,
     setShowAdvancedBlocks,
+    setEditorFontSize,
+    setEditorWordWrap,
+    setEditorReadabilityMode,
     resetPreferences,
   } = useStudioPreferences();
-  const { projectName, setProjectName, projectId, refreshProjectFiles } = useProject();
+  const { projectName, setProjectName, projectId, refreshProjectFiles, saveProject, startNewSketch } = useProject();
   const hasUnsavedChanges = useEditorStore((state) => state.hasUnsavedChanges);
   const editor = useEditorOrchestrator();
   const circuit = useCircuitOrchestrator();
@@ -125,6 +132,7 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
     environment: editor.environment,
     isBlockMode: editor.isBlockMode,
     supportsDeviceFiles: compile.supportsDeviceFiles,
+    editorFontSize,
   });
 
   const shouldShowCodeGuidance = !editor.isBlockMode && (
@@ -174,6 +182,77 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
   }, [layout, rightViews]);
 
   const runtimeLabel = editor.boardConfig?.runtimeLabel || (editor.currentLanguage === 'python' ? 'MicroPython' : 'Arduino C++');
+  const [isNewSketchDialogOpen, setIsNewSketchDialogOpen] = React.useState(false);
+  const [isSavingBeforeNewSketch, setIsSavingBeforeNewSketch] = React.useState(false);
+  const pendingNewSketchAfterSaveRef = React.useRef(false);
+
+  const executeNewSketch = React.useCallback(() => {
+    pendingNewSketchAfterSaveRef.current = false;
+    setIsNewSketchDialogOpen(false);
+    setIsSavingBeforeNewSketch(false);
+    startNewSketch();
+
+    if (editor.environment === 'virtual') {
+      layout.setStudioView('circuit');
+    }
+  }, [editor.environment, layout, startNewSketch]);
+
+  const handleRequestNewSketch = React.useCallback(() => {
+    if (!hasUnsavedChanges) {
+      executeNewSketch();
+      return;
+    }
+
+    setIsNewSketchDialogOpen(true);
+  }, [executeNewSketch, hasUnsavedChanges]);
+
+  const handleCancelNewSketch = React.useCallback(() => {
+    pendingNewSketchAfterSaveRef.current = false;
+    setIsSavingBeforeNewSketch(false);
+    setIsNewSketchDialogOpen(false);
+  }, []);
+
+  const handleDiscardNewSketch = React.useCallback(() => {
+    executeNewSketch();
+  }, [executeNewSketch]);
+
+  const handleSaveThenNewSketch = React.useCallback(async () => {
+    if (!hasUnsavedChanges) {
+      executeNewSketch();
+      return;
+    }
+
+    if (!projectId) {
+      pendingNewSketchAfterSaveRef.current = true;
+      setIsNewSketchDialogOpen(false);
+      eventBus.emit('project:save-request', { origin: 'manual' });
+      return;
+    }
+
+    setIsSavingBeforeNewSketch(true);
+    try {
+      await saveProject();
+      executeNewSketch();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not save before starting a new sketch.';
+      webSerial.addMessage('error', message);
+    } finally {
+      setIsSavingBeforeNewSketch(false);
+    }
+  }, [eventBus, executeNewSketch, hasUnsavedChanges, projectId, saveProject, webSerial]);
+
+  const handleCloseSaveProjectModal = React.useCallback(() => {
+    pendingNewSketchAfterSaveRef.current = false;
+    autoSaveManager.closeSaveModal();
+  }, [autoSaveManager]);
+
+  React.useEffect(() => {
+    return eventBus.on('FILE_SAVED', () => {
+      if (pendingNewSketchAfterSaveRef.current) {
+        executeNewSketch();
+      }
+    });
+  }, [eventBus, executeNewSketch]);
 
   const handleResetEditorZone = React.useCallback(async () => {
     useBlocklyStore.getState().resetBlocklyState();
@@ -247,10 +326,16 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
       theme={theme}
       autoSave={autoSave}
       showAdvancedBlocks={showAdvancedBlocks}
+      editorFontSize={editorFontSize}
+      editorWordWrap={editorWordWrap}
+      editorReadabilityMode={editorReadabilityMode}
       onClose={closePreferences}
       onThemeChange={setTheme}
       onAutoSaveChange={setAutoSave}
       onShowAdvancedBlocksChange={setShowAdvancedBlocks}
+      onEditorFontSizeChange={setEditorFontSize}
+      onEditorWordWrapChange={setEditorWordWrap}
+      onEditorReadabilityModeChange={setEditorReadabilityMode}
       onResetApp={() => {
         resetPreferences();
         setTheme('light');
@@ -434,6 +519,7 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
               onConnectDevice={() => eventBus.emit('device:connect-toggle-request', undefined)}
               onSaveProject={() => eventBus.emit('project:save-request', { origin: 'manual' })}
               onOpenProject={() => router.push('/dashboard')}
+              onNewSketch={handleRequestNewSketch}
               onOpenPreferences={openPreferences}
               onOpenCodingEnvironment={() => layout.setStudioView('code')}
               saveStatusText={autoSaveManager.visibleSaveStatusText}
@@ -475,6 +561,7 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
               onStopSimulation={() => circuit.simulationControls?.stop()}
               onResetSimulation={() => circuit.simulationControls?.reset()}
               onSaveProject={() => eventBus.emit('project:save-request', { origin: 'manual' })}
+              onNewSketch={handleRequestNewSketch}
               onOpenPreferences={openPreferences}
               onVerify={() => eventBus.emit('compile:verify-request', undefined)}
               onUpload={() => eventBus.emit('compile:upload-request', undefined)}
@@ -494,8 +581,15 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
           currentBoard={editor.currentBoard}
           runtimeLabel={runtimeLabel}
           onNameChange={autoSaveManager.setNewProjectName}
-          onClose={autoSaveManager.closeSaveModal}
+          onClose={handleCloseSaveProjectModal}
           onSubmit={() => void autoSaveManager.submitSaveModal()}
+        />
+        <NewSketchDialog
+          open={isNewSketchDialogOpen}
+          isSavingFirst={isSavingBeforeNewSketch}
+          onCancel={handleCancelNewSketch}
+          onDiscard={handleDiscardNewSketch}
+          onSaveFirst={() => void handleSaveThenNewSketch()}
         />
       </div>
     );
@@ -525,9 +619,10 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
         onSelectBoard={() => router.push('/projects/select-board')}
         onSaveProject={() => eventBus.emit('project:save-request', { origin: 'manual' })}
         onOpenProject={() => router.push('/dashboard')}
+        onNewSketch={handleRequestNewSketch}
         onOpenPreferences={openPreferences}
-        onToggleLeft={() => layout.setLeftCollapsed((prev) => !prev)}
-        onToggleRight={() => layout.setRightCollapsed((prev) => !prev)}
+        onToggleLeft={layout.toggleLeftCollapsed}
+        onToggleRight={layout.toggleRightCollapsed}
         onToggleBottom={() => layout.setBottomCollapsed((prev) => !prev)}
         saveStatusText={autoSaveManager.visibleSaveStatusText}
         saveStatusTone={autoSaveManager.visibleSaveStatusTone}
@@ -544,7 +639,7 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
             activeView={layout.leftRailView}
             onChangeView={layout.setLeftRailView}
             isCollapsed={layout.leftCollapsed}
-            onToggleCollapsed={() => layout.setLeftCollapsed((prev) => !prev)}
+            onToggleCollapsed={layout.toggleLeftCollapsed}
             enabledViewIds={['files', 'libraries']}
           />
 
@@ -592,15 +687,27 @@ export default function IDELayoutContainer({ webSerial }: { webSerial: WebSerial
       ) : null}
 
       <SaveProjectModal
-        open={autoSaveManager.isSaveModalOpen}
-        isSaving={autoSaveManager.isSaving}
-        newProjectName={autoSaveManager.newProjectName}
-        currentBoard={editor.currentBoard}
-        runtimeLabel={runtimeLabel}
-        onNameChange={autoSaveManager.setNewProjectName}
-        onClose={autoSaveManager.closeSaveModal}
-        onSubmit={() => void autoSaveManager.submitSaveModal()}
-      />
+          open={autoSaveManager.isSaveModalOpen}
+          isSaving={autoSaveManager.isSaving}
+          newProjectName={autoSaveManager.newProjectName}
+          currentBoard={editor.currentBoard}
+          runtimeLabel={runtimeLabel}
+          onNameChange={autoSaveManager.setNewProjectName}
+          onClose={handleCloseSaveProjectModal}
+          onSubmit={() => void autoSaveManager.submitSaveModal()}
+        />
+        <NewSketchDialog
+          open={isNewSketchDialogOpen}
+          isSavingFirst={isSavingBeforeNewSketch}
+          onCancel={handleCancelNewSketch}
+          onDiscard={handleDiscardNewSketch}
+          onSaveFirst={() => void handleSaveThenNewSketch()}
+        />
     </div>
   );
 }
+
+
+
+
+

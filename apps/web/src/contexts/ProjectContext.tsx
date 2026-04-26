@@ -14,8 +14,11 @@ import {
   type PersistedProjectRecord,
   UNTITLED_PROJECT_NAME,
 } from "@/lib/projects/projectPersistence";
+import { DEFAULT_ARDUINO_CODE, DEFAULT_MICROPYTHON_CODE } from "@/templates/codeTemplates";
 import { useCircuitStore } from "@/stores/circuitStore";
+import { useBlocklyStore } from "@/stores/blocklyStore";
 import { useEditorStore, type FileItem } from "@/stores/editorStore";
+import { useSimulationStore } from "@/stores/simulationStore";
 
 export type { FileItem } from "@/stores/editorStore";
 
@@ -28,6 +31,7 @@ export interface ProjectContextValue {
   refreshProjectFiles: () => Promise<void>;
   saveProject: () => Promise<void>;
   saveAsProject: (name: string) => Promise<string>;
+  startNewSketch: () => void;
 }
 
 const ProjectContext = createContext<ProjectContextValue | undefined>(undefined);
@@ -35,6 +39,20 @@ const ProjectContext = createContext<ProjectContextValue | undefined>(undefined)
 function stashWorkspaceNotice(message: string) {
   if (typeof window === "undefined") return;
   window.sessionStorage.setItem("workspaceNotice", message);
+}
+
+function resolvePreferredSourceFileName(language: string | null, generator: string | null) {
+  return language === "python" || generator === "micropython" ? "main.py" : "main.cpp";
+}
+
+function resolveStarterSourceCode(codingMode: "block" | "text" | null, language: string | null, generator: string | null) {
+  if (codingMode === "block") {
+    return "";
+  }
+
+  return language === "python" || generator === "micropython"
+    ? DEFAULT_MICROPYTHON_CODE
+    : DEFAULT_ARDUINO_CODE;
 }
 
 export function ProjectProvider({ children }: { children: ReactNode }) {
@@ -55,6 +73,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setLanguage,
     setGenerator,
     setEnvironment,
+    clearPendingProjectIntent,
   } = useBoard();
 
   useEffect(() => {
@@ -131,6 +150,24 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setProjectNameState(name);
     useEditorStore.getState().setHasUnsavedChanges(true);
   }, []);
+
+  const startNewSketch = useCallback(() => {
+    const resolvedLanguage = language === "python" || generator === "micropython" ? "python" : "cpp";
+    const sourceFileName = resolvePreferredSourceFileName(language, generator);
+    const starterSourceCode = resolveStarterSourceCode(codingMode, language, generator);
+
+    clearPendingProjectIntent();
+    persistActiveProjectId(null);
+    setProjectIdState(null);
+    setProjectNameState(UNTITLED_PROJECT_NAME);
+    setHasLoadedProjectFiles(true);
+
+    useEditorStore.getState().resetEditorState();
+    useEditorStore.getState().initializeWorkspaceFiles(sourceFileName, resolvedLanguage, starterSourceCode);
+    useBlocklyStore.getState().resetBlocklyState();
+    useSimulationStore.getState().resetSimulationStore();
+    useCircuitStore.getState().clearCircuit();
+  }, [clearPendingProjectIntent, codingMode, generator, language]);
 
   const refreshProjectFiles = useCallback(async () => {
     if (!projectId || !token) return;
@@ -306,6 +343,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     refreshProjectFiles,
     saveProject,
     saveAsProject,
+    startNewSketch,
   };
 
   return <ProjectContext.Provider value={value}>{children}</ProjectContext.Provider>;

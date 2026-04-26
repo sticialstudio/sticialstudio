@@ -1,11 +1,18 @@
-"use client";
+﻿"use client";
 
 import * as React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Flame, MoonStar, RotateCcw, Settings2, Sparkles, SunMedium } from "lucide-react";
+import { AlertTriangle, Flame, Minus, MoonStar, Plus, RotateCcw, Settings2, Sparkles, SunMedium, Type, WrapText } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { pageTransition } from "@/components/ui/motion";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import {
+  clampEditorFontSize,
+  MAX_EDITOR_FONT_SIZE,
+  MIN_EDITOR_FONT_SIZE,
+  type EditorReadabilityMode,
+  type EditorWordWrapMode,
+} from "@/contexts/StudioPreferencesContext";
 import type { ThemeMode } from "@/contexts/ThemeContext";
 
 interface PreferencesDialogProps {
@@ -13,10 +20,16 @@ interface PreferencesDialogProps {
   theme: ThemeMode;
   autoSave: boolean;
   showAdvancedBlocks: boolean;
+  editorFontSize: number;
+  editorWordWrap: EditorWordWrapMode;
+  editorReadabilityMode: EditorReadabilityMode;
   onClose: () => void;
   onThemeChange: (theme: ThemeMode) => void;
   onAutoSaveChange: (value: boolean) => void;
   onShowAdvancedBlocksChange: (value: boolean) => void;
+  onEditorFontSizeChange: (value: number) => void;
+  onEditorWordWrapChange: (value: EditorWordWrapMode) => void;
+  onEditorReadabilityModeChange: (value: EditorReadabilityMode) => void;
   onResetApp: () => void;
 }
 
@@ -25,6 +38,12 @@ type PreferenceToggleProps = {
   description: string;
   enabled: boolean;
   onToggle: (value: boolean) => void;
+};
+
+type PreferenceChoiceOption<T extends string> = {
+  id: T;
+  label: string;
+  description: string;
 };
 
 const themeOptions: Array<{
@@ -50,6 +69,32 @@ const themeOptions: Array<{
     label: "Magma",
     description: "Warm amber accents with a focused studio feel.",
     icon: Flame,
+  },
+];
+
+const wrapOptions: PreferenceChoiceOption<EditorWordWrapMode>[] = [
+  {
+    id: "off",
+    label: "Off",
+    description: "Keep long code lines on one row for a classic IDE layout.",
+  },
+  {
+    id: "on",
+    label: "On",
+    description: "Wrap long lines inside the editor when you need a tighter reading column.",
+  },
+];
+
+const readabilityOptions: PreferenceChoiceOption<EditorReadabilityMode>[] = [
+  {
+    id: "auto",
+    label: "Auto",
+    description: "Turn on the readability spacing boost automatically at larger text sizes.",
+  },
+  {
+    id: "always",
+    label: "Always",
+    description: "Always favor wider spacing and simpler glyph rendering while you code.",
   },
 ];
 
@@ -83,15 +128,133 @@ function PreferenceToggle({ title, description, enabled, onToggle }: PreferenceT
   );
 }
 
+function PreferenceChoiceGroup<T extends string>({
+  title,
+  description,
+  value,
+  options,
+  onChange,
+  icon: Icon,
+}: {
+  title: string;
+  description: string;
+  value: T;
+  options: PreferenceChoiceOption<T>[];
+  onChange: (value: T) => void;
+  icon: React.ComponentType<{ size?: number }>;
+}) {
+  return (
+    <div className="ui-foundation-panel-quiet rounded-[22px] px-4 py-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-[color:var(--ui-border-soft)] bg-[color:var(--ui-surface-elevated)] text-[var(--ui-color-primary)]">
+          <Icon size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-[var(--ui-color-text)]">{title}</h3>
+          <p className="mt-1 text-sm leading-6 text-[var(--ui-color-text-muted)]">{description}</p>
+        </div>
+      </div>
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        {options.map((option) => {
+          const isActive = option.id === value;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => onChange(option.id)}
+              className={`rounded-[20px] border px-4 py-3 text-left transition-colors ${
+                isActive
+                  ? "border-[color:var(--ui-color-primary)]/28 bg-[color:var(--ui-color-primary)]/10 shadow-[0_18px_38px_-32px_rgba(24,39,75,0.45)]"
+                  : "border-[color:var(--ui-border-soft)] bg-[color:var(--ui-surface-elevated)] hover:border-[color:var(--ui-border-strong)]"
+              }`}
+            >
+              <div className="text-sm font-semibold text-[var(--ui-color-text)]">{option.label}</div>
+              <div className="mt-1 text-xs leading-5 text-[var(--ui-color-text-muted)]">{option.description}</div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function FontSizeControl({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <div className="ui-foundation-panel-quiet rounded-[22px] px-4 py-4">
+      <div className="flex items-start gap-3">
+        <span className="mt-0.5 inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-[14px] border border-[color:var(--ui-border-soft)] bg-[color:var(--ui-surface-elevated)] text-[var(--ui-color-primary)]">
+          <Type size={16} />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-semibold text-[var(--ui-color-text)]">Code text size</h3>
+          <p className="mt-1 text-sm leading-6 text-[var(--ui-color-text-muted)]">
+            Set a shared editor font size for text coding, previews, and any Monaco-powered code surfaces. Larger sizes automatically relax the IDE side panels so code keeps breathing room.
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between gap-4 rounded-[18px] border border-[color:var(--ui-border-soft)] bg-[color:var(--ui-surface-elevated)] px-4 py-3">
+        <div>
+          <div className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[var(--ui-color-text-soft)]">Editor font size</div>
+          <div className="mt-1 text-2xl font-semibold tracking-[-0.04em] text-[var(--ui-color-text)]">{value}px</div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="ghost"
+            onClick={() => onChange(clampEditorFontSize(value - 1))}
+            className="min-h-10 min-w-10 rounded-[14px] px-0"
+            disabled={value <= MIN_EDITOR_FONT_SIZE}
+          >
+            <Minus size={16} />
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => onChange(clampEditorFontSize(value + 1))}
+            className="min-h-10 min-w-10 rounded-[14px] px-0"
+            disabled={value >= MAX_EDITOR_FONT_SIZE}
+          >
+            <Plus size={16} />
+          </Button>
+        </div>
+      </div>
+      <input
+        type="range"
+        min={MIN_EDITOR_FONT_SIZE}
+        max={MAX_EDITOR_FONT_SIZE}
+        step={1}
+        value={value}
+        onChange={(event) => onChange(clampEditorFontSize(Number(event.target.value)))}
+        className="mt-4 h-2 w-full cursor-pointer accent-[var(--ui-color-primary)]"
+      />
+      <div className="mt-2 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ui-color-text-soft)]">
+        <span>{MIN_EDITOR_FONT_SIZE}px</span>
+        <span>{MAX_EDITOR_FONT_SIZE}px</span>
+      </div>
+    </div>
+  );
+}
+
 export default function PreferencesDialog({
   open,
   theme,
   autoSave,
   showAdvancedBlocks,
+  editorFontSize,
+  editorWordWrap,
+  editorReadabilityMode,
   onClose,
   onThemeChange,
   onAutoSaveChange,
   onShowAdvancedBlocksChange,
+  onEditorFontSizeChange,
+  onEditorWordWrapChange,
+  onEditorReadabilityModeChange,
   onResetApp,
 }: PreferencesDialogProps) {
   const [confirmResetOpen, setConfirmResetOpen] = React.useState(false);
@@ -187,6 +350,30 @@ export default function PreferencesDialog({
 
                 <section className="space-y-3">
                   <div>
+                    <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--ui-color-text-soft)]">Editor</h3>
+                    <p className="mt-1 text-sm text-[var(--ui-color-text-muted)]">Keep code readable and consistent across text editing surfaces.</p>
+                  </div>
+                  <FontSizeControl value={editorFontSize} onChange={onEditorFontSizeChange} />
+                  <PreferenceChoiceGroup
+                    title="Line wrapping"
+                    description="Choose whether long lines stay single-row or wrap in tighter layouts."
+                    value={editorWordWrap}
+                    options={wrapOptions}
+                    onChange={onEditorWordWrapChange}
+                    icon={WrapText}
+                  />
+                  <PreferenceChoiceGroup
+                    title="Readability mode"
+                    description="Control when the editor switches to wider spacing and simplified glyph rendering."
+                    value={editorReadabilityMode}
+                    options={readabilityOptions}
+                    onChange={onEditorReadabilityModeChange}
+                    icon={Sparkles}
+                  />
+                </section>
+
+                <section className="space-y-3">
+                  <div>
                     <h3 className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--ui-color-text-soft)]">Workflow</h3>
                     <p className="mt-1 text-sm text-[var(--ui-color-text-muted)]">Control save behavior and how much of the toolbox is exposed.</p>
                   </div>
@@ -212,7 +399,7 @@ export default function PreferencesDialog({
                     <div className="min-w-0">
                       <h3 className="text-sm font-semibold text-[var(--ui-color-text)]">Reset app state</h3>
                       <p className="mt-1 text-sm leading-6 text-[var(--ui-color-text-muted)]">
-                        Clear saved theme, board selection, active project memory, and the in-memory circuit workspace for a fresh start.
+                        Clear saved theme, editor preferences, board selection, active project memory, and the in-memory circuit workspace for a fresh start.
                       </p>
                       <Button
                         variant="secondary"

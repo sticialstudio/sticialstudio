@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type MouseEvent as ReactMouseEvent } from 'react';
+﻿import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import type { StudioView } from '../../TopToolbar';
 import type { BlockTerminalTab } from '../../BlockTerminalShell';
 import {
@@ -10,13 +10,17 @@ import {
 import { clampBlockTerminalHeight, getInitialStudioView } from '../helpers';
 import { useSplitViewEventBus } from '../SplitViewEventBus';
 
+const RIGHT_EDITOR_FOCUS_THRESHOLD = 20;
+const LEFT_EDITOR_FOCUS_THRESHOLD = 26;
+
 interface UseIDELayoutStateOptions {
   environment: string;
   isBlockMode: boolean;
   supportsDeviceFiles: boolean;
+  editorFontSize: number;
 }
 
-export function useIDELayoutState({ environment, isBlockMode, supportsDeviceFiles }: UseIDELayoutStateOptions) {
+export function useIDELayoutState({ environment, isBlockMode, supportsDeviceFiles, editorFontSize }: UseIDELayoutStateOptions) {
   const eventBus = useSplitViewEventBus();
   const [terminalHeight, setTerminalHeight] = useState(BLOCK_TERMINAL_DEFAULT_HEIGHT);
   const [leftCollapsed, setLeftCollapsed] = useState(false);
@@ -27,7 +31,26 @@ export function useIDELayoutState({ environment, isBlockMode, supportsDeviceFile
   const [isCompact, setIsCompact] = useState(false);
   const [leftRailView, setLeftRailView] = useState('files');
   const [rightPanelView, setRightPanelView] = useState('status');
-  const [activeView, setActiveView] = useState<StudioView>(() => getInitialStudioView(environment));
+  const autoFocusCollapsedLeftRef = useRef(false);
+  const autoFocusCollapsedRightRef = useRef(false);
+  const leftFocusThresholdReachedRef = useRef(false);
+  const rightFocusThresholdReachedRef = useRef(false);
+
+  // One-shot override: the wizard stores 'edtech:ide-start-view' in sessionStorage
+  // when the user explicitly picked a coding mode (not from Circuit Lab).
+  // We consume it exactly once here so the env-reset effect below doesn't clobber it.
+  const startViewOverrideRef = useRef(false);
+  const [activeView, setActiveView] = useState<StudioView>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = window.sessionStorage.getItem('edtech:ide-start-view');
+      if (stored === 'code' || stored === 'circuit') {
+        window.sessionStorage.removeItem('edtech:ide-start-view');
+        startViewOverrideRef.current = true;
+        return stored as StudioView;
+      }
+    }
+    return getInitialStudioView(environment);
+  });
 
   const defaultRightView = supportsDeviceFiles ? 'device' : 'ai-chat';
   const effectiveBlockTerminalHeight = isCompact ? Math.min(terminalHeight, 180) : terminalHeight;
@@ -45,6 +68,12 @@ export function useIDELayoutState({ environment, isBlockMode, supportsDeviceFile
   );
 
   useEffect(() => {
+    // If we consumed a start-view override from the wizard on this mount,
+    // skip the first run so we don't immediately clobber it.
+    if (startViewOverrideRef.current) {
+      startViewOverrideRef.current = false;
+      return;
+    }
     const nextView = getInitialStudioView(environment);
     setActiveView(nextView);
     if (nextView === 'code') {
@@ -114,6 +143,46 @@ export function useIDELayoutState({ environment, isBlockMode, supportsDeviceFile
   }, []);
 
   useEffect(() => {
+    if (environment !== 'physical' || isBlockMode || isCompact) {
+      leftFocusThresholdReachedRef.current = false;
+      rightFocusThresholdReachedRef.current = false;
+      autoFocusCollapsedLeftRef.current = false;
+      autoFocusCollapsedRightRef.current = false;
+      return;
+    }
+
+    const shouldCollapseRightForFocus = editorFontSize >= RIGHT_EDITOR_FOCUS_THRESHOLD;
+    const shouldCollapseLeftForFocus = editorFontSize >= LEFT_EDITOR_FOCUS_THRESHOLD;
+
+    if (shouldCollapseRightForFocus && !rightFocusThresholdReachedRef.current) {
+      if (!rightCollapsed) {
+        setRightCollapsed(true);
+        autoFocusCollapsedRightRef.current = true;
+      } else {
+        autoFocusCollapsedRightRef.current = false;
+      }
+    } else if (!shouldCollapseRightForFocus && rightFocusThresholdReachedRef.current && autoFocusCollapsedRightRef.current) {
+      setRightCollapsed(false);
+      autoFocusCollapsedRightRef.current = false;
+    }
+
+    if (shouldCollapseLeftForFocus && !leftFocusThresholdReachedRef.current) {
+      if (!leftCollapsed) {
+        setLeftCollapsed(true);
+        autoFocusCollapsedLeftRef.current = true;
+      } else {
+        autoFocusCollapsedLeftRef.current = false;
+      }
+    } else if (!shouldCollapseLeftForFocus && leftFocusThresholdReachedRef.current && autoFocusCollapsedLeftRef.current) {
+      setLeftCollapsed(false);
+      autoFocusCollapsedLeftRef.current = false;
+    }
+
+    rightFocusThresholdReachedRef.current = shouldCollapseRightForFocus;
+    leftFocusThresholdReachedRef.current = shouldCollapseLeftForFocus;
+  }, [editorFontSize, environment, isBlockMode, isCompact, leftCollapsed, rightCollapsed]);
+
+  useEffect(() => {
     if (!isBlockMode) {
       setRightPanelView(defaultRightView);
       if (!isCompact) {
@@ -141,6 +210,10 @@ export function useIDELayoutState({ environment, isBlockMode, supportsDeviceFile
       setLeftRailView('files');
       setRightPanelView('status');
       setActiveView(getInitialStudioView('virtual'));
+      autoFocusCollapsedLeftRef.current = false;
+      autoFocusCollapsedRightRef.current = false;
+      leftFocusThresholdReachedRef.current = false;
+      rightFocusThresholdReachedRef.current = false;
 
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(BLOCK_TERMINAL_HEIGHT_STORAGE_KEY);
@@ -172,6 +245,16 @@ export function useIDELayoutState({ environment, isBlockMode, supportsDeviceFile
     [terminalHeight],
   );
 
+  const toggleLeftCollapsed = useCallback(() => {
+    autoFocusCollapsedLeftRef.current = false;
+    setLeftCollapsed((prev) => !prev);
+  }, []);
+
+  const toggleRightCollapsed = useCallback(() => {
+    autoFocusCollapsedRightRef.current = false;
+    setRightCollapsed((prev) => !prev);
+  }, []);
+
   return {
     activeView,
     setStudioView,
@@ -192,5 +275,7 @@ export function useIDELayoutState({ environment, isBlockMode, supportsDeviceFile
     setRightPanelView,
     handleTerminalResize,
     defaultRightView,
+    toggleLeftCollapsed,
+    toggleRightCollapsed,
   };
 }

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Blocks, CheckCircle2, Code2, Play, Rocket, RotateCcw, Save, Settings2, Square } from 'lucide-react';
+import { ArrowLeft, Blocks, CheckCircle2, Code2, Play, Plus, Rocket, RotateCcw, Save, Settings2, Square } from 'lucide-react';
 import type { CodingMode } from '@/contexts/BoardContext';
 import { Button } from '@/components/ui/Button';
 import { fadeInUp } from '@/components/ui/motion';
@@ -28,6 +28,7 @@ interface CodingEnvironmentTopBarProps {
   onStopSimulation: () => void;
   onResetSimulation: () => void;
   onSaveProject: () => void;
+  onNewSketch: () => void;
   onOpenPreferences: () => void;
   onVerify?: () => void;
   onUpload?: () => void;
@@ -55,6 +56,7 @@ export default function CodingEnvironmentTopBar({
   onStopSimulation,
   onResetSimulation,
   onSaveProject,
+  onNewSketch,
   onOpenPreferences,
   onVerify,
   onUpload,
@@ -134,6 +136,14 @@ export default function CodingEnvironmentTopBar({
               className='min-h-11 rounded-[16px] border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
             >
               {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button
+              variant='secondary'
+              icon={<Plus size={16} />} 
+              onClick={onNewSketch}
+              className='min-h-11 rounded-[16px] border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+            >
+              New Sketch
             </Button>
             <Button
               variant='secondary'
@@ -284,6 +294,14 @@ export default function CodingEnvironmentTopBar({
             {isSaving ? 'Saving…' : 'Save'}
           </Button>
           <Button
+            variant='secondary'
+            icon={<Plus size={14} />} 
+            onClick={onNewSketch}
+            className='min-h-9 rounded-[12px] border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+          >
+            New Sketch
+          </Button>
+          <Button
             icon={isSimulationActive ? <Square size={14} /> : <Play size={14} />}
             onClick={() => {
               if (isSimulationActive) {
@@ -319,4 +337,5 @@ export default function CodingEnvironmentTopBar({
     </motion.header>
   );
 }
+
 

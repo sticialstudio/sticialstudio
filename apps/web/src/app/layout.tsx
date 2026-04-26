@@ -1,5 +1,6 @@
 ﻿import type { Metadata } from 'next';
-import type { CSSProperties, ReactNode } from 'react';
+import localFont from 'next/font/local';
+import type { ReactNode } from 'react';
 import './globals.css';
 import { BoardProvider } from '@/contexts/BoardContext';
 import { ProjectProvider } from '@/contexts/ProjectContext';
@@ -8,9 +9,12 @@ import { ThemeProvider } from '@/contexts/ThemeContext';
 import { StudioPreferencesProvider } from '@/contexts/StudioPreferencesContext';
 import { CircuitProvider } from '@/contexts/CircuitContext';
 
-const monoFontStyle = {
-  '--font-jetbrains-mono': "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace",
-} as CSSProperties;
+const editorMono = localFont({
+  src: './fonts/GeistMonoLatin.woff2',
+  variable: '--font-editor-mono',
+  display: 'swap',
+  fallback: ['Fira Code', 'Cascadia Code', 'Consolas', 'monospace'],
+});
 
 export const metadata: Metadata = {
   title: 'Sticial Studio',
@@ -24,7 +28,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" data-theme="light" suppressHydrationWarning>
-      <body className="antialiased" style={monoFontStyle}>
+      <body className={`${editorMono.variable} antialiased`}>
         <ThemeProvider>
           <StudioPreferencesProvider>
             <AuthProvider>

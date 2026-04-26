@@ -1,5 +1,3 @@
-﻿"use client";
-
 export interface NormalizedRuntimeError {
   name: string;
   message: string;

@@ -1,9 +1,9 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import {
   APP_SESSION_COOKIE,
   LEGACY_SESSION_COOKIE,
   getAppSessionCookieOptions,
-  verifyAppSessionToken,
+  validateAppSessionToken,
 } from '@/lib/auth/session';
 import { normalizeRuntimeError } from '@/lib/runtime/normalizeRuntimeError';
 
@@ -21,7 +21,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: 'Session token is required.' }, { status: 400 });
     }
 
-    await verifyAppSessionToken(token);
+    await validateAppSessionToken(token);
 
     const response = NextResponse.json({ success: true });
     response.cookies.set(APP_SESSION_COOKIE, token, getAppSessionCookieOptions());
@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
           targetUrl: normalized.targetUrl,
         },
       },
-      { status: 401 }
+      { status: 401 },
     );
     clearCookies(response);
     return response;

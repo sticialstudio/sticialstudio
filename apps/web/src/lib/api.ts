@@ -22,7 +22,7 @@ export function getApiBaseUrl() {
     const hostname = window.location.hostname;
 
     if (!envBase) {
-        return normalizeBaseUrl(`http://${hostname}:4000`);
+        return normalizeBaseUrl(window.location.origin);
     }
 
     try {
@@ -42,6 +42,10 @@ export const API_BASE_URL = getApiBaseUrl();
 
 export function buildApiUrl(path: string) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+    }
+
+    if (typeof window !== 'undefined' && !resolveEnvBaseUrl() && path.startsWith('/api/')) {
         return path;
     }
 

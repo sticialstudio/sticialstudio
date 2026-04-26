@@ -3,6 +3,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Editor from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
+import {
+  clampEditorFontSize,
+  MAX_EDITOR_FONT_SIZE,
+  MIN_EDITOR_FONT_SIZE,
+  useStudioPreferences,
+  type EditorReadabilityMode,
+} from '@/contexts/StudioPreferencesContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import type { ThemeMode } from '@/contexts/ThemeContext';
 import { Plus, Minus } from 'lucide-react';
@@ -17,8 +24,8 @@ const THEMES: Record<string, editor.IStandaloneThemeData> = {
     base: 'vs',
     inherit: true,
     rules: [
-      { token: 'comment', foreground: '6a8a60', fontStyle: 'italic' },
-      { token: 'comment.block', foreground: '6a8a60', fontStyle: 'italic' },
+      { token: 'comment', foreground: '6a8a60' },
+      { token: 'comment.block', foreground: '6a8a60' },
       { token: 'keyword', foreground: 'b5580c' },
       { token: 'keyword.control', foreground: 'b5580c' },
       { token: 'storage.type', foreground: 'b5580c' },
@@ -66,8 +73,8 @@ const THEMES: Record<string, editor.IStandaloneThemeData> = {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'comment', foreground: '6a8a7a', fontStyle: 'italic' },
-      { token: 'comment.block', foreground: '6a8a7a', fontStyle: 'italic' },
+      { token: 'comment', foreground: '6a8a7a' },
+      { token: 'comment.block', foreground: '6a8a7a' },
       { token: 'keyword', foreground: 'e8834d' },
       { token: 'keyword.control', foreground: 'e8834d' },
       { token: 'storage.type', foreground: 'e8834d' },
@@ -115,8 +122,8 @@ const THEMES: Record<string, editor.IStandaloneThemeData> = {
     base: 'vs-dark',
     inherit: true,
     rules: [
-      { token: 'comment', foreground: '7a635f', fontStyle: 'italic' },
-      { token: 'comment.block', foreground: '7a635f', fontStyle: 'italic' },
+      { token: 'comment', foreground: '7a635f' },
+      { token: 'comment.block', foreground: '7a635f' },
       { token: 'keyword', foreground: 'f97316' },
       { token: 'keyword.control', foreground: 'f97316' },
       { token: 'storage.type', foreground: 'f97316' },
@@ -198,6 +205,48 @@ const HEADER_STYLES: Record<ThemeMode, { bg: string; border: string; fg: string;
 };
 
 
+type EditorTypography = {
+  readabilityMode: boolean;
+  fontLigatures: boolean;
+  lineHeight: number;
+  letterSpacing: number;
+  paddingTop: number;
+  paddingBottom: number;
+};
+
+function getEditorTypography(fontSize: number, readabilityPreference: EditorReadabilityMode): EditorTypography {
+  if (fontSize >= 26) {
+    return {
+      readabilityMode: true,
+      fontLigatures: false,
+      lineHeight: Math.round(fontSize * 1.92),
+      letterSpacing: 0,
+      paddingTop: 18,
+      paddingBottom: 32,
+    };
+  }
+
+  if (readabilityPreference === 'always' || fontSize >= 20) {
+    return {
+      readabilityMode: true,
+      fontLigatures: false,
+      lineHeight: Math.round(fontSize * 1.82),
+      letterSpacing: 0.08,
+      paddingTop: 16,
+      paddingBottom: 28,
+    };
+  }
+
+  return {
+    readabilityMode: false,
+    fontLigatures: true,
+    lineHeight: Math.round(fontSize * 1.68),
+    letterSpacing: 0.24,
+    paddingTop: 14,
+    paddingBottom: 24,
+  };
+}
+
 const MONACO_THEME_REGISTRY_FLAG = "__sticial_monaco_themes_registered__";
 
 function hasRegisteredMonacoThemes() {
@@ -251,22 +300,17 @@ export default function TextEditor({
   const lastRevealedCompileLineRef = useRef<number | null>(null);
   const compileFeedback = useSimulationStore((state) => state.compileFeedback);
   const errorText = useSimulationStore((state) => state.simulationStatus?.errorText);
+  const {
+    editorFontSize: fontSize,
+    editorReadabilityMode,
+    editorWordWrap,
+    setEditorFontSize,
+  } = useStudioPreferences();
   const monacoThemeName = getMonacoThemeName(theme);
   const resolvedCompileFeedback = useMemo(
     () => compileFeedback ?? (errorText ? extractCompileFeedback(errorText, errorText) : null),
     [compileFeedback, errorText]
   );
-
-  const [fontSize, setFontSize] = useState<number>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('__sticial_editor_font_size');
-      if (saved) {
-        const parsed = parseInt(saved, 10);
-        if (!isNaN(parsed)) return Math.min(24, Math.max(10, parsed));
-      }
-    }
-    return 14;
-  });
 
   useEffect(() => {
     let cancelled = false;
@@ -296,12 +340,6 @@ export default function TextEditor({
       cancelled = true;
     };
   }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('__sticial_editor_font_size', fontSize.toString());
-    }
-  }, [fontSize]);
 
   const registerThemes = useCallback(() => {
     if (!monacoInstance || themesRegisteredRef.current) return;
@@ -401,6 +439,7 @@ export default function TextEditor({
   const hs = HEADER_STYLES[theme];
   const editorBg = THEMES[monacoThemeName]?.colors?.['editor.background'] as string | undefined;
   const bgStyle = editorBg ? `${editorBg}` : 'var(--ui-color-background)';
+  const editorTypography = useMemo(() => getEditorTypography(fontSize, editorReadabilityMode), [editorReadabilityMode, fontSize]);
 
   if (monacoLoadError) {
     throw monacoLoadError;
@@ -452,19 +491,19 @@ export default function TextEditor({
               style={{ color: hs.fg, background: hs.badge }}
             >
               <button
-                onClick={() => setFontSize((f) => Math.max(10, f - 1))}
+                onClick={() => setEditorFontSize(clampEditorFontSize(fontSize - 1))}
                 className="rounded p-1 hover:bg-black/10 dark:hover:bg-white/10"
                 title="Decrease font size"
-                disabled={fontSize <= 10}
+                disabled={fontSize <= MIN_EDITOR_FONT_SIZE}
               >
                 <Minus size={13} strokeWidth={2.5} />
               </button>
-              <span className="w-5 text-center font-mono text-[10px]">{fontSize}</span>
+              <span className="w-7 text-center font-mono text-[10px]">{fontSize}</span>
               <button
-                onClick={() => setFontSize((f) => Math.min(24, f + 1))}
+                onClick={() => setEditorFontSize(clampEditorFontSize(fontSize + 1))}
                 className="rounded p-1 hover:bg-black/10 dark:hover:bg-white/10"
                 title="Increase font size"
-                disabled={fontSize >= 24}
+                disabled={fontSize >= MAX_EDITOR_FONT_SIZE}
               >
                 <Plus size={13} strokeWidth={2.5} />
               </button>
@@ -500,16 +539,16 @@ export default function TextEditor({
             }}
             options={{
               readOnly,
-              fontFamily: "var(--font-jetbrains-mono), 'Fira Code', 'Cascadia Code', 'Consolas', monospace",
-              fontLigatures: true,
+              fontFamily: "var(--font-editor-mono), 'Fira Code', 'Cascadia Code', 'Consolas', monospace",
+              fontLigatures: editorTypography.fontLigatures,
               fontSize,
-              lineHeight: Math.round(fontSize * 1.65),
-              letterSpacing: 0.3,
+              lineHeight: editorTypography.lineHeight,
+              letterSpacing: editorTypography.letterSpacing,
               minimap: { enabled: false },
               scrollBeyondLastLine: false,
               smoothScrolling: true,
-              cursorBlinking: 'smooth',
-              cursorSmoothCaretAnimation: 'on',
+              cursorBlinking: editorTypography.readabilityMode ? 'blink' : 'smooth',
+              cursorSmoothCaretAnimation: editorTypography.readabilityMode ? 'off' : 'on',
               automaticLayout: true,
               lineNumbersMinChars: 3,
               lineDecorationsWidth: 12,
@@ -526,9 +565,9 @@ export default function TextEditor({
                 horizontalScrollbarSize: 8,
                 useShadows: false,
               },
-              wordWrap: 'off',
+              wordWrap: editorWordWrap === 'on' ? 'on' : 'off',
               renderWhitespace: 'none',
-              padding: { top: 14, bottom: 24 },
+              padding: { top: editorTypography.paddingTop, bottom: editorTypography.paddingBottom },
               quickSuggestionsDelay: 100,
               suggest: { showKeywords: true, showSnippets: true },
             }}

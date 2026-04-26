@@ -2,7 +2,7 @@
 
 import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Blocks, CircuitBoard, Code2, FolderOpen, Save, Settings2, Trash2 } from 'lucide-react';
+import { Blocks, CircuitBoard, Code2, FolderOpen, Plus, Save, Settings2, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { fadeInUp } from '@/components/ui/motion';
@@ -21,6 +21,7 @@ interface CircuitLabTopBarProps {
   onConnectDevice: () => void;
   onSaveProject: () => void;
   onOpenProject: () => void;
+  onNewSketch: () => void;
   onOpenPreferences: () => void;
   onOpenCodingEnvironment: () => void;
   saveStatusText?: string | null;
@@ -50,6 +51,7 @@ export default function TopBar({
   onConnectDevice,
   onSaveProject,
   onOpenProject,
+  onNewSketch,
   onOpenPreferences,
   onOpenCodingEnvironment,
   saveStatusText,
@@ -144,6 +146,14 @@ export default function TopBar({
             </Button>
             <Button
               variant="ghost"
+              icon={<Plus size={15} />}
+              onClick={onNewSketch}
+              className="min-h-10 rounded-full border border-white/8 bg-white/[0.03] px-4 text-sm text-slate-300 hover:border-white/14 hover:bg-white/[0.06] hover:text-white"
+            >
+              New Sketch
+            </Button>
+            <Button
+              variant="ghost"
               icon={<Settings2 size={15} />}
               onClick={onOpenPreferences}
               className="min-h-10 rounded-full border border-white/8 bg-white/[0.03] px-4 text-sm text-slate-300 hover:border-white/14 hover:bg-white/[0.06] hover:text-white"
@@ -181,3 +191,5 @@ export default function TopBar({
     </>
   );
 }
+
+

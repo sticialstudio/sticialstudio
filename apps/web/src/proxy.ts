@@ -1,6 +1,6 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { APP_SESSION_COOKIE, LEGACY_SESSION_COOKIE, verifyAppSessionToken } from '@/lib/auth/session';
+import { APP_SESSION_COOKIE, LEGACY_SESSION_COOKIE, validateAppSessionToken } from '@/lib/auth/session';
 
 const publicPaths = ['/', '/login', '/register', '/auth/callback', '/api/auth/signup', '/api/auth/login'];
 
@@ -49,7 +49,7 @@ export async function proxy(req: NextRequest) {
   }
 
   try {
-    await verifyAppSessionToken(token);
+    await validateAppSessionToken(token);
     return NextResponse.next();
   } catch {
     const loginUrl = new URL('/login', req.url);
