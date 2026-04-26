@@ -1,8 +1,11 @@
-﻿import { GRID_PITCH, type Point } from '@/lib/wiring/componentGeometry';
+import { GRID_PITCH, type Point } from '@/lib/wiring/componentGeometry';
 
 import type { WireHandleNode } from './sceneTypes';
 
-type EditableWireHandle = Pick<WireHandleNode, 'axis' | 'kind' | 'waypointIndex' | 'segmentIndex'>;
+type EditableWireHandle = Pick<
+  WireHandleNode,
+  'axis' | 'kind' | 'waypointIndex' | 'segmentIndex' | 'routeIndex' | 'endpoint'
+>;
 
 function snap(value: number) {
   return Math.round(value / GRID_PITCH) * GRID_PITCH;
@@ -83,9 +86,7 @@ function orthogonalizeRoutePoints(points: Point[]) {
 
     const dx = Math.abs(point.x - previous.x);
     const dy = Math.abs(point.y - previous.y);
-    const bridge = dx >= dy
-      ? { x: point.x, y: previous.y }
-      : { x: previous.x, y: point.y };
+    const bridge = dx >= dy ? { x: point.x, y: previous.y } : { x: previous.x, y: point.y };
 
     if (!pointsEqual(previous, bridge)) {
       orthogonal.push(bridge);
@@ -101,7 +102,7 @@ function orthogonalizeRoutePoints(points: Point[]) {
 
 function normalizeRoutePoints(start: Point, end: Point, path: Point[]) {
   const snappedPath = path.map(snapPoint);
-  return simplifyRoutePoints(orthogonalizeRoutePoints([snapPoint(start), ...snappedPath, snapPoint(end)]));
+  return simplifyRoutePoints(orthogonalizeRoutePoints([start, ...snappedPath, end]));
 }
 
 function routeToWaypoints(start: Point, end: Point, route: Point[]) {
@@ -145,6 +146,22 @@ function moveSegmentHandle(start: Point, end: Point, waypoints: Point[], segment
   ]);
 }
 
+function moveElbowHandle(start: Point, end: Point, waypoints: Point[], routeIndex: number, nextPoint: Point) {
+  const route = buildWireRoutePoints(start, end, waypoints);
+  if (routeIndex <= 0 || routeIndex >= route.length - 1 || !route[routeIndex]) {
+    return normalizeWirePath(waypoints, start, end);
+  }
+
+  const nextRoute = route.map((point, index) => (index === routeIndex ? snapPoint(nextPoint) : point));
+  return routeToWaypoints(start, end, nextRoute);
+}
+
+function isCorner(previous: Point, current: Point, next: Point) {
+  const sameVertical = nearlyEqual(previous.x, current.x) && nearlyEqual(current.x, next.x);
+  const sameHorizontal = nearlyEqual(previous.y, current.y) && nearlyEqual(current.y, next.y);
+  return !(sameVertical || sameHorizontal);
+}
+
 export function normalizeWirePath(path: Point[], start: Point, end: Point) {
   return normalizeRoutePoints(start, end, path).slice(1, -1);
 }
@@ -153,13 +170,57 @@ export function buildOrthogonalWaypoints(start: Point, end: Point, existingWaypo
   return normalizeWirePath(existingWaypoints, start, end);
 }
 
-export function buildWireRoutePoints(start: Point, end: Point, existingWaypoints: Point[] = []) {
+export function buildWireRoutePoints(
+  start: Point,
+  end: Point,
+  existingWaypoints: Point[] = [],
+  preferredAxis: 'horizontal' | 'vertical' | 'free' = 'free'
+) {
+  if (existingWaypoints.length === 0 && preferredAxis !== 'free') {
+    const guidedCorner =
+      preferredAxis === 'horizontal'
+        ? { x: end.x, y: start.y }
+        : { x: start.x, y: end.y };
+
+    return normalizeRoutePoints(start, end, [guidedCorner]);
+  }
+
   return normalizeRoutePoints(start, end, existingWaypoints);
 }
 
 export function getWireHandles(wireId: string, start: Point, end: Point, waypoints: Point[] = []): WireHandleNode[] {
   const route = buildWireRoutePoints(start, end, waypoints);
   const handles: WireHandleNode[] = [];
+
+  handles.push({
+    id: `${wireId}-endpoint-from`,
+    wireId,
+    position: route[0] ?? start,
+    axis: 'both',
+    kind: 'endpoint',
+    waypointIndex: -1,
+    endpoint: 'from',
+    routeIndex: 0,
+  });
+
+  for (let index = 1; index < route.length - 1; index += 1) {
+    const previous = route[index - 1];
+    const current = route[index];
+    const next = route[index + 1];
+    if (!previous || !current || !next || !isCorner(previous, current, next)) {
+      continue;
+    }
+
+    handles.push({
+      id: `${wireId}-elbow-${index}`,
+      wireId,
+      position: current,
+      axis: 'both',
+      kind: 'elbow',
+      waypointIndex: index - 1,
+      routeIndex: index,
+    });
+  }
 
   for (let index = 0; index < route.length - 1; index += 1) {
     const segmentStart = route[index];
@@ -182,6 +243,17 @@ export function getWireHandles(wireId: string, start: Point, end: Point, waypoin
     });
   }
 
+  handles.push({
+    id: `${wireId}-endpoint-to`,
+    wireId,
+    position: route[route.length - 1] ?? end,
+    axis: 'both',
+    kind: 'endpoint',
+    waypointIndex: -1,
+    endpoint: 'to',
+    routeIndex: route.length - 1,
+  });
+
   return handles;
 }
 
@@ -194,6 +266,10 @@ export function moveWireHandle(
 ) {
   if (handle.kind === 'segment' && typeof handle.segmentIndex === 'number') {
     return moveSegmentHandle(start, end, waypoints, handle.segmentIndex, nextPoint);
+  }
+
+  if (handle.kind === 'elbow' && typeof handle.routeIndex === 'number') {
+    return moveElbowHandle(start, end, waypoints, handle.routeIndex, nextPoint);
   }
 
   return normalizeWirePath(waypoints, start, end);

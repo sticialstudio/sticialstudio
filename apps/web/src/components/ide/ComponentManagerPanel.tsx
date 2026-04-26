@@ -2,17 +2,19 @@
 
 import React, { useMemo, useState } from "react";
 import { Package, Search } from "lucide-react";
-import { useCircuit } from "@/contexts/CircuitContext";
+import { useCircuitStore } from '@/stores/circuitStore';
+import { useSplitViewEventBus } from './split-view/SplitViewEventBus';
+import { useCircuitComponentRegistry } from '@/hooks/useCircuitComponentRegistry';
 import {
   createDefaultComponentState,
-  getComponentCatalog,
   getComponentDefinition,
-  normalizeComponentType,
 } from "@/lib/wiring/componentDefinitions";
 
 import ComponentPreview from "./circuit-lab/ComponentPreview";
 
-const CATEGORY_ORDER = ["Basic", "Sensors", "Actuators", "Displays", "Boards"] as const;
+function createUserEditedPayload() {
+  return { source: 'circuit' as const, timestamp: Date.now() };
+}
 
 function createSuggestedPlacement(index: number, width: number, height: number) {
   const slot = (index - 1) % 8;
@@ -26,7 +28,7 @@ function createSuggestedPlacement(index: number, width: number, height: number) 
 }
 
 function createComponentInstanceId(existingIds: string[], type: string, prefix: string) {
-  const canonicalType = normalizeComponentType(type).toLowerCase();
+  const canonicalType = type.toLowerCase();
   const matcher = new RegExp(`^${prefix}-${canonicalType}-(\\d+)$`);
   const nextIndex =
     existingIds.reduce((highest, id) => {
@@ -42,54 +44,50 @@ function createComponentInstanceId(existingIds: string[], type: string, prefix: 
 }
 
 export default function ComponentManagerPanel() {
-  const { circuitData, addComponent, selectComponent } = useCircuit();
+  const components = useCircuitStore((state) => state.components);
+  const addComponent = useCircuitStore((state) => state.addComponent);
+  const selectComponent = useCircuitStore((state) => state.selectComponent);
+  const eventBus = useSplitViewEventBus();
+  const registry = useCircuitComponentRegistry();
   const [searchQuery, setSearchQuery] = useState("");
-
-  const catalog = useMemo(() => getComponentCatalog(), []);
 
   const placedSingletonTypes = useMemo(() => {
     const types = new Set<string>();
-    circuitData.components.forEach((component) => {
-      const normalized = normalizeComponentType(component.type);
-      if (normalized === "BREADBOARD" || normalized === "ARDUINO_UNO") {
-        types.add(normalized);
+    components.forEach((component) => {
+      const entry = registry.getEntry(component.type);
+      if (entry?.singleton) {
+        types.add(entry.id);
       }
     });
     return types;
-  }, [circuitData.components]);
+  }, [components, registry]);
 
-  const filtered = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    const filteredItems = query
-      ? catalog.filter((definition) => {
-          return (
-            definition.name.toLowerCase().includes(query) ||
-            definition.id.toLowerCase().includes(query) ||
-            definition.category.toLowerCase().includes(query)
-          );
-        })
-      : catalog;
+  const groupedEntries = useMemo(() => {
+    const visibleEntries = registry.search(searchQuery, { placeableOnly: true });
 
-    return CATEGORY_ORDER.map((category) => ({
-      category,
-      items: filteredItems.filter((definition) => definition.category === category),
-    })).filter((group) => group.items.length > 0);
-  }, [catalog, searchQuery]);
+    return registry
+      .getCategories({ placeableOnly: true })
+      .map((category) => ({
+        category,
+        label: registry.getCategoryLabel(category),
+        items: visibleEntries.filter((entry) => entry.category === category),
+      }))
+      .filter((group) => group.items.length > 0);
+  }, [registry, searchQuery]);
 
   const handleAdd = (type: string) => {
-    const definition = getComponentDefinition(type);
-    if (!definition || definition.placeable === false) {
+    const entry = registry.getEntry(type);
+    if (!entry || !entry.placeable) {
       return;
     }
 
-    const canonicalType = normalizeComponentType(type);
-    const isSingleton = canonicalType === "BREADBOARD" || canonicalType === "ARDUINO_UNO";
+    const definition = getComponentDefinition(entry.previewSourceKey) ?? getComponentDefinition(entry.id);
+    if (!definition) {
+      return;
+    }
 
-    if (isSingleton) {
-      const existing = circuitData.components.find(
-        (component) => normalizeComponentType(component.type) === canonicalType
-      );
-
+    if (entry.singleton) {
+      const existing = components.find((component) => registry.getEntry(component.type)?.id === entry.id);
       if (existing) {
         selectComponent(existing.id);
         return;
@@ -97,23 +95,24 @@ export default function ComponentManagerPanel() {
     }
 
     const placement = createSuggestedPlacement(
-      circuitData.components.length + 1,
+      components.length + 1,
       definition.size.width,
       definition.size.height
     );
 
     addComponent({
       id: createComponentInstanceId(
-        circuitData.components.map((component) => component.id),
-        canonicalType,
+        components.map((component) => component.id),
+        entry.id,
         "circuit"
       ),
-      type: canonicalType,
+      type: entry.id,
       x: placement.x,
       y: placement.y,
       rotation: 0,
-      state: createDefaultComponentState(canonicalType),
+      state: createDefaultComponentState(entry.id),
     });
+    eventBus.emit('USER_EDITED', createUserEditedPayload());
   };
 
   return (
@@ -130,7 +129,7 @@ export default function ComponentManagerPanel() {
             </p>
           </div>
           <span className="rounded-full border border-slate-800 bg-slate-900/75 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-            {circuitData.components.length} placed
+            {components.length} placed
           </span>
         </div>
 
@@ -147,44 +146,61 @@ export default function ComponentManagerPanel() {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 py-3">
-        {filtered.length > 0 ? (
+        {groupedEntries.length > 0 ? (
           <div className="space-y-4">
-            {filtered.map((group) => (
+            {groupedEntries.map((group) => (
               <section key={group.category}>
                 <div className="px-2 pb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">
-                  {group.category}
+                  {group.label}
                 </div>
                 <div className="space-y-1">
-                  {group.items.map((definition) => {
-                    const normalizedType = normalizeComponentType(definition.id);
-                    const isSingleton = normalizedType === "BREADBOARD" || normalizedType === "ARDUINO_UNO";
-                    const alreadyPlaced = isSingleton && placedSingletonTypes.has(normalizedType);
+                  {group.items.map((entry) => {
+                    const definition = getComponentDefinition(entry.previewSourceKey) ?? getComponentDefinition(entry.id);
+                    if (!definition) {
+                      return null;
+                    }
+
+                    const alreadyPlaced = entry.singleton && placedSingletonTypes.has(entry.id);
 
                     return (
                       <button
-                        key={definition.id}
+                        key={entry.id}
                         type="button"
-                        draggable={definition.placeable !== false}
+                        draggable={entry.placeable && !alreadyPlaced}
+                        onClick={() => {
+                          if (!alreadyPlaced) {
+                            return;
+                          }
+
+                          const existing = components.find((component) => registry.getEntry(component.type)?.id === entry.id);
+                          if (existing) {
+                            selectComponent(existing.id);
+                          }
+                        }}
                         onDragStart={(event) => {
-                          event.dataTransfer.setData("componentType", definition.id);
+                          if (alreadyPlaced) {
+                            event.preventDefault();
+                            return;
+                          }
+
+                          event.dataTransfer.setData("componentType", entry.id);
                           event.dataTransfer.effectAllowed = "copy";
                         }}
-                        onDoubleClick={() => handleAdd(definition.id)}
-                        disabled={definition.placeable === false}
+                        onDoubleClick={() => handleAdd(entry.id)}
+                        disabled={!entry.placeable}
                         className="group flex w-full items-center gap-2.5 rounded-xl border border-transparent px-2.5 py-2 text-left transition-colors hover:border-slate-700 hover:bg-slate-900/75 disabled:cursor-not-allowed disabled:opacity-45"
-                        title="Drag into the workspace or double-click to quick add"
+                        title={alreadyPlaced ? "Already placed in the workspace" : "Drag into the workspace or double-click to quick add"}
                       >
                         <div className="pointer-events-none flex h-12 w-14 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-800 bg-slate-950/85 p-1 [&_svg]:h-full [&_svg]:w-full [&_svg]:object-contain">
                           <ComponentPreview definition={definition} className="h-full w-full" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-sm font-medium text-slate-200">{definition.name}</div>
+                          <div className="truncate text-sm font-medium text-slate-200">{entry.name}</div>
                           <div className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-500">
-                            {definition.placeable === false
-                              ? "System mounted"
-                              : alreadyPlaced
-                                ? "Already placed"
-                                : "Drag or double-click"}
+                            {alreadyPlaced ? "Already placed" : "Drag or double-click"}
+                          </div>
+                          <div className="mt-1 line-clamp-2 text-[11px] leading-4 text-slate-500">
+                            {entry.description}
                           </div>
                         </div>
                       </button>
@@ -203,3 +219,4 @@ export default function ComponentManagerPanel() {
     </div>
   );
 }
+

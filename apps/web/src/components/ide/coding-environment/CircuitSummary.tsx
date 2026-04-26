@@ -1,13 +1,16 @@
-﻿"use client";
+"use client";
 
 import React, { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { fadeInUp } from "@/components/ui/motion";
 import { Cable, Cpu, PlugZap, RadioTower, SlidersHorizontal, Tv } from "lucide-react";
-import { useCircuit } from "@/contexts/CircuitContext";
+import { useCircuitStore } from '@/stores/circuitStore';
+import { selectCircuitLabSimulationView, useSimulationStore } from '@/stores/simulationStore';
+import { useShallow } from 'zustand/react/shallow';
 import { getComponentDefinition } from "@/lib/wiring/componentDefinitions";
 import { isComponentPowered } from "@/lib/wiring/componentConnectivity";
+import { getComponentVisualState } from '@/lib/simulator/componentVisualState';
 
 interface CodingEnvironmentSummaryProps {
   simulationError?: string | null;
@@ -21,7 +24,12 @@ export default function CodingEnvironmentSummary({
   simulationError = null,
   onBackToCircuitLab,
 }: CodingEnvironmentSummaryProps) {
-  const { circuitData, codingSnapshot, simulationState, resolvedConnections, updateComponentState } = useCircuit();
+  const components = useCircuitStore((state) => state.components);
+  const nets = useCircuitStore((state) => state.nets);
+  const codingSnapshot = useCircuitStore((state) => state.codingSnapshot);
+  const resolvedConnections = useCircuitStore((state) => state.resolvedConnections);
+  const updateComponentState = useCircuitStore((state) => state.updateComponentState);
+  const simulationView = useSimulationStore(useShallow(selectCircuitLabSimulationView));
 
   const summary = useMemo(() => {
     const mappedEntries = codingSnapshot.components
@@ -36,17 +44,17 @@ export default function CodingEnvironmentSummary({
       }));
 
     return {
-      componentCount: circuitData.components.length,
-      netCount: circuitData.nets.length,
+      componentCount: components.length,
+      netCount: nets.length,
       mappedPinCount: codingSnapshot.usedSignalPins.length,
       mappedEntries,
       mappingEntries: Object.entries(codingSnapshot.componentMappings),
     };
-  }, [circuitData.components.length, circuitData.nets.length, codingSnapshot]);
+  }, [codingSnapshot, components.length, nets.length]);
 
   const simulationDevices = useMemo(
     () =>
-      circuitData.components
+      components
         .map((component) => {
           const definition = getComponentDefinition(component.type);
           if (!definition?.simulation) {
@@ -56,11 +64,12 @@ export default function CodingEnvironmentSummary({
           return {
             component,
             definition,
-            powered: isComponentPowered(component.type, resolvedConnections[component.id], simulationState),
+            visualState: getComponentVisualState(component, simulationView),
+            powered: isComponentPowered(component.type, resolvedConnections[component.id], simulationView),
           };
         })
         .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry)),
-    [circuitData.components, resolvedConnections, simulationState]
+    [components, resolvedConnections, simulationView]
   );
 
   const interactiveDevices = simulationDevices.filter(({ definition }) => {
@@ -74,9 +83,9 @@ export default function CodingEnvironmentSummary({
     return simulationType === 'servo' || simulationType === 'display' || simulationType === 'ultrasonic';
   });
 
-  const simulationIsLive = simulationState.running || simulationState.ready;
-  const activeNetCount = Object.values(simulationState.netStates).filter((state) => state !== 'FLOAT').length;
-  const highPinCount = Object.values(simulationState.digitalPins).filter(Boolean).length;
+  const simulationIsLive = simulationView.running || simulationView.ready;
+  const activeNetCount = Object.values(simulationView.netStates).filter((state) => state !== 'FLOAT').length;
+  const highPinCount = Object.values(simulationView.digitalPins).filter(Boolean).length;
 
   return (
     <motion.section
@@ -138,7 +147,7 @@ export default function CodingEnvironmentSummary({
                       className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] text-slate-400"
                     >
                       <span className="font-semibold text-white">{entry.label}</span>
-                      <span className="mx-2 text-[var(--ui-color-text-soft)]">•</span>
+                      <span className="mx-2 text-[var(--ui-color-text-soft)]">�</span>
                       {entry.primaryPin || entry.pins.join(', ')}
                     </div>
                   ))}
@@ -177,7 +186,7 @@ export default function CodingEnvironmentSummary({
                   <div key={mappingKey} className="rounded-[14px] border border-white/10 bg-white/[0.06] px-3 py-2.5">
                     <span className="text-[var(--ui-color-primary)]">{mappingKey}</span>
                     <span className="mx-2 text-[var(--ui-color-text-soft)]">=</span>
-                    <span>{mapping.pin ? `{ pin: "${mapping.pin}" }` : JSON.stringify(mapping.pins)}</span>
+                    <span>{mapping.pin ? `{ pin: \"${mapping.pin}\" }` : JSON.stringify(mapping.pins)}</span>
                   </div>
                 ))}
               </div>
@@ -203,8 +212,8 @@ export default function CodingEnvironmentSummary({
 
             {interactiveDevices.length > 0 ? (
               <div className="mt-4 space-y-3">
-                {interactiveDevices.map(({ component, definition, powered }) => {
-                  const state = component.state || {};
+                {interactiveDevices.map(({ component, definition, powered, visualState }) => {
+                  const state = visualState;
                   const poweredLabel = powered ? 'Powered' : simulationIsLive ? 'Unpowered' : 'Idle';
                   const poweredClass = powered
                     ? 'border-[color:var(--ui-color-success)]/20 bg-[color:var(--ui-color-success)]/10 text-[color:var(--ui-color-success)]'
@@ -322,8 +331,8 @@ export default function CodingEnvironmentSummary({
                 Outputs
               </div>
               <div className='mt-4 space-y-3'>
-                {monitorDevices.map(({ component, definition }) => {
-                  const state = component.state || {};
+                {monitorDevices.map(({ component, definition, visualState }) => {
+                  const state = visualState;
                   return (
                     <div key={component.id} className='rounded-[18px] border border-white/10 bg-white/[0.04] px-4 py-4'>
                       <div className='flex items-center justify-between gap-3'>
@@ -358,4 +367,3 @@ export default function CodingEnvironmentSummary({
     </motion.section>
   );
 }
-

@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import MainLayout from '@/components/layout/MainLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useProject } from '@/contexts/ProjectContext';
@@ -13,7 +13,6 @@ import { Button } from '@/components/ui/Button';
 import { Card } from '@/components/ui/Card';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { PageLayout } from '@/components/ui/PageLayout';
-import { SectionHeader } from '@/components/ui/SectionHeader';
 import { StatusBanner } from '@/components/ui/StatusBanner';
 import { fadeInUp } from '@/components/ui/motion';
 import {
@@ -29,13 +28,19 @@ import {
   Plus,
   Sparkles,
   Trash2,
+  X,
   Zap,
 } from 'lucide-react';
 
 interface ProjectData {
   id: string;
   name: string;
-  description: string;
+  description: string | null;
+  board?: string | null;
+  codingMode?: string | null;
+  language?: string | null;
+  generator?: string | null;
+  environment?: string | null;
   updatedAt: string;
 }
 
@@ -44,7 +49,7 @@ const actionCards = [
     id: 'start',
     eyebrow: 'Build',
     title: 'Start Project',
-    description: 'Open the builder and choose your setup.',
+    description: 'Go to the home chooser and pick the workspace you want.',
     icon: <Plus size={24} />,
     image: '/dashboard/build_banner.png',
   },
@@ -81,9 +86,9 @@ const quickStartCards = [
   },
   {
     title: 'Start from Scratch',
-    caption: 'Walk through the builder flow',
+    caption: 'Return to the home chooser and pick your path',
     icon: <Zap size={18} />,
-    actionLabel: 'Begin',
+    actionLabel: 'Choose',
   },
 ] as const;
 
@@ -143,7 +148,6 @@ function getProjectMode(meta: ProjectMeta | null) {
 export default function DashboardPage() {
   const { user, token } = useAuth();
   const router = useRouter();
-  const projectsSectionRef = useRef<HTMLElement | null>(null);
   const { setProjectId } = useProject();
   const { setCodingMode, setLanguage, setCurrentBoard, setGenerator, setEnvironment } = useBoard();
 
@@ -155,10 +159,8 @@ export default function DashboardPage() {
   const [editName, setEditName] = useState('');
   const [projectToDelete, setProjectToDelete] = useState<ProjectData | null>(null);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
+  const [isProjectModalOpen, setIsProjectModalOpen] = useState(false);
 
-  const recentProjects = useMemo(() => projects.slice(0, 5), [projects]);
-  const featuredProject = recentProjects[0] ?? null;
-  const sideProjects = recentProjects.slice(1);
   const apiHealthUrl = `${API_BASE_URL}/api/health`;
 
   useEffect(() => {
@@ -207,7 +209,7 @@ export default function DashboardPage() {
 
   const handleStartBuild = () => {
     setProjectId(null);
-    router.push('/projects/select-environment');
+    router.push('/');
   };
 
   const handleContinueLearning = () => {
@@ -215,7 +217,7 @@ export default function DashboardPage() {
   };
 
   const handleOpenProjects = () => {
-    projectsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    setIsProjectModalOpen(true);
   };
 
   const handleQuickStartWorkspace = () => {
@@ -223,7 +225,7 @@ export default function DashboardPage() {
   };
 
   const handleOpenProject = (project: ProjectData) => {
-    const meta = parseProjectMeta(project.description);
+    const meta = parseProjectMeta(project);
 
     if (meta) {
       setCodingMode(meta.mode);
@@ -321,7 +323,7 @@ export default function DashboardPage() {
               <h1 className='text-[3rem] font-bold tracking-[-0.05em] text-[color:var(--ui-color-text)] sm:text-[4.2rem] leading-[1.05]'>
                 Welcome back, {user?.name || 'Builder'}.
               </h1>
-              <p className='text-lg leading- relaxed text-[color:var(--ui-color-text-soft)] sm:text-xl'>
+              <p className='text-lg leading-relaxed text-[color:var(--ui-color-text-soft)] sm:text-xl'>
                 Pick a path to jump back into building, learning, or designing your hardware projects.
               </p>
             </div>
@@ -441,175 +443,88 @@ export default function DashboardPage() {
           </StatusBanner>
         ) : null}
 
-        <section ref={projectsSectionRef} id='recent-projects' className='space-y-6'>
-          <SectionHeader
-            eyebrow='Projects'
-            title='Recent work'
-            subtitle='Open the latest project fast, or jump to another saved workspace.'
-            actions={
-              <Button icon={<ArrowRight size={18} />} onClick={handleStartBuild}>
-                Start Project
-              </Button>
-            }
-          />
+        </PageLayout>
+      </div>
 
-          {isLoading ? (
-            <div className='grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]'>
-              <div className='overflow-hidden rounded-[34px] border border-white/8 bg-[linear-gradient(180deg,#141925_0%,#0d1118_100%)] p-8 shadow-[0_28px_72px_-44px_rgba(0,0,0,0.9)] animate-pulse'>
-                <div className='h-5 w-40 rounded-full bg-white/10' />
-                <div className='mt-10 h-14 w-3/4 rounded-2xl bg-white/10' />
-                <div className='mt-5 h-4 w-full rounded-full bg-white/10' />
-                <div className='mt-3 h-4 w-5/6 rounded-full bg-white/10' />
-                <div className='mt-14 flex gap-3'>
-                  <div className='h-10 w-28 rounded-full bg-white/10' />
-                  <div className='h-10 w-36 rounded-full bg-white/10' />
+      {/* Projects Modal */}
+      <AnimatePresence>
+        {isProjectModalOpen && (
+          <motion.div
+            className='fixed inset-0 z-[200] flex items-center justify-center p-4 sm:p-6 bg-slate-950/50 backdrop-blur-sm'
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsProjectModalOpen(false)}
+          >
+            <motion.div
+              className='ui-foundation-panel relative flex w-full max-w-3xl flex-col overflow-hidden rounded-[32px]'
+              style={{ maxHeight: '85vh' }}
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.97 }}
+              transition={{ type: 'spring', stiffness: 320, damping: 28 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {/* Modal Header */}
+              <div className='flex items-center justify-between border-b border-[color:var(--ui-border-soft)] px-7 py-5'>
+                <div>
+                  <p className='text-[11px] font-bold uppercase tracking-[0.22em] text-[color:var(--ui-color-text-muted)]'>Projects</p>
+                  <h2 className='mt-1 text-2xl font-bold tracking-[-0.04em] text-[color:var(--ui-color-text)]'>
+                    Your Workspaces
+                  </h2>
                 </div>
-              </div>
-              <div className='space-y-4'>
-                {[0, 1, 2].map((item) => (
-                  <div key={item} className='rounded-[28px] border border-[color:var(--ui-border-soft)] bg-[color:var(--ui-color-surface)] p-5 animate-pulse'>
-                    <div className='flex items-center gap-4'>
-                      <div className='h-12 w-12 rounded-2xl bg-[color:var(--ui-surface-quiet)]' />
-                      <div className='flex-1 space-y-3'>
-                        <div className='h-4 w-40 rounded-full bg-[color:var(--ui-surface-quiet)]' />
-                        <div className='h-3 w-24 rounded-full bg-[color:var(--ui-surface-quiet)]' />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : recentProjects.length === 0 ? (
-            <div className='ui-foundation-panel p-10 sm:p-14 text-center flex flex-col items-center justify-center min-h-[300px]'>
-              <div className='space-y-6 max-w-lg'>
-                <div className='space-y-4'>
-                  <div className='inline-flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--ui-color-primary)]/10 text-[color:var(--ui-color-primary)] mb-2'>
-                    <CircuitBoard size={32} />
-                  </div>
-                  <h3 className='text-3xl font-bold tracking-tight text-[color:var(--ui-color-text)]'>Start your first build</h3>
-                  <p className='text-[1.05rem] leading-relaxed text-[color:var(--ui-color-text-soft)]'>Create a new electronic circuit project or open a lesson-ready interactive workspace.</p>
-                </div>
-                <div className='flex flex-wrap justify-center gap-4 pt-2'>
-                  <Button icon={<Plus size={18} />} onClick={handleStartBuild}>
-                    Start Project
+                <div className='flex items-center gap-3'>
+                  <Button icon={<Plus size={16} />} onClick={() => { setIsProjectModalOpen(false); handleStartBuild(); }}>
+                    New Project
                   </Button>
-                  <Button variant='inverse' icon={<BookOpen size={18} />} onClick={handleContinueLearning}>
-                    Try a Course
-                  </Button>
+                  <button
+                    type='button'
+                    onClick={() => setIsProjectModalOpen(false)}
+                    className='flex h-10 w-10 items-center justify-center rounded-2xl text-[color:var(--ui-color-text-soft)] transition-colors hover:bg-[color:var(--ui-surface-quiet)] hover:text-[color:var(--ui-color-text)]'
+                    title='Close'
+                  >
+                    <X size={20} />
+                  </button>
                 </div>
               </div>
-            </div>
-          ) : (
-            <div className='grid gap-5 xl:grid-cols-[minmax(0,1.15fr)_minmax(320px,0.85fr)]'>
-              {featuredProject ? (() => {
-                const meta = parseProjectMeta(featuredProject.description);
-                const summary = getProjectMetaSummary(meta);
-                const projectMode = getProjectMode(meta);
-                const ModeIcon = projectMode.Icon;
 
-                return (
-                  <Card variant='immersive' className='min-h-[360px] p-0'>
-                    <div className='relative flex h-full flex-col overflow-hidden p-8 sm:p-10'>
-                      <div className='pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(99,102,241,0.16),transparent_32%),radial-gradient(circle_at_bottom_left,rgba(45,212,191,0.12),transparent_28%)]' />
-                      <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${projectMode.shellClass}`} />
-
-                      <div className='relative z-10 flex h-full flex-col'>
-                        <div className='flex items-start justify-between gap-4'>
-                          <div className='flex min-w-0 items-start gap-4'>
-                            <div className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[20px] border ${projectMode.iconClass}`}>
-                              <ModeIcon size={22} />
-                            </div>
-                            <div className='min-w-0 space-y-3'>
-                              <div className='flex flex-wrap items-center gap-2'>
-                                <span className={`inline-flex items-center rounded-full border px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] ${projectMode.accentClass}`}>
-                                  {projectMode.label}
-                                </span>
-                                <span className='inline-flex items-center rounded-full border border-white/12 bg-white/[0.05] px-3 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-white/70'>
-                                  {projectMode.environment}
-                                </span>
-                              </div>
-                              <p className='text-[11px] font-semibold uppercase tracking-[0.22em] text-white/46'>
-                                {meta?.board || 'Workspace'}
-                              </p>
-                            </div>
+              {/* Modal Body */}
+              <div className='flex-1 overflow-y-auto p-6 space-y-3'>
+                {isLoading ? (
+                  <div className='space-y-3'>
+                    {[0, 1, 2].map((i) => (
+                      <div key={i} className='rounded-[20px] border border-[color:var(--ui-border-soft)] bg-[color:var(--ui-color-surface)] p-5 animate-pulse'>
+                        <div className='flex items-center gap-4'>
+                          <div className='h-12 w-12 rounded-2xl bg-[color:var(--ui-surface-quiet)]' />
+                          <div className='flex-1 space-y-3'>
+                            <div className='h-4 w-40 rounded-full bg-[color:var(--ui-surface-quiet)]' />
+                            <div className='h-3 w-24 rounded-full bg-[color:var(--ui-surface-quiet)]' />
                           </div>
-
-                          <div className='flex items-center gap-1.5'>
-                            <button
-                              type='button'
-                              onClick={(event) => handleStartRename(event, featuredProject)}
-                              className='rounded-2xl p-2.5 text-white/55 transition-colors hover:bg-white/10 hover:text-white'
-                              title='Rename project'
-                            >
-                              <Edit2 size={16} />
-                            </button>
-                            <button
-                              type='button'
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                setProjectToDelete(featuredProject);
-                              }}
-                              className='rounded-2xl p-2.5 text-white/55 transition-colors hover:bg-rose-500/14 hover:text-rose-100'
-                              title='Delete project'
-                            >
-                              <Trash2 size={16} />
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className='mt-12 max-w-2xl space-y-5'>
-                          {editingProjectId === featuredProject.id ? (
-                            <input
-                              type='text'
-                              autoFocus
-                              value={editName}
-                              onChange={(event) => setEditName(event.target.value)}
-                              onBlur={(event) => handleSaveRename(event, featuredProject.id)}
-                              onKeyDown={(event) => {
-                                if (event.key === 'Enter') handleSaveRename(event, featuredProject.id);
-                                if (event.key === 'Escape') setEditingProjectId(null);
-                              }}
-                              className='w-full border-b-2 border-white/30 bg-transparent pb-1 text-[2.2rem] font-bold tracking-[-0.06em] text-white outline-none sm:text-[2.8rem]'
-                            />
-                          ) : (
-                            <h3 className='text-[2.2rem] font-bold leading-[1.02] tracking-[-0.06em] text-white sm:text-[2.8rem]'>{featuredProject.name}</h3>
-                          )}
-                          <p className='max-w-xl text-base leading-8 text-white/66'>{summary}</p>
-                          <div className='flex flex-wrap items-center gap-3 text-sm text-white/52'>
-                            <span className='inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2'>
-                              <CalendarClock size={14} className='text-cyan-300' />
-                              Updated {formatProjectDate(featuredProject.updatedAt)}
-                            </span>
-                            <span className='inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2'>
-                              <FolderOpen size={14} className='text-white/70' />
-                              Recent workspace
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className='mt-auto flex flex-wrap items-center justify-between gap-4 pt-10'>
-                          <div className='text-sm text-white/52'>
-                            Open the latest workspace right where you left off.
-                          </div>
-                          <Button icon={<FolderOpen size={16} />} onClick={() => handleOpenProject(featuredProject)}>
-                            Open Project
-                          </Button>
                         </div>
                       </div>
+                    ))}
+                  </div>
+                ) : projects.length === 0 ? (
+                  <div className='flex flex-col items-center justify-center py-16 text-center'>
+                    <div className='mb-5 flex h-16 w-16 items-center justify-center rounded-full bg-[color:var(--ui-color-primary)]/10 text-[color:var(--ui-color-primary)]'>
+                      <CircuitBoard size={32} />
                     </div>
-                  </Card>
-                );
-              })() : null}
-
-              <div className='flex min-h-[360px] flex-col gap-4'>
-                <div className='px-1'>
-                  <p className='text-[11px] font-semibold uppercase tracking-[0.22em] text-[color:var(--ui-color-text-soft)]'>Jump back in</p>
-                  <h3 className='mt-2 text-2xl font-semibold tracking-[-0.04em] text-[color:var(--ui-color-text)]'>Other recent saves</h3>
-                </div>
-
-                {sideProjects.length > 0 ? (
-                  sideProjects.map((project) => {
-                    const meta = parseProjectMeta(project.description);
+                    <h3 className='text-2xl font-bold tracking-tight text-[color:var(--ui-color-text)]'>No saved projects yet</h3>
+                    <p className='mt-2 max-w-sm text-[0.95rem] leading-relaxed text-[color:var(--ui-color-text-soft)]'>
+                      Start a new build or open a lesson to create your first project workspace.
+                    </p>
+                    <div className='mt-6 flex flex-wrap justify-center gap-3'>
+                      <Button icon={<Plus size={16} />} onClick={() => { setIsProjectModalOpen(false); handleStartBuild(); }}>
+                        Start Project
+                      </Button>
+                      <Button variant='inverse' icon={<BookOpen size={16} />} onClick={() => { setIsProjectModalOpen(false); handleContinueLearning(); }}>
+                        Try a Course
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  projects.map((project) => {
+                    const meta = parseProjectMeta(project);
                     const summary = getProjectMetaSummary(meta);
                     const projectMode = getProjectMode(meta);
                     const ModeIcon = projectMode.Icon;
@@ -643,18 +558,23 @@ export default function DashboardPage() {
                                 {projectMode.label}
                               </span>
                               <span>{meta?.board || 'Workspace'}</span>
+                              <span className='opacity-60'>{projectMode.environment}</span>
                             </div>
                             <p className='truncate text-sm text-[color:var(--ui-color-text-muted)]'>{summary}</p>
                           </div>
 
-                          <div className='flex shrink-0 items-center gap-1.5'>
+                          <div className='flex shrink-0 items-center gap-1'>
+                            <span className='mr-2 hidden text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--ui-color-text-soft)] sm:inline-flex items-center gap-1.5'>
+                              <CalendarClock size={12} />
+                              {formatProjectDate(project.updatedAt)}
+                            </span>
                             <button
                               type='button'
                               onClick={(event) => handleStartRename(event, project)}
                               className='rounded-2xl p-2.5 text-[color:var(--ui-color-text-soft)] transition-colors hover:bg-[color:var(--ui-surface-quiet)] hover:text-[color:var(--ui-color-text)]'
                               title='Rename project'
                             >
-                              <Edit2 size={16} />
+                              <Edit2 size={15} />
                             </button>
                             <button
                               type='button'
@@ -665,41 +585,22 @@ export default function DashboardPage() {
                               className='rounded-2xl p-2.5 text-[color:var(--ui-color-text-soft)] transition-colors hover:bg-rose-500/10 hover:text-rose-500'
                               title='Delete project'
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={15} />
                             </button>
-                            <Button variant='soft' size='sm' icon={<ArrowRight size={14} />} onClick={() => handleOpenProject(project)}>
+                            <Button variant='soft' size='sm' icon={<ArrowRight size={14} />} onClick={() => { setIsProjectModalOpen(false); handleOpenProject(project); }}>
                               Open
                             </Button>
                           </div>
                         </div>
-                        <div className='flex items-center justify-between border-t border-[color:var(--ui-border-soft)] bg-[color:var(--ui-surface-quiet)] px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-[color:var(--ui-color-text-soft)]'>
-                          <span>Updated {formatProjectDate(project.updatedAt)}</span>
-                          <span>{projectMode.environment}</span>
-                        </div>
                       </Card>
                     );
                   })
-                ) : (
-                  <Card variant='panel' className='p-0'>
-                    <div className='flex h-full min-h-[220px] flex-col justify-between p-6'>
-                      <div className='space-y-3'>
-                        <p className='text-[11px] font-semibold uppercase tracking-[0.18em] text-[color:var(--ui-color-text-soft)]'>Only one saved project</p>
-                        <h3 className='text-2xl font-semibold tracking-[-0.04em] text-[color:var(--ui-color-text)]'>Everything else can start from here.</h3>
-                        <p className='text-sm leading-7 text-[color:var(--ui-color-text-muted)]'>Create a new build or launch a course when you want more workspaces in your home.</p>
-                      </div>
-                      <div className='flex flex-wrap gap-3'>
-                        <Button icon={<Plus size={16} />} onClick={handleStartBuild}>Start Project</Button>
-                        <Button variant='secondary' icon={<BookOpen size={16} />} onClick={handleContinueLearning}>Try a Course</Button>
-                      </div>
-                    </div>
-                  </Card>
                 )}
               </div>
-            </div>
-          )}
-        </section>
-      </PageLayout>
-      </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <ConfirmDialog
         open={Boolean(projectToDelete)}
@@ -714,9 +615,6 @@ export default function DashboardPage() {
     </MainLayout>
   );
 }
-
-
-
 
 
 

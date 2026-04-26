@@ -42,8 +42,8 @@ export default function WelcomePage() {
 
   const panelHref: Record<(typeof platformPanels)[number]["id"], string> = {
     "circuit-lab": "/projects/select-mode?entry=circuit-lab",
-    "block-coding": "/projects/select-board?entry=block-home",
-    "text-coding": "/projects/select-board?entry=text-home",
+    "block-coding": "/projects/select-board?entry=block-home&environment=physical",
+    "text-coding": "/projects/select-board?entry=text-home&environment=physical",
   };
 
   return (

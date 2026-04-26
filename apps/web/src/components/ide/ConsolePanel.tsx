@@ -1,16 +1,30 @@
 ﻿import React, { useState, useRef, useEffect } from 'react';
 import { Link as LinkIcon, RotateCcw, SendHorizontal, Terminal, Unlink } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import type { SerialMessage, useWebSerial } from '../../hooks/useWebSerial';
 
-export default function ConsolePanel({ webSerial }: { webSerial: any }) {
+interface ConsolePanelProps {
+    webSerial: ReturnType<typeof useWebSerial>;
+    messages?: SerialMessage[];
+    emptyTitle?: string;
+    emptyBody?: string;
+}
+
+export default function ConsolePanel({
+    webSerial,
+    messages: filteredMessages,
+    emptyTitle = 'No output yet',
+    emptyBody = 'Connect a board or run something to see messages here.',
+}: ConsolePanelProps) {
     const { isConnected, messages, connect, disconnect, writeText, clearMessages } = webSerial;
+    const visibleMessages = filteredMessages ?? messages;
     const [baudRate, setBaudRate] = useState(9600);
     const [inputValue, setInputValue] = useState('');
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-    }, [messages]);
+    }, [visibleMessages]);
 
     const handleConnectClick = () => {
         if (isConnected) {
@@ -74,14 +88,14 @@ export default function ConsolePanel({ webSerial }: { webSerial: any }) {
                         onClick={handleConnectClick}
                         className={`min-h-9 rounded-[12px] px-3 py-2 text-xs ${
                             isConnected
-                                ? 'border-emerald-400/20 bg-emerald-400/12 text-emerald-200 hover:border-emerald-300/30 hover:bg-emerald-400/16'
-                                : 'text-[var(--ui-color-text)]'
+                                ? 'border-emerald-400/20 bg-emerald-400/12 text-emerald-100 hover:border-emerald-300/30 hover:bg-emerald-400/16'
+                                : 'ui-action-quiet'
                         }`}
                     >
                         {isConnected ? 'Connected' : 'Connect'}
                     </Button>
                     <span className="ui-pill-surface rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em]">
-                        {messages.length} messages
+                        {visibleMessages.length} messages
                     </span>
                 </div>
 
@@ -104,7 +118,7 @@ export default function ConsolePanel({ webSerial }: { webSerial: any }) {
                     <button
                         type="button"
                         onClick={clearMessages}
-                        className="ui-pill-surface inline-flex h-9 items-center justify-center rounded-[12px] px-3 text-xs font-semibold uppercase tracking-[0.14em] transition-colors hover:bg-[color:var(--ui-surface-elevated)] hover:text-[var(--ui-color-text)]"
+                        className="ui-action-quiet inline-flex h-9 items-center justify-center rounded-[12px] px-3 text-xs font-semibold uppercase tracking-[0.14em] transition-colors"
                         title="Clear terminal"
                     >
                         <RotateCcw size={14} className="mr-2" />
@@ -114,18 +128,18 @@ export default function ConsolePanel({ webSerial }: { webSerial: any }) {
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto px-4 py-3 text-[var(--ui-color-text)]">
-                {messages.length === 0 ? (
+                {visibleMessages.length === 0 ? (
                     <div className="flex h-full min-h-[80px] items-center justify-center text-center">
                         <div className="space-y-2">
-                            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--ui-color-text-soft)]">No output yet</p>
-                            <p className="text-xs text-[var(--ui-color-text-muted)]">Connect a board or run something to see messages here.</p>
+                            <p className="text-sm font-semibold uppercase tracking-[0.18em] text-[var(--ui-color-text-soft)]">{emptyTitle}</p>
+                            <p className="text-xs text-[var(--ui-color-text-muted)]">{emptyBody}</p>
                         </div>
                     </div>
                 ) : (
                     <div className="space-y-1.5">
-                        {messages.map((msg: import('../../hooks/useWebSerial').SerialMessage, index: number) => {
+                        {visibleMessages.map((msg, index: number) => {
                             let label = 'App';
-                            let toneClass = 'ui-elevated-surface text-[var(--ui-color-text)]';
+                            let toneClass = 'ui-elevated-surface text-[var(--ui-color-text-on-surface)]';
 
                             switch (msg.type) {
                                 case 'system':
@@ -143,7 +157,7 @@ export default function ConsolePanel({ webSerial }: { webSerial: any }) {
                             }
 
                             return (
-                                <div key={index} className={`rounded-[10px] px-3 py-2 ${toneClass}`}>
+                                <div key={`${msg.timestamp}-${index}`} className={`rounded-[10px] px-3 py-2 ${toneClass}`}>
                                     <div className="mb-0.5 text-[10px] font-semibold uppercase tracking-[0.18em] opacity-80">{label}</div>
                                     <div className="break-all whitespace-pre-wrap text-xs leading-5">{msg.text}</div>
                                 </div>
@@ -169,7 +183,7 @@ export default function ConsolePanel({ webSerial }: { webSerial: any }) {
                         icon={<SendHorizontal size={13} />}
                         onClick={handleSend}
                         disabled={!isConnected || !inputValue.trim()}
-                        className="min-h-8 rounded-[8px] bg-[color:var(--ui-color-primary)]/12 px-3 py-1.5 text-xs text-[var(--ui-color-primary-strong)] shadow-none hover:bg-[color:var(--ui-color-primary)]/20"
+                        className="ui-terminal-send min-h-8 rounded-[8px] px-3 py-1.5 text-xs shadow-none"
                     >
                         Send
                     </Button>

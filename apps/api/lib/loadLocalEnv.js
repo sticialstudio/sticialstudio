@@ -36,6 +36,27 @@ function loadEnvFile(filePath, allowedKeys) {
   }
 }
 
+function normalizeDatabaseUrl(apiRoot) {
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl || !databaseUrl.startsWith('file:')) {
+    return;
+  }
+
+  const sqlitePath = databaseUrl.slice('file:'.length);
+  if (!sqlitePath) {
+    return;
+  }
+
+  const isWindowsAbsolute = /^[a-zA-Z]:[\\/]/.test(sqlitePath);
+  if (path.isAbsolute(sqlitePath) || isWindowsAbsolute) {
+    process.env.DATABASE_URL = `file:${sqlitePath.replace(/\\/g, '/')}`;
+    return;
+  }
+
+  const absolutePath = path.resolve(apiRoot, sqlitePath);
+  process.env.DATABASE_URL = `file:${absolutePath.replace(/\\/g, '/')}`;
+}
+
 function loadLocalEnv() {
   const apiRoot = path.resolve(__dirname, '..');
   const webRoot = path.resolve(apiRoot, '..', 'web');
@@ -51,6 +72,8 @@ function loadLocalEnv() {
     loadEnvFile(path.join(webRoot, '.env.local'), sharedSupabaseKeys);
     loadEnvFile(path.join(webRoot, '.env'), sharedSupabaseKeys);
   }
+
+  normalizeDatabaseUrl(apiRoot);
 }
 
 module.exports = {

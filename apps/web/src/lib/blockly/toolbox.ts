@@ -1,10 +1,11 @@
 import * as Blockly from 'blockly';
 import { isBlockSupportedForBoard } from '@/lib/blockly/blockSupport';
 import { BoardKey } from '@/contexts/BoardContext';
-import { type CodingCircuitSnapshot } from '@/lib/blockly/circuitAwareness';
+import { isOptionalCircuitBlock, type CodingCircuitSnapshot } from '@/lib/blockly/circuitAwareness';
 import { type CircuitData } from '@/contexts/CircuitContext';
 import { defineCustomBlocks } from '@/lib/blockly/blocks';
 import { buildToolboxXmlFromRegistry, type RegistryToolboxOptions } from '@/lib/blockly/registry';
+import { getGuidedToolboxGroups, type ToolboxLearningLevel } from '@/lib/blockly/guidedToolbox';
 
 export type CircuitAwareWindow = Window & typeof globalThis & {
   __CIRCUIT_DATA?: CircuitData;
@@ -18,7 +19,19 @@ export interface ToolboxCategorySummary {
   isDynamic: boolean;
 }
 
-export type ToolboxBuildOptions = RegistryToolboxOptions;
+export type ToolboxBuildOptions = RegistryToolboxOptions & {
+  learningLevel?: ToolboxLearningLevel;
+};
+
+export interface GuidedToolboxCategorySummary {
+  id: string;
+  label: string;
+  description: string;
+  blockCount: number;
+  isDynamic: boolean;
+  isEmpty: boolean;
+  sourceCategoryNames: string[];
+}
 
 export const getToolboxForBoard = (board: BoardKey, circuitData?: CircuitData, codingSnapshot?: CodingCircuitSnapshot, options: ToolboxBuildOptions = {}) => {
   defineCustomBlocks();
@@ -30,6 +43,9 @@ export const getToolboxForBoard = (board: BoardKey, circuitData?: CircuitData, c
     codingSnapshot ||
     (typeof window !== 'undefined' ? (window as CircuitAwareWindow).__CIRCUIT_CODING_SNAPSHOT : undefined);
   const blocks = xmlDoc.getElementsByTagName('block');
+  const availableOptionalBlocks = new Set(
+    (snapshot?.availableBlockTypes || []).filter((blockType) => isOptionalCircuitBlock(blockType))
+  );
 
   // We need to iterate backwards because we'll be removing elements
   for (let i = blocks.length - 1; i >= 0; i--) {
@@ -40,6 +56,11 @@ export const getToolboxForBoard = (board: BoardKey, circuitData?: CircuitData, c
     }
 
     if (!Blockly.Blocks[type] || !isBlockSupportedForBoard(type, board)) {
+      block.parentNode?.removeChild(block);
+      continue;
+    }
+
+    if (isOptionalCircuitBlock(type) && !availableOptionalBlocks.has(type)) {
       block.parentNode?.removeChild(block);
       continue;
     }
@@ -392,6 +413,106 @@ export function getVisibleToolboxCategories(board: BoardKey, circuitData?: Circu
       isDynamic: categoryNode.hasAttribute('custom'),
     }))
     .filter((category) => category.blockCount > 0 || category.isDynamic);
+}
+
+function getCategoryNodeByName(categoryNodes: Element[], categoryName: string) {
+  const requested = normalizeCategoryName(categoryName);
+  return categoryNodes.find((categoryNode) =>
+    normalizeCategoryName(categoryNode.getAttribute('name') || '') === requested
+  );
+}
+
+function isCustomCategory(categoryNode: Element) {
+  return ['VARIABLE', 'PROCEDURE'].includes(categoryNode.getAttribute('custom') || '');
+}
+
+function buildMergedCategoryXml(categoryNodes: Element[]) {
+  if (categoryNodes.length === 0) {
+    return EMPTY_TOOLBOX_XML;
+  }
+
+  const serializer = new XMLSerializer();
+  if (categoryNodes.length === 1 && isCustomCategory(categoryNodes[0])) {
+    return `<xml xmlns="https://developers.google.com/blockly/xml">${serializer.serializeToString(categoryNodes[0])}</xml>`;
+  }
+
+  let innerXml = '';
+  categoryNodes.forEach((categoryNode, index) => {
+    if (index > 0) {
+      innerXml += '<sep gap="18"></sep>';
+    }
+    for (const child of Array.from(categoryNode.children)) {
+      innerXml += serializer.serializeToString(child);
+    }
+  });
+
+  return `<xml xmlns="https://developers.google.com/blockly/xml">${innerXml}</xml>`;
+}
+
+export function buildGuidedCategoryToolboxXml(
+  board: BoardKey,
+  requestedId: string,
+  circuitData?: CircuitData,
+  codingSnapshot?: CodingCircuitSnapshot,
+  options: ToolboxBuildOptions = {},
+) {
+  if (typeof DOMParser === 'undefined' || typeof XMLSerializer === 'undefined') {
+    return EMPTY_TOOLBOX_XML;
+  }
+
+  const learningLevel = options.learningLevel || 'starter';
+  const guidedGroup = getGuidedToolboxGroups(learningLevel).find((group) => group.id === requestedId);
+  if (!guidedGroup) {
+    return buildCategoryToolboxXml(board, requestedId, circuitData, codingSnapshot, options);
+  }
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(getToolboxForBoard(board, circuitData, codingSnapshot, options), 'text/xml');
+  const categoryNodes = Array.from(doc.getElementsByTagName('category'));
+  const selectedNodes = guidedGroup.categoryNames
+    .map((categoryName) => getCategoryNodeByName(categoryNodes, categoryName))
+    .filter((categoryNode): categoryNode is Element => Boolean(categoryNode))
+    .map((categoryNode) => filterCategoryByBoardSupport(categoryNode, board))
+    .filter((categoryNode) => categoryNode.getElementsByTagName('block').length > 0 || isCustomCategory(categoryNode));
+
+  return buildMergedCategoryXml(selectedNodes);
+}
+
+export function getGuidedToolboxCategories(
+  board: BoardKey,
+  circuitData?: CircuitData,
+  codingSnapshot?: CodingCircuitSnapshot,
+  options: ToolboxBuildOptions = {},
+) {
+  if (typeof DOMParser === 'undefined') {
+    return [] as GuidedToolboxCategorySummary[];
+  }
+
+  const learningLevel = options.learningLevel || 'starter';
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(getToolboxForBoard(board, circuitData, codingSnapshot, options), 'text/xml');
+  const categoryNodes = Array.from(doc.getElementsByTagName('category'));
+
+  return getGuidedToolboxGroups(learningLevel)
+    .map((group) => {
+      const sourceNodes = group.categoryNames
+        .map((categoryName) => getCategoryNodeByName(categoryNodes, categoryName))
+        .filter((categoryNode): categoryNode is Element => Boolean(categoryNode));
+      const blockCount = sourceNodes.reduce((total, categoryNode) => total + categoryNode.getElementsByTagName('block').length, 0);
+
+      return {
+        id: group.id,
+        label: group.label,
+        description: group.description,
+        blockCount,
+        isDynamic: sourceNodes.some((categoryNode) => categoryNode.hasAttribute('custom')),
+        isEmpty: blockCount === 0,
+        sourceCategoryNames: group.categoryNames,
+        keepWhenEmpty: Boolean(group.keepWhenEmpty),
+      };
+    })
+    .filter((group) => !group.isEmpty || group.keepWhenEmpty)
+    .map(({ keepWhenEmpty: _keepWhenEmpty, ...group }) => group);
 }
 
 

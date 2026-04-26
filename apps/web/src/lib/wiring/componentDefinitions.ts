@@ -454,7 +454,7 @@ assignFootprint('ARDUINO_UNO', { type: 'board', pins: [] });
 assignFootprint(
   'LED',
   createFootprint('breadboard-mountable', getDefinitionPins('LED'), {
-    allowedZones: ALL_BREADBOARD_ZONES,
+    allowedZones: STRIP_ONLY_ZONES,
     supportedRotations: [0, 90, 180, 270],
     minColumnSpan: 1,
   })
@@ -551,5 +551,42 @@ export function isPlaceableComponent(type: string) {
 }
 
 
+
+export type ComponentMountClassification =
+  | 'board'
+  | 'freeform-only'
+  | 'strip-only'
+  | 'rail-allowed'
+  | 'trench-bridging';
+
+export function getComponentMountClassifications(type: string): ComponentMountClassification[] {
+  const definition = getComponentDefinition(type);
+  if (!definition) {
+    return [];
+  }
+
+  const footprint = definition.footprint;
+  if (!footprint || footprint.type === 'freeform') {
+    return ['freeform-only'];
+  }
+
+  if (footprint.type === 'board') {
+    return ['board'];
+  }
+
+  const allowedZones = footprint.allowedZones ?? footprint.pins.flatMap((pin) => pin.allowedZones ?? []);
+  const classifications: ComponentMountClassification[] = [];
+  if (allowedZones.includes('rail-top') || allowedZones.includes('rail-bottom')) {
+    classifications.push('rail-allowed');
+  } else {
+    classifications.push('strip-only');
+  }
+
+  if (footprint.requiresTrenchCrossing) {
+    classifications.push('trench-bridging');
+  }
+
+  return classifications;
+}
 
 

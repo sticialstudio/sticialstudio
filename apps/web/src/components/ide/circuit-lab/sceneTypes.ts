@@ -1,4 +1,4 @@
-﻿import type { ComponentData, NetData } from '@/contexts/CircuitContext';
+import type { ComponentData, NetData } from '@/contexts/CircuitContext';
 import type { LogicalNetState } from '@/lib/simulator/simulationTypes';
 import type { CircuitPinType, ComponentDefinition } from '@/lib/wiring/componentDefinitions';
 import type { Point, Size } from '@/lib/wiring/componentGeometry';
@@ -45,6 +45,7 @@ export interface WorldComponentNode {
   id: string;
   component: ComponentData;
   definition: ComponentDefinition;
+  visualState: Record<string, any>;
   position: Point;
   rotation: number;
   size: Size;
@@ -66,9 +67,11 @@ export interface WireHandleNode {
   wireId: string;
   position: Point;
   axis: 'x' | 'y' | 'both';
-  kind: 'elbow' | 'spine' | 'segment';
+  kind: 'endpoint' | 'elbow' | 'segment';
   waypointIndex: number;
   segmentIndex?: number;
+  routeIndex?: number;
+  endpoint?: 'from' | 'to';
 }
 
 export interface WorldWireNode {
@@ -82,6 +85,8 @@ export interface WorldWireNode {
   toPoint: Point;
   color: string;
   points: Point[];
+  renderedPoints: Point[];
+  interactionPoints: Point[];
   waypoints: Point[];
   bendHandles: WireHandleNode[];
   isActive: boolean;
@@ -100,6 +105,9 @@ export interface SceneGraph {
   wireById: Record<string, WorldWireNode>;
 }
 
+export type WireDraftAxis = 'horizontal' | 'vertical' | 'free';
+export type WireDraftLockState = 'candidate' | 'locked';
+
 export interface WireDraftState {
   fromNodeId: string;
   fromPinId: string;
@@ -107,6 +115,9 @@ export interface WireDraftState {
   previewPoint: Point;
   hoveredTargetNodeId: string | null;
   hoveredTargetPinId: string | null;
+  targetLockState: WireDraftLockState | null;
+  crowdedTargets: boolean;
+  preferredAxis: WireDraftAxis;
   points: Point[];
 }
 

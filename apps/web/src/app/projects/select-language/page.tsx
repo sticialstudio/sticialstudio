@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Braces, FileCode2 } from "lucide-react";
 import MainLayout from "@/components/layout/MainLayout";
@@ -17,7 +17,7 @@ const languageChoices = [
     detail: "Best for Arduino boards. Compiles and uploads directly to hardware.",
     icon: <Braces size={24} />,
     chips: ["Arduino boards", "C++ syntax"],
-    blockLabel: "Convert blocks → Arduino C++",
+    blockLabel: "Convert blocks to Arduino C++",
     blockDetail: "Your Blockly blocks will generate Arduino C++ code on the right panel.",
   },
   {
@@ -28,7 +28,7 @@ const languageChoices = [
     detail: "Best for ESP and Raspberry Pi Pico boards. Familiar Python syntax.",
     icon: <FileCode2 size={24} />,
     chips: ["ESP / Pico", "Python syntax"],
-    blockLabel: "Convert blocks → MicroPython",
+    blockLabel: "Convert blocks to MicroPython",
     blockDetail: "Your Blockly blocks will generate MicroPython code on the right panel.",
   },
 ] as const;
@@ -38,42 +38,64 @@ type LangId = "cpp" | "python";
 function SelectLanguageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setCodingMode, setLanguage, setGenerator } = useBoard();
+  const { codingMode, environment, hasHydrated, setCodingMode, setEnvironment, setLanguage, setGenerator } = useBoard();
 
-  const entry = searchParams?.get("entry") ?? "";          // "circuit-lab" | "virtual" | ""
-  const mode = searchParams?.get("mode") ?? "text";         // "block" | "text"
+  const entry = searchParams?.get("entry") ?? "";
+  const modeParam = searchParams?.get("mode");
+  const environmentParam = searchParams?.get("environment");
 
   const isCircuitEntry = entry === "circuit-lab";
   const isVirtualEntry = entry === "virtual";
-  const isBlockMode = mode === "block";
+  const resolvedMode = modeParam === "block" || modeParam === "text" ? modeParam : codingMode ?? "text";
+  const isBlockMode = resolvedMode === "block";
+  const resolvedEnvironment = isCircuitEntry || isVirtualEntry || environmentParam === "virtual"
+    ? "virtual"
+    : environmentParam === "physical"
+      ? "physical"
+      : environment ?? "physical";
 
-  // ── Breadcrumb steps ────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!hasHydrated) {
+      return;
+    }
+
+    if (codingMode !== resolvedMode) {
+      setCodingMode(resolvedMode);
+    }
+
+    if (environment !== resolvedEnvironment) {
+      setEnvironment(resolvedEnvironment);
+    }
+  }, [codingMode, environment, hasHydrated, resolvedEnvironment, resolvedMode, setCodingMode, setEnvironment]);
+
   const steps = isCircuitEntry
     ? [{ label: "Mode" }, { label: "Language" }, { label: "Workspace" }]
-    : isVirtualEntry
+    : resolvedEnvironment === "virtual"
       ? [{ label: "Mode" }, { label: "Language" }, { label: "Board" }, { label: "Workspace" }]
       : [{ label: "Environment" }, { label: "Mode" }, { label: "Language" }, { label: "Workspace" }];
 
-  const activeIndex = isCircuitEntry || isVirtualEntry ? 1 : 2;
+  const activeIndex = isCircuitEntry || resolvedEnvironment === "virtual" ? 1 : 2;
 
   const backHref = isCircuitEntry
-    ? `/projects/select-mode?entry=circuit-lab`
-    : isVirtualEntry
-      ? `/projects/select-mode?entry=virtual`
-      : "/projects/select-mode";
+    ? `/projects/select-mode?entry=circuit-lab&environment=virtual`
+    : resolvedEnvironment === "virtual"
+      ? `/projects/select-mode?entry=virtual&environment=virtual`
+      : `/projects/select-mode?environment=physical`;
 
-  // ── Heading copy ─────────────────────────────────────────────────────────
-  const heading = isBlockMode
-    ? "Choose your code converter"
-    : "Choose your text language";
-
+  const heading = isBlockMode ? "Choose your code converter" : "Choose your text language";
   const subheading = isBlockMode
     ? "Your Blockly blocks will be converted to the language you pick. You can see the code live on the right side of the editor."
     : "Pick the code language first. The board and editor will match your selection.";
 
-  // ── Selection handler ─────────────────────────────────────────────────────
   const handleSelect = (lang: LangId) => {
-    setCodingMode(isBlockMode ? "block" : "text");
+    const params = new URLSearchParams({
+      mode: resolvedMode,
+      language: lang,
+      environment: resolvedEnvironment,
+    });
+
+    setCodingMode(resolvedMode);
+    setEnvironment(resolvedEnvironment);
 
     if (lang === "cpp") {
       setLanguage("cpp");
@@ -84,20 +106,20 @@ function SelectLanguageContent() {
     }
 
     if (isCircuitEntry) {
-      // Circuit Lab: go straight to the IDE workspace
       router.push("/projects/ide");
       return;
     }
 
-    if (isVirtualEntry) {
-      // Virtual Simulator: pick a board next
-      router.push("/projects/select-board?entry=virtual");
-      return;
+    if (resolvedEnvironment === "virtual") {
+      params.set("entry", "virtual");
     }
 
-    // Physical text flow: pick a board next
-    router.push("/projects/select-board");
+    router.push(`/projects/select-board?${params.toString()}`);
   };
+
+  if (!hasHydrated) {
+    return null;
+  }
 
   return (
     <MainLayout>

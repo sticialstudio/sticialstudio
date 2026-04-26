@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Blocks, CheckCircle2, Code2, Play, Rocket, RotateCcw, Save, Settings2, Square } from 'lucide-react';
+import { ArrowLeft, Blocks, CheckCircle2, Code2, Play, Plus, Rocket, RotateCcw, Save, Settings2, Square } from 'lucide-react';
 import type { CodingMode } from '@/contexts/BoardContext';
 import { Button } from '@/components/ui/Button';
 import { fadeInUp } from '@/components/ui/motion';
@@ -28,6 +28,7 @@ interface CodingEnvironmentTopBarProps {
   onStopSimulation: () => void;
   onResetSimulation: () => void;
   onSaveProject: () => void;
+  onNewSketch: () => void;
   onOpenPreferences: () => void;
   onVerify?: () => void;
   onUpload?: () => void;
@@ -55,6 +56,7 @@ export default function CodingEnvironmentTopBar({
   onStopSimulation,
   onResetSimulation,
   onSaveProject,
+  onNewSketch,
   onOpenPreferences,
   onVerify,
   onUpload,
@@ -79,29 +81,42 @@ export default function CodingEnvironmentTopBar({
         animate='visible'
       >
         <div className='flex flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-5'>
-          <div className='flex min-w-0 flex-wrap items-center gap-2'>
-            <div className='inline-flex items-center gap-1 rounded-[16px] border border-white/10 bg-white/[0.04] p-1.5'>
-              <button
-                type='button'
-                onClick={() => onChangeCodingMode('block')}
-                className='inline-flex items-center gap-2 rounded-[12px] bg-[linear-gradient(180deg,#656cf8_0%,#4f56e8_100%)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white shadow-[0_16px_32px_-22px_rgba(101,108,248,0.8)] transition-all'
-              >
-                <Blocks size={14} />
-                Blocks
-              </button>
-              <button
-                type='button'
-                onClick={() => onChangeCodingMode('text')}
-                className='inline-flex items-center gap-2 rounded-[12px] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300 transition-all hover:bg-white/[0.06] hover:text-white'
-              >
-                <Code2 size={14} />
-                Text
-              </button>
+          <div className='flex min-w-0 flex-col gap-3'>
+            <div className='flex min-w-0 flex-wrap items-center gap-2'>
+              <div className='inline-flex items-center gap-1 rounded-[16px] border border-white/10 bg-white/[0.04] p-1.5'>
+                <button
+                  type='button'
+                  onClick={() => onChangeCodingMode('block')}
+                  className='inline-flex items-center gap-2 rounded-[12px] bg-[linear-gradient(180deg,#656cf8_0%,#4f56e8_100%)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white shadow-[0_16px_32px_-22px_rgba(101,108,248,0.8)] transition-all'
+                >
+                  <Blocks size={14} />
+                  Blocks
+                </button>
+                <button
+                  type='button'
+                  onClick={() => onChangeCodingMode('text')}
+                  className='inline-flex items-center gap-2 rounded-[12px] px-4 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-slate-300 transition-all hover:bg-white/[0.06] hover:text-white'
+                >
+                  <Code2 size={14} />
+                  Text
+                </button>
+              </div>
+              <span className='rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300'>
+                {boardName}
+              </span>
+              {saveStatusText ? <span className={`rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${saveStatusClass}`}>{saveStatusText}</span> : null}
             </div>
-            <span className='rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300'>
-              {boardName}
-            </span>
-            {saveStatusText ? <span className={`rounded-full border px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] ${saveStatusClass}`}>{saveStatusText}</span> : null}
+            <div className='flex flex-wrap items-center gap-2'>
+              <span className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${componentCount > 0 ? 'border-emerald-300/24 bg-emerald-400/12 text-emerald-100' : 'border-white/10 bg-white/[0.04] text-slate-400'}`}>
+                1 Build
+              </span>
+              <span className='rounded-full border border-violet-300/24 bg-violet-400/14 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-100'>
+                2 Code
+              </span>
+              <span className={`rounded-full border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] ${canUploadAndSimulate || isSimulationActive ? 'border-cyan-300/24 bg-cyan-400/12 text-cyan-100' : 'border-white/10 bg-white/[0.04] text-slate-400'}`}>
+                3 Run
+              </span>
+            </div>
           </div>
 
           <div className='flex flex-wrap items-center gap-2'>
@@ -121,6 +136,14 @@ export default function CodingEnvironmentTopBar({
               className='min-h-11 rounded-[16px] border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
             >
               {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <Button
+              variant='secondary'
+              icon={<Plus size={16} />} 
+              onClick={onNewSketch}
+              className='min-h-11 rounded-[16px] border-white/10 bg-white/[0.04] px-4 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+            >
+              New Sketch
             </Button>
             <Button
               variant='secondary'
@@ -159,7 +182,7 @@ export default function CodingEnvironmentTopBar({
                 ? 'Preparing...'
                 : isSimulationActive
                   ? 'Stop Simulation'
-                  : 'Upload to Simulate'}
+                  : 'Run Simulation'}
             </Button>
           </div>
         </div>
@@ -271,6 +294,14 @@ export default function CodingEnvironmentTopBar({
             {isSaving ? 'Saving…' : 'Save'}
           </Button>
           <Button
+            variant='secondary'
+            icon={<Plus size={14} />} 
+            onClick={onNewSketch}
+            className='min-h-9 rounded-[12px] border-white/10 bg-white/[0.04] px-3 py-2 text-xs text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white'
+          >
+            New Sketch
+          </Button>
+          <Button
             icon={isSimulationActive ? <Square size={14} /> : <Play size={14} />}
             onClick={() => {
               if (isSimulationActive) {
@@ -306,4 +337,5 @@ export default function CodingEnvironmentTopBar({
     </motion.header>
   );
 }
+
 

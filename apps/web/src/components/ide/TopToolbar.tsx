@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   AlertCircle,
@@ -15,6 +15,7 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Plus,
   Rocket,
   Save,
   Settings2,
@@ -53,6 +54,7 @@ interface TopToolbarProps {
   onSelectBoard: () => void;
   onSaveProject: () => void;
   onOpenProject: () => void;
+  onNewSketch: () => void;
   onOpenPreferences: () => void;
   onToggleLeft: () => void;
   onToggleRight: () => void;
@@ -97,6 +99,7 @@ export default function TopToolbar({
   onSelectBoard,
   onSaveProject,
   onOpenProject,
+  onNewSketch,
   onOpenPreferences,
   onToggleLeft,
   onToggleRight,
@@ -186,17 +189,6 @@ export default function TopToolbar({
               <ChevronDown size={12} className="opacity-70" />
             </button>
 
-            {onChangeCodingMode ? (
-              <button
-                type="button"
-                onClick={() => onChangeCodingMode("block")}
-                className="flex h-9 items-center gap-1.5 rounded-[10px] border border-[color:var(--ui-color-primary)]/28 bg-[color:var(--ui-color-primary)]/12 px-3 text-[11px] font-bold uppercase tracking-[0.12em] text-[var(--ui-color-primary-strong)] transition-all hover:bg-[color:var(--ui-color-primary)]/18"
-              >
-                <Sparkles size={11} />
-                Blocks
-              </button>
-            ) : null}
-
             {saveStatusText ? (
               <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${saveStatusClass}`}>
                 {saveStatusText}
@@ -241,6 +233,15 @@ export default function TopToolbar({
 
             <button
               type="button"
+              onClick={onNewSketch}
+              className="flex h-9 items-center gap-2 rounded-[10px] px-3 text-xs font-medium text-[var(--ui-color-text-muted)] transition-all hover:bg-[color:var(--ui-surface-elevated)] hover:text-[var(--ui-color-text)]"
+            >
+              <Plus size={14} />
+              New Sketch
+            </button>
+
+            <button
+              type="button"
               onClick={onOpenPreferences}
               className="flex h-9 w-9 items-center justify-center rounded-[10px] text-[var(--ui-color-text-soft)] transition-all hover:bg-[color:var(--ui-surface-elevated)] hover:text-[var(--ui-color-text)]"
               title="Preferences"
@@ -271,7 +272,14 @@ export default function TopToolbar({
         <div className="px-4 py-3 sm:px-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 flex-wrap items-center gap-2.5">
-              <span className="text-[1.2rem] font-bold tracking-[-0.05em] text-white">Sticial Studio</span>
+              <button 
+                type="button"
+                onClick={onOpenProject} 
+                className="text-[1.2rem] font-bold tracking-[-0.05em] text-white transition-opacity hover:opacity-80 text-left focus:outline-none"
+                title="Go to Dashboard"
+              >
+                Sticial Studio
+              </button>
               <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
                 <Sparkles size={12} className="text-indigo-300" />
                 Block Coding
@@ -294,6 +302,22 @@ export default function TopToolbar({
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
+              <Button
+                variant="secondary"
+                icon={<FolderOpen size={14} />}
+                onClick={onOpenProject}
+                className="min-h-10 rounded-[14px] border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white"
+              >
+                Dashboard
+              </Button>
+              <Button
+                variant="secondary"
+                icon={<Plus size={14} />}
+                onClick={onNewSketch}
+                className="min-h-10 rounded-[14px] border-white/10 bg-white/[0.04] px-3 py-2 text-sm text-white hover:border-white/16 hover:bg-white/[0.08] hover:text-white"
+              >
+                New Sketch
+              </Button>
               <Button
                 variant="secondary"
                 icon={<Save size={14} />}
@@ -405,6 +429,12 @@ export default function TopToolbar({
 
         <div className="flex flex-col gap-3 xl:items-end">
           <div className="flex flex-wrap items-center justify-start gap-2 xl:justify-end">
+            <Button variant="secondary" icon={<FolderOpen size={16} />} onClick={onOpenProject} className="min-h-10 rounded-[16px] px-4 py-2 text-sm">
+              Dashboard
+            </Button>
+            <Button variant="secondary" icon={<Plus size={16} />} onClick={onNewSketch} className="min-h-10 rounded-[16px] px-4 py-2 text-sm">
+              New Sketch
+            </Button>
             <Button variant="secondary" icon={<Save size={16} />} onClick={onSaveProject} disabled={isSaving} className="min-h-10 rounded-[16px] px-4 py-2 text-sm">
               {isSaving ? "Saving..." : "Save"}
             </Button>
@@ -471,6 +501,9 @@ export default function TopToolbar({
     </motion.header>
   );
 }
+
+
+
 
 
 

@@ -14,7 +14,7 @@ interface BoardStatusPanelProps {
   isConnected: boolean;
 }
 
-const tileClass = "rounded-[18px] border border-[color:var(--ui-border-soft)] bg-white/76 px-4 py-4";
+const tileClass = "ui-elevated-surface rounded-[18px] px-4 py-4";
 
 export default function BoardStatusPanel({
   boardName,
@@ -45,7 +45,7 @@ export default function BoardStatusPanel({
               <Cpu size={14} className="text-[var(--ui-color-primary)]" />
               Chip
             </div>
-            <p className="mt-3 text-base font-semibold text-[var(--ui-color-text)]">{config?.chip}</p>
+            <p className="mt-3 text-base font-semibold text-[var(--ui-color-text-on-surface)]">{config?.chip}</p>
           </div>
 
           <div className={tileClass}>
@@ -53,7 +53,7 @@ export default function BoardStatusPanel({
               <RadioTower size={14} className={isConnected ? "text-[var(--ui-color-success)]" : "text-[var(--ui-color-text-soft)]"} />
               Device
             </div>
-            <p className={`mt-3 text-base font-semibold ${isConnected ? "text-[color:var(--ui-color-success)]" : "text-[var(--ui-color-text)]"}`}>
+            <p className={`mt-3 text-base font-semibold ${isConnected ? "text-[color:var(--ui-color-success)]" : "text-[var(--ui-color-text-on-surface)]"}`}>
               {isConnected ? "Connected" : "Not connected"}
             </p>
           </div>
@@ -65,13 +65,13 @@ export default function BoardStatusPanel({
             Workspace
           </div>
           <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full border border-[color:var(--ui-border-soft)] bg-[var(--ui-color-background)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ui-color-text)]">
+            <span className="ui-quiet-surface rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ui-color-text-on-surface)]">
               {codingMode || "text"}
             </span>
-            <span className="rounded-full border border-[color:var(--ui-border-soft)] bg-[var(--ui-color-background)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ui-color-text)]">
+            <span className="ui-quiet-surface rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ui-color-text-on-surface)]">
               {environment}
             </span>
-            <span className="rounded-full border border-[color:var(--ui-border-soft)] bg-[var(--ui-color-background)] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ui-color-text)]">
+            <span className="ui-quiet-surface rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--ui-color-text-on-surface)]">
               {config?.runtimeLabel}
             </span>
           </div>
@@ -83,7 +83,7 @@ export default function BoardStatusPanel({
               <Sparkles size={14} className="text-[var(--ui-color-warning)]" />
               Summary
             </div>
-            <p className="mt-3 text-sm leading-6 text-[var(--ui-color-text-muted)]">{config.summary}</p>
+            <p className="mt-3 text-sm leading-6 text-[var(--ui-color-text-on-surface-soft)]">{config.summary}</p>
           </div>
         ) : null}
 
@@ -102,4 +102,3 @@ export default function BoardStatusPanel({
     </motion.section>
   );
 }
-

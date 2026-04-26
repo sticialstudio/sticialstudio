@@ -7,7 +7,7 @@ import MainLayout from "@/components/layout/MainLayout";
 import OnboardingShell from "@/components/onboarding/OnboardingShell";
 import { useBoard } from "@/contexts/BoardContext";
 import { useProject } from "@/contexts/ProjectContext";
-import { writePendingProjectIntent } from "@/lib/projects/projectFlow";
+
 import { Card } from "@/components/ui/Card";
 
 const modeChoices = [
@@ -34,18 +34,35 @@ const modeChoices = [
 function SelectModeContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { setCodingMode, environment, setEnvironment } = useBoard();
+  const { setCodingMode, environment, setEnvironment, setPendingProjectIntent, hasHydrated } = useBoard();
   const { setProjectId } = useProject();
 
-  const entry = searchParams?.get("entry");
+  const entry = searchParams?.get("entry") ?? "";
+  const environmentParam = searchParams?.get("environment");
   const isCircuitEntry = entry === "circuit-lab";
-  const isVirtualFlow = isCircuitEntry || environment === "virtual";
+  const isVirtualEntry = entry === "virtual";
+  const resolvedEnvironment = isCircuitEntry || isVirtualEntry || environmentParam === "virtual"
+    ? "virtual"
+    : environmentParam === "physical"
+      ? "physical"
+      : environment;
+  const isVirtualFlow = isCircuitEntry || resolvedEnvironment === "virtual";
 
   useEffect(() => {
-    if (isVirtualFlow && environment !== "virtual") {
-      setEnvironment("virtual");
+    if (!hasHydrated) {
+      return;
     }
-  }, [environment, isVirtualFlow, setEnvironment]);
+
+    if (!isCircuitEntry && !isVirtualEntry && !resolvedEnvironment) {
+      router.replace("/projects/select-environment");
+      return;
+    }
+
+    const nextEnvironment = isVirtualFlow ? "virtual" : resolvedEnvironment;
+    if (nextEnvironment && environment !== nextEnvironment) {
+      setEnvironment(nextEnvironment);
+    }
+  }, [environment, hasHydrated, isCircuitEntry, isVirtualEntry, isVirtualFlow, resolvedEnvironment, router, setEnvironment]);
 
   const steps = isCircuitEntry
     ? [{ label: "Mode" }, { label: "Language" }, { label: "Workspace" }]
@@ -57,31 +74,37 @@ function SelectModeContent() {
   const backHref = isCircuitEntry ? "/" : "/projects/select-environment";
 
   const handleModeSelect = (mode: "block" | "text") => {
+    const nextEnvironment = isVirtualFlow ? "virtual" : "physical";
+    const params = new URLSearchParams({ mode, environment: nextEnvironment });
+
     setProjectId(null);
-    writePendingProjectIntent({ source: "wizard" });
+    setPendingProjectIntent({ source: "wizard" });
     setCodingMode(mode);
+    setEnvironment(nextEnvironment);
 
     if (isCircuitEntry) {
-      // Circuit Lab flow: pick language before opening the IDE
-      router.push(`/projects/select-language?mode=${mode}&entry=circuit-lab`);
+      params.set("entry", "circuit-lab");
+      router.push(`/projects/select-language?${params.toString()}`);
       return;
     }
 
     if (isVirtualFlow) {
-      // Virtual Simulator flow: pick language before picking board
-      router.push(`/projects/select-language?mode=${mode}&entry=virtual`);
+      params.set("entry", "virtual");
+      router.push(`/projects/select-language?${params.toString()}`);
       return;
     }
 
-    // Physical flow: text coding goes to language selection, block goes to board
     if (mode === "text") {
-      router.push("/projects/select-language?mode=text");
+      router.push(`/projects/select-language?${params.toString()}`);
       return;
     }
 
-    router.push("/projects/select-board");
+    router.push(`/projects/select-board?${params.toString()}`);
   };
 
+  if (!hasHydrated) {
+    return null;
+  }
 
   return (
     <MainLayout>
@@ -144,3 +167,5 @@ export default function SelectModePage() {
     </Suspense>
   );
 }
+
+

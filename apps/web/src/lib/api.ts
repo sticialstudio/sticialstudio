@@ -22,7 +22,7 @@ export function getApiBaseUrl() {
     const hostname = window.location.hostname;
 
     if (!envBase) {
-        return normalizeBaseUrl(`http://${hostname}:4000`);
+        return normalizeBaseUrl(window.location.origin);
     }
 
     try {
@@ -42,6 +42,10 @@ export const API_BASE_URL = getApiBaseUrl();
 
 export function buildApiUrl(path: string) {
     if (path.startsWith('http://') || path.startsWith('https://')) {
+        return path;
+    }
+
+    if (typeof window !== 'undefined' && !resolveEnvBaseUrl() && path.startsWith('/api/')) {
         return path;
     }
 
@@ -67,6 +71,17 @@ function getFallbackBaseUrl(baseUrl: string) {
         return null;
     }
     return null;
+}
+
+function normalizeThrownError(error: unknown, fallbackMessage: string) {
+    if (error instanceof Error) return error;
+    if (typeof error === 'string' && error.trim()) return new Error(error);
+
+    try {
+        return new Error(JSON.stringify(error));
+    } catch {
+        return new Error(fallbackMessage);
+    }
 }
 
 function isRetryableBody(body: RequestInit['body']) {
@@ -96,7 +111,7 @@ export async function apiFetch(path: string, options?: RequestInit) {
             return await fetch(fallbackUrl, options);
         }
 
-        throw error;
+        throw normalizeThrownError(error, 'Network request failed before reaching the API.');
     }
 }
 

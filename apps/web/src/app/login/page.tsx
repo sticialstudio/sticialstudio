@@ -85,12 +85,15 @@ export default function LoginPage() {
       const data = await safeJson<any>(res);
 
       if (res.ok && data?.token && data?.user) {
-        login(data.token, data.user);
+        await login(data.token, data.user);
       } else {
         setError(data?.error || "Sign-in failed. Check your email and password, then try again.");
       }
     } catch (err) {
-      setError("Could not reach the sign-in service right now. Try again in a moment.");
+      const message = err instanceof Error && err.message
+        ? err.message
+        : "Could not reach the sign-in service right now. Try again in a moment.";
+      setError(message);
     } finally {
       setIsLoading(false);
     }
@@ -204,3 +207,4 @@ export default function LoginPage() {
     </AuthPageShell>
   );
 }
+

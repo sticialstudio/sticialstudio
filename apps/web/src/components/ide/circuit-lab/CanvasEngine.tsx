@@ -10,6 +10,7 @@ import WireEngine from './WireEngine';
 
 interface CanvasInteractionProps {
   pins: WorldPinNode[];
+  visiblePinTargetIds: Set<string>;
   highlightedPinIds: Set<string>;
   validTargetPinId: string | null;
   mountPreview: MountPreviewState | null;
@@ -56,7 +57,12 @@ export default function CanvasEngine({
   } as const;
 
   return (
-    <div ref={containerRef} className="relative h-full w-full overflow-hidden rounded-[20px] bg-[#050a12] ring-1 ring-white/5" data-canvas-root="true">
+    <div
+      ref={containerRef}
+      className="relative h-full w-full overflow-hidden rounded-[20px] bg-[#050a12] ring-1 ring-white/5"
+      data-canvas-root="true"
+      data-testid="circuit-canvas-root"
+    >
       <style
         dangerouslySetInnerHTML={{
           __html: `
@@ -134,8 +140,9 @@ export default function CanvasEngine({
             />
             {recentlyConnectedPinId && scene.pinById[recentlyConnectedPinId] ? (
               <g>
-                <rect x={scene.pinById[recentlyConnectedPinId].position.x - 14} y={scene.pinById[recentlyConnectedPinId].position.y - 14} width={28} height={28} rx={5} fill="rgba(16,185,129,0.2)" className="animate-ping" />
-                <rect x={scene.pinById[recentlyConnectedPinId].position.x - 5} y={scene.pinById[recentlyConnectedPinId].position.y - 5} width={10} height={10} rx={2} fill="#10b981" stroke="rgba(240,253,250,0.9)" strokeWidth={1.2} />
+                <circle cx={scene.pinById[recentlyConnectedPinId].position.x} cy={scene.pinById[recentlyConnectedPinId].position.y} r={16} fill="rgba(16,185,129,0.16)" className="animate-ping" />
+                <circle cx={scene.pinById[recentlyConnectedPinId].position.x} cy={scene.pinById[recentlyConnectedPinId].position.y} r={9} fill="rgba(16,185,129,0.18)" />
+                <circle cx={scene.pinById[recentlyConnectedPinId].position.x} cy={scene.pinById[recentlyConnectedPinId].position.y} r={4.8} fill="#10b981" stroke="rgba(240,253,250,0.9)" strokeWidth={1.2} />
               </g>
             ) : null}
           </g>
@@ -148,6 +155,8 @@ export default function CanvasEngine({
     </div>
   );
 }
+
+
 
 
 

@@ -1,4 +1,4 @@
-﻿import type { ComponentData } from '@/contexts/CircuitContext';
+import type { ComponentData } from '@/contexts/CircuitContext';
 import {
   getBreadboardContinuityGroups,
   getBreadboardNodeEntries,
@@ -26,9 +26,9 @@ import type {
   MountValidationResult,
 } from '@/lib/wiring/mountingTypes';
 
-const PIN_SNAP_THRESHOLD = GRID_PITCH * 0.55;
-const REFERENCE_NODE_SEARCH_RADIUS = GRID_PITCH * 2.15;
-const PREVIEW_ACTIVATION_RADIUS = GRID_PITCH * 4.25;
+const PIN_SNAP_THRESHOLD = GRID_PITCH * 0.66;
+const REFERENCE_NODE_SEARCH_RADIUS = GRID_PITCH * 2.1;
+const PREVIEW_ACTIVATION_RADIUS = GRID_PITCH * 3.65;
 const MAX_REFERENCE_CANDIDATES = 24;
 
 interface CandidatePlacement {
@@ -709,3 +709,4 @@ export function createMountedPlacement(
     pinMap: preview.mappedPins,
   };
 }
+

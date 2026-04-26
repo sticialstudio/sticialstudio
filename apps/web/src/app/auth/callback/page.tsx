@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -75,7 +75,7 @@ export default function AuthCallbackPage() {
         }
 
         if (!cancelled) {
-          login(data.token, data.user, { redirectTo: "/dashboard" });
+          await login(data.token, data.user, { redirectTo: "/dashboard" });
         }
       } catch (err) {
         const message =
@@ -152,3 +152,4 @@ export default function AuthCallbackPage() {
     </AuthPageShell>
   );
 }
+

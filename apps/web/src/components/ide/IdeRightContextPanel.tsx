@@ -18,14 +18,6 @@ interface IdeRightContextPanelProps {
   onChangeView: (viewId: string) => void;
 }
 
-const toneClasses: Record<NonNullable<IdeRightContextView["tone"]>, string> = {
-  cyan: "bg-[var(--ui-color-primary)] text-white",
-  emerald: "bg-emerald-500 text-white",
-  amber: "bg-amber-500 text-slate-950",
-  violet: "bg-[var(--ui-color-primary)] text-white",
-  slate: "bg-[var(--ui-color-text)] text-[var(--ui-color-background)]",
-};
-
 export default function IdeRightContextPanel({
   title,
   subtitle,
@@ -61,8 +53,8 @@ export default function IdeRightContextPanel({
                 onClick={() => onChangeView(view.id)}
                 className={`rounded-[12px] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] transition-all ${
                   isActive
-                    ? toneClasses[view.tone || "slate"]
-                    : "ui-pill-surface text-[var(--ui-color-text-muted)] hover:bg-[color:var(--ui-surface-elevated)] hover:text-[var(--ui-color-text)]"
+                    ? 'ui-tab-active shadow-[0_14px_26px_-18px_rgba(0,0,0,0.32)]'
+                    : 'ui-pill-surface text-[var(--ui-color-text-muted)] hover:bg-[color:var(--ui-surface-elevated)] hover:text-[var(--ui-color-text-on-surface)]'
                 }`}
               >
                 {view.label}

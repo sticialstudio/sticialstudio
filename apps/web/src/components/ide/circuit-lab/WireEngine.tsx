@@ -1,8 +1,8 @@
-﻿"use client";
+"use client";
 
 import React from 'react';
 
-import type { WireDraftState, WorldWireNode } from './sceneTypes';
+import type { WireDraftState, WorldWireNode, WireHandleNode } from './sceneTypes';
 
 interface WireEngineProps {
   wires: WorldWireNode[];
@@ -32,6 +32,51 @@ function getSignalColor(signalState: WorldWireNode['signalState'], fallbackColor
   return fallbackColor;
 }
 
+function renderHandle(handle: WireHandleNode) {
+  if (handle.kind === 'segment') {
+    return (
+      <g key={handle.id} data-wire-id={handle.wireId} data-wire-handle-kind={handle.kind}>
+        <circle cx={handle.position.x} cy={handle.position.y} r={10.5} fill="rgba(34,211,238,0.12)" />
+        <circle cx={handle.position.x} cy={handle.position.y} r={5} fill="#22d3ee" stroke="#ecfeff" strokeWidth={1.2} />
+      </g>
+    );
+  }
+
+  if (handle.kind === 'endpoint') {
+    return (
+      <g key={handle.id} data-wire-id={handle.wireId} data-wire-handle-kind={handle.kind} data-wire-handle-endpoint={handle.endpoint}>
+        <rect x={handle.position.x - 7.5} y={handle.position.y - 7.5} width={15} height={15} rx={3.2} fill="rgba(34,211,238,0.14)" />
+        <rect x={handle.position.x - 4.3} y={handle.position.y - 4.3} width={8.6} height={8.6} rx={2.2} fill="#22d3ee" stroke="#ecfeff" strokeWidth={1.05} />
+      </g>
+    );
+  }
+
+  return (
+    <g key={handle.id} data-wire-id={handle.wireId} data-wire-handle-kind={handle.kind}>
+      <rect
+        x={handle.position.x - 6}
+        y={handle.position.y - 6}
+        width={12}
+        height={12}
+        rx={2.5}
+        transform={`rotate(45 ${handle.position.x} ${handle.position.y})`}
+        fill="rgba(34,211,238,0.12)"
+      />
+      <rect
+        x={handle.position.x - 3.2}
+        y={handle.position.y - 3.2}
+        width={6.4}
+        height={6.4}
+        rx={1.4}
+        transform={`rotate(45 ${handle.position.x} ${handle.position.y})`}
+        fill="#22d3ee"
+        stroke="#ecfeff"
+        strokeWidth={1}
+      />
+    </g>
+  );
+}
+
 function WireEngineImpl({
   wires,
   selectedWireId,
@@ -52,9 +97,9 @@ function WireEngineImpl({
       </defs>
 
       {wires.map((wire) => {
-        const path = pointsToPath(wire.points);
         const isSelected = selectedWireId === wire.id || wire.isSelected;
         const isHovered = hoveredWireId === wire.id || wire.isHovered;
+        const path = pointsToPath(wire.interactionPoints);
         const isRecentlyCreated = recentlyCreatedWireId === wire.id;
         const signalColor = getSignalColor(wire.signalState, wire.color);
         const strokeWidth = isSelected ? 4.2 : isHovered ? 3.6 : wire.isActive ? 3.2 : 2.8;
@@ -93,6 +138,10 @@ function WireEngineImpl({
 
             <path
               d={path}
+              data-wire-id={wire.id}
+              data-wire-role="main"
+              data-from-anchor-id={wire.fromAnchorId ?? ''}
+              data-to-anchor-id={wire.toAnchorId ?? ''}
               stroke={wire.signalState && wire.signalState !== 'FLOAT' ? signalColor : wire.color}
               strokeWidth={strokeWidth}
               fill="none"
@@ -102,40 +151,42 @@ function WireEngineImpl({
               className={isRecentlyCreated ? 'animate-wire-draw' : undefined}
             />
 
-            {isSelected ? (
-              <>
-                <rect x={wire.fromPoint.x - 4} y={wire.fromPoint.y - 4} width={8} height={8} rx={2} fill="#22d3ee" stroke="#ecfeff" strokeWidth={1} />
-                <rect x={wire.toPoint.x - 4} y={wire.toPoint.y - 4} width={8} height={8} rx={2} fill="#22d3ee" stroke="#ecfeff" strokeWidth={1} />
-              </>
-            ) : null}
-
-            {isSelected
-              ? wire.bendHandles.map((handle) => (
-                  <g key={handle.id}>
-                    {handle.kind === 'segment' ? (
-                      <>
-                        <circle cx={handle.position.x} cy={handle.position.y} r={10} fill="rgba(34,211,238,0.10)" />
-                        <circle cx={handle.position.x} cy={handle.position.y} r={4.5} fill="#22d3ee" stroke="#ecfeff" strokeWidth={1.2} />
-                      </>
-                    ) : (
-                      <>
-                        <rect x={handle.position.x - 7} y={handle.position.y - 7} width={14} height={14} rx={3} fill="rgba(34,211,238,0.12)" />
-                        <rect x={handle.position.x - 3.5} y={handle.position.y - 3.5} width={7} height={7} rx={1.6} fill="#22d3ee" stroke="#ecfeff" strokeWidth={1} />
-                      </>
-                    )}
-                  </g>
-                ))
-              : null}
+            {isSelected ? wire.bendHandles.map((handle) => renderHandle(handle)) : null}
           </g>
         );
       })}
 
       {wireDraft ? (
         <g>
-          <path d={pointsToPath(wireDraft.points)} stroke="#22d3ee" strokeWidth={7} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={0.12} filter="url(#wire-glow-overlay)" />
-          <path d={pointsToPath(wireDraft.points)} stroke="#22d3ee" strokeWidth={3.1} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8 6" opacity={0.96} className="animate-wire-preview" />
-          <rect x={wireDraft.fromPoint.x - 4} y={wireDraft.fromPoint.y - 4} width={8} height={8} rx={2} fill="#22d3ee" opacity={0.98} />
-          <rect x={wireDraft.previewPoint.x - 4.8} y={wireDraft.previewPoint.y - 4.8} width={9.6} height={9.6} rx={2} fill={wireDraft.hoveredTargetPinId ? '#22c55e' : '#22d3ee'} opacity={0.98} />
+          <path d={pointsToPath(wireDraft.points)} stroke="#22d3ee" strokeWidth={wireDraft.targetLockState === 'locked' ? 8.5 : 8} fill="none" strokeLinecap="round" strokeLinejoin="round" opacity={wireDraft.crowdedTargets ? 0.18 : 0.16} filter="url(#wire-glow-overlay)" />
+          <path d={pointsToPath(wireDraft.points)} stroke="#22d3ee" strokeWidth={wireDraft.targetLockState === 'locked' ? 3.7 : 3.4} fill="none" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="8 6" opacity={0.98} className="animate-wire-preview" />
+          <g>
+            <circle cx={wireDraft.fromPoint.x} cy={wireDraft.fromPoint.y} r={9} fill="rgba(34,211,238,0.14)" />
+            <circle cx={wireDraft.fromPoint.x} cy={wireDraft.fromPoint.y} r={4.6} fill="#22d3ee" stroke="#ecfeff" strokeWidth={1.1} />
+          </g>
+          <g>
+            {wireDraft.hoveredTargetPinId ? (
+              <circle
+                cx={wireDraft.previewPoint.x}
+                cy={wireDraft.previewPoint.y}
+                r={wireDraft.targetLockState === 'locked' ? 13 : 11}
+                fill="rgba(34,197,94,0.18)"
+                className={wireDraft.targetLockState === 'locked' ? 'animate-ping' : undefined}
+              />
+            ) : null}
+            {wireDraft.hoveredTargetPinId && wireDraft.targetLockState === 'locked' ? (
+              <circle cx={wireDraft.previewPoint.x} cy={wireDraft.previewPoint.y} r={8.6} fill="rgba(34,197,94,0.16)" />
+            ) : null}
+            <circle
+              cx={wireDraft.previewPoint.x}
+              cy={wireDraft.previewPoint.y}
+              r={wireDraft.hoveredTargetPinId ? (wireDraft.targetLockState === 'locked' ? 6.8 : 6) : 5}
+              fill={wireDraft.hoveredTargetPinId ? '#22c55e' : '#22d3ee'}
+              stroke="#ecfeff"
+              strokeWidth={1.1}
+              opacity={0.98}
+            />
+          </g>
         </g>
       ) : null}
     </>

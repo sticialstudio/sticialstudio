@@ -29,26 +29,12 @@ const Hole = ({ x, y }: { x: number; y: number }) => (
 );
 
 const RailSegment = ({ y, color }: { y: number; color: string }) => {
-  const { startX, holeSpacingX, railSplitAfterColumn, columns, width } = BREADBOARD_CONFIG;
-  const leftEndX = startX + (railSplitAfterColumn - 1) * holeSpacingX + holeSpacingX * 0.58;
-  const rightStartX = startX + railSplitAfterColumn * holeSpacingX - holeSpacingX * 0.58;
+  const { startX, width } = BREADBOARD_CONFIG;
   const outerPadding = Math.min(startX - 8, 18.2);
   const rightEndX = width - outerPadding;
 
   return (
-    <g>
-      <line x1={outerPadding} y1={y} x2={leftEndX} y2={y} stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <line x1={rightStartX} y1={y} x2={rightEndX} y2={y} stroke={color} strokeWidth="2" strokeLinecap="round" />
-      <rect
-        x={leftEndX + 2}
-        y={y - 3.1}
-        width={Math.max(10, rightStartX - leftEndX - 4)}
-        height="6.2"
-        rx="3.1"
-        fill="#e2e8f0"
-        opacity="0.92"
-      />
-    </g>
+    <line x1={outerPadding} y1={y} x2={rightEndX} y2={y} stroke={color} strokeWidth="2" strokeLinecap="round" />
   );
 };
 
@@ -100,31 +86,31 @@ export const BreadboardVisual = ({
           return (
             <g key={anchorId}>
               <rect
-                x={anchor.x - 6.1}
-                y={anchor.y - 6.1}
-                width={12.2}
-                height={12.2}
-                rx={2.6}
+                x={anchor.x - 5.1}
+                y={anchor.y - 5.1}
+                width={10.2}
+                height={10.2}
+                rx={2.2}
                 fill={accent}
                 opacity={isHovered || isWireTarget ? 0.16 : 0}
                 className="transition-opacity duration-150"
               />
               <rect
-                x={anchor.x - 2.9}
-                y={anchor.y - 2.9}
-                width={5.8}
-                height={5.8}
-                rx={1.4}
+                x={anchor.x - 2.4}
+                y={anchor.y - 2.4}
+                width={4.8}
+                height={4.8}
+                rx={1.2}
                 fill={accent}
                 opacity={isHovered || isWireTarget ? 0.98 : 0}
                 className="transition-opacity duration-150"
               />
               <rect
-                x={anchor.x - 7}
-                y={anchor.y - 7}
-                width={14}
-                height={14}
-                rx={3}
+                x={anchor.x - 5.5}
+                y={anchor.y - 5.5}
+                width={11}
+                height={11}
+                rx={2.5}
                 fill="transparent"
                 style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                 onMouseEnter={() => onAnchorMouseEnter?.(anchorId)}
@@ -142,7 +128,7 @@ export const BreadboardVisual = ({
 };
 
 export const BreadboardSVG = ({ x = 0, y = 0 }: { x?: number; y?: number }) => {
-  const { width, columns, holeSpacingX, holeSpacingY, startX, startY, railSplitAfterColumn } = BREADBOARD_CONFIG;
+  const { width, columns, holeSpacingX, holeSpacingY, startX, startY } = BREADBOARD_CONFIG;
 
   const renderTerminalColumn = (cx: number, cy: number) => (
     <g>
@@ -161,7 +147,6 @@ export const BreadboardSVG = ({ x = 0, y = 0 }: { x?: number; y?: number }) => {
     </g>
   );
 
-  const splitMarkerX = startX + (railSplitAfterColumn - 0.5) * holeSpacingX;
 
   return (
     <g transform={`translate(${x}, ${y})`}>
@@ -178,18 +163,18 @@ export const BreadboardSVG = ({ x = 0, y = 0 }: { x?: number; y?: number }) => {
       <path d="M 0 35 L 2 40 L 2 111 L 0 116 Z" fill="#f1f5f9" />
       <path d={`M ${width} 35 L ${width - 2} 40 L ${width - 2} 111 L ${width} 116 Z`} fill="#f1f5f9" />
 
-      <text x="12" y={startY + 2.5} fill="#ef4444" fontSize="10" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">+</text>
-      <text x="12" y={startY + holeSpacingY + 2.5} fill="#3b82f6" fontSize="12" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">-</text>
-      <text x={width - 12} y={startY + 2.5} fill="#ef4444" fontSize="10" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">+</text>
-      <text x={width - 12} y={startY + holeSpacingY + 2.5} fill="#3b82f6" fontSize="12" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">-</text>
+      <text x="12" y={startY + 2.5} fill="#3b82f6" fontSize="12" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">-</text>
+      <text x="12" y={startY + holeSpacingY + 2.5} fill="#ef4444" fontSize="10" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">+</text>
+      <text x={width - 12} y={startY + 2.5} fill="#3b82f6" fontSize="12" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">-</text>
+      <text x={width - 12} y={startY + holeSpacingY + 2.5} fill="#ef4444" fontSize="10" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">+</text>
 
       <text x="12" y={startY + 16 * holeSpacingY + 2.5} fill="#ef4444" fontSize="10" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">+</text>
       <text x="12" y={startY + 17 * holeSpacingY + 2.5} fill="#3b82f6" fontSize="12" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">-</text>
       <text x={width - 12} y={startY + 16 * holeSpacingY + 2.5} fill="#ef4444" fontSize="10" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">+</text>
       <text x={width - 12} y={startY + 17 * holeSpacingY + 2.5} fill="#3b82f6" fontSize="12" fontFamily="sans-serif" fontWeight="bold" textAnchor="middle">-</text>
 
-      {railRow(startY, '#ef4444', -6)}
-      {railRow(startY + holeSpacingY, '#3b82f6', 6)}
+      {railRow(startY, '#3b82f6', -6)}
+      {railRow(startY + holeSpacingY, '#ef4444', 6)}
 
       <g>
         {Array.from({ length: columns }).map((_, col) => {
@@ -228,8 +213,6 @@ export const BreadboardSVG = ({ x = 0, y = 0 }: { x?: number; y?: number }) => {
       {railRow(startY + 16 * holeSpacingY, '#ef4444', -6)}
       {railRow(startY + 17 * holeSpacingY, '#3b82f6', 6)}
 
-      <line x1={splitMarkerX} y1={startY - 8} x2={splitMarkerX} y2={startY + 2 * holeSpacingY + 8} stroke="#94a3b8" strokeDasharray="2 3" strokeWidth="1" opacity="0.7" />
-      <line x1={splitMarkerX} y1={startY + 16 * holeSpacingY - 8} x2={splitMarkerX} y2={startY + 18 * holeSpacingY + 8} stroke="#94a3b8" strokeDasharray="2 3" strokeWidth="1" opacity="0.7" />
 
       <g fill="#94a3b8" fontSize="6.5" fontFamily="monospace" fontWeight="bold">
         {[1, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60].map((num) => (

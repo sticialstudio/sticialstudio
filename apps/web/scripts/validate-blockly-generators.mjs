@@ -65,13 +65,22 @@ for (const { source } of blockSources) {
 
 const missingExtensionRegistrations = [...usedExtensions].filter((name) => !registeredExtensions.has(name));
 const missingExtensionBootstrapCalls = [];
-const requiredArduinoGeneratorBlocks = ['arduino_tft_init', 'arduino_tft_clear', 'arduino_tft_print'];
+const requiredArduinoGeneratorBlocks = ['arduino_tft_init', 'arduino_tft_clear', 'arduino_tft_print', 'arduino_board_led', 'arduino_led_set', 'arduino_tone_pin', 'arduino_tone_pin_duration', 'arduino_no_tone_pin'];
 const missingRequiredArduinoGenerators = requiredArduinoGeneratorBlocks.filter((type) => {
   const directHandler = new RegExp(`forBlock\\['${type}'\\]`).test(generatorSource);
   const overrideHandler = new RegExp(`\\b${type}\\(block: Blockly\\.Block\\)`).test(generatorSource);
   return !directHandler && !overrideHandler;
 });
 
+
+const requiredMicroPythonGeneratorBlocks = ['arduino_board_led', 'arduino_led_set', 'arduino_tone_pin', 'arduino_tone_pin_duration', 'arduino_no_tone_pin'];
+const micropythonSectionStart = generatorSource.indexOf('export const micropythonGenerator');
+const micropythonSection = micropythonSectionStart === -1 ? '' : generatorSource.slice(micropythonSectionStart);
+const missingRequiredMicroPythonGenerators = requiredMicroPythonGeneratorBlocks.filter((type) => {
+  const directHandler = new RegExp(`forBlock\\['${type}'\\]`).test(micropythonSection);
+  const overrideHandler = new RegExp(`\\b${type}\\(block: Blockly\\.Block\\)`).test(micropythonSection);
+  return !directHandler && !overrideHandler;
+});
 
 const displayExtensions = [...(extensionUsageByFile.get('display.ts') ?? [])];
 if (displayExtensions.length > 0 && !blocksIndexSource.includes('registerDisplayExtensions();')) {
@@ -97,7 +106,11 @@ if (missingExtensionBootstrapCalls.length > 0) {
   failures.push(`Missing extension bootstrap calls: ${missingExtensionBootstrapCalls.join(', ')}`);
 }
 if (missingRequiredArduinoGenerators.length > 0) {
-  failures.push(`Missing required Arduino display generators (${missingRequiredArduinoGenerators.length}): ${missingRequiredArduinoGenerators.join(', ')}`);
+  failures.push(`Missing required Arduino generators (${missingRequiredArduinoGenerators.length}): ${missingRequiredArduinoGenerators.join(', ')}`);
+}
+
+if (missingRequiredMicroPythonGenerators.length > 0) {
+  failures.push(`Missing required MicroPython generators (${missingRequiredMicroPythonGenerators.length}): ${missingRequiredMicroPythonGenerators.join(', ')}`);
 }
 
 if (failures.length > 0) {

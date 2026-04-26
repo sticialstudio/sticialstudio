@@ -2,10 +2,11 @@
 
 import React, { createContext, useContext, ReactNode } from 'react';
 import { useCircuitStore } from '@/stores/circuitStore';
+import { useSimulationStore, type CircuitSimulationState } from '@/stores/simulationStore';
+export type { CircuitSimulationState } from '@/stores/simulationStore';
 import type { CodingCircuitSnapshot } from '@/lib/blockly/circuitAwareness';
 import type { CircuitNetlist, ComponentPinMapping } from '@/lib/wiring/NetlistEngine';
 import type { MountedPlacement } from '@/lib/wiring/mountingTypes';
-import type { LogicalNetState, PinElectricalState, SimulationBusEvent, SimulationCapabilities, SimulationPinSnapshot, SimulationTraceEvent } from '@/lib/simulator/simulationTypes';
 
 export interface ComponentData {
   id: string;
@@ -33,22 +34,6 @@ export interface NetData {
 export interface CircuitData {
   components: ComponentData[];
   nets: NetData[];
-}
-
-export interface CircuitSimulationState {
-  running: boolean;
-  ready: boolean;
-  error: string | null;
-  digitalPins: Record<string, boolean>;
-  pulseWidths: Record<string, number>;
-  analogPins: Record<string, number>;
-  netStates: Record<string, LogicalNetState>;
-  electricalPins: Record<string, PinElectricalState>;
-  pinDetails: Record<string, SimulationPinSnapshot>;
-  busEvents: SimulationBusEvent[];
-  traceEvents: SimulationTraceEvent[];
-  warnings: string[];
-  capabilities: SimulationCapabilities | null;
 }
 
 interface CircuitContextType {
@@ -88,10 +73,10 @@ export const CircuitProvider = ({ children }: { children: ReactNode }) => {
   const netlist = useCircuitStore((state) => state.netlist);
   const resolvedConnections = useCircuitStore((state) => state.resolvedConnections);
   const codingSnapshot = useCircuitStore((state) => state.codingSnapshot);
-  const simulationState = useCircuitStore((state) => state.simulationState);
+  const selectedComponentId = useCircuitStore((state) => state.selectedComponentId);
   const canUndo = useCircuitStore((state) => state.past.length > 0);
   const canRedo = useCircuitStore((state) => state.future.length > 0);
-  const selectedComponentId = useCircuitStore((state) => state.selectedComponentId);
+  const simulationState = useSimulationStore((state) => state.simulationState);
 
   const {
     addComponent,
@@ -104,12 +89,11 @@ export const CircuitProvider = ({ children }: { children: ReactNode }) => {
     updateNet,
     setCircuitData,
     clearCircuit,
-    setSimulationState,
-    resetSimulationState,
     selectComponent,
     undo,
     redo,
   } = useCircuitStore.getState();
+  const { setSimulationState, resetSimulationState } = useSimulationStore.getState();
 
   return (
     <CircuitContext.Provider
@@ -151,6 +135,4 @@ export const useCircuit = () => {
   }
   return context;
 };
-
-
 

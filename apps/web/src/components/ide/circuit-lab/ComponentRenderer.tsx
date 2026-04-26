@@ -72,8 +72,8 @@ export default function ComponentRenderer({
   isConnected = true,
   isDragging = false,
 }: ComponentRendererProps) {
-  const { component, definition, rotation, size, isPowered } = node;
-  const state = component.state || {};
+  const { component, definition, rotation, size, isPowered, visualState } = node;
+  const state = visualState;
   const showFrame = isHovered || isSelected || isDragging;
   const showUnwiredBadge = !isConnected && definition.pins.length > 0;
   const usesNativeFrame = definition.id !== 'BREADBOARD';
@@ -196,6 +196,9 @@ export default function ComponentRenderer({
         willChange: 'transform,left,top',
       }}
       data-component-id={component.id}
+      data-component-type={definition.id}
+      data-mounted={String(Boolean(component.mountedPlacement?.mounted))}
+      data-selected={String(isSelected)}
       aria-label={`Component ${definition.name}`}
     >
       <div

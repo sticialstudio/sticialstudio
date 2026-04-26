@@ -8,7 +8,7 @@ export const BREADBOARD_CONFIG = {
   holeSpacingY: 9.6,
   startX: 28.8,
   startY: 19.2,
-  railSplitAfterColumn: 31,
+  railSplitAfterColumn: null as number | null,
 } as const;
 
 export interface BreadboardAnchor {
@@ -75,12 +75,8 @@ export function getBreadboardZoneForEntry(entry: Pick<BreadboardNodeEntry, 'kind
   return TOP_STRIP_ROWS.includes(entry.row as (typeof TOP_STRIP_ROWS)[number]) ? 'strip-top' : 'strip-bottom';
 }
 
-function getRailSegment(column: number): BreadboardSegment {
-  return column <= BREADBOARD_CONFIG.railSplitAfterColumn ? 'left' : 'right';
-}
-
 function toRailGroupId(rowKey: string, segment: BreadboardSegment) {
-  return `GROUP_${rowKey}_${segment.toUpperCase()}`;
+  return segment === 'full' ? `GROUP_${rowKey}` : `GROUP_${rowKey}_${segment.toUpperCase()}`;
 }
 
 function toStripGroupId(zone: BreadboardZone, column: number) {
@@ -157,7 +153,7 @@ function buildBreadboardData() {
 
   for (let col = 1; col <= columns; col += 1) {
     const localX = startX + (col - 1) * holeSpacingX;
-    const railSegment = getRailSegment(col);
+    const railSegment: BreadboardSegment = 'full';
 
     const railDefinitions = [
       {

@@ -1,14 +1,12 @@
-const express = require('express');
+﻿const express = require('express');
 const { execFile } = require('child_process');
-const path = require('path');
 const util = require('util');
 const authMiddleware = require('../middleware/authMiddleware');
+const { getArduinoCliConfig } = require('../lib/arduinoCli');
+const { logApiEvent, sendApiError, serializeError } = require('../lib/telemetry');
 
 const execFileAsync = util.promisify(execFile);
 const router = express.Router();
-
-const cliExt = process.platform === 'win32' ? '.exe' : '';
-const cliPath = path.join(__dirname, '..', 'bin', `arduino-cli${cliExt}`);
 const MAX_BUFFER_BYTES = 12 * 1024 * 1024;
 
 function cleanText(value) {
@@ -58,7 +56,27 @@ function normalizeSearchLibrary(entry, installedByName) {
   };
 }
 
-async function runArduinoCliJson(args) {
+function ensureArduinoCli(req, res, next) {
+  const cli = getArduinoCliConfig();
+  if (!cli.available || !cli.path) {
+    sendApiError(res, 503, {
+      message:
+        cli.reason ||
+        'Arduino library management is not available on this server. Configure ARDUINO_CLI_PATH to enable it.',
+      code: 'LIBRARIES_ARDUINO_UNAVAILABLE',
+      degraded: true,
+      capability: 'arduino-cli',
+      requestId: req.requestId,
+      details: { source: cli.source || null },
+    });
+    return;
+  }
+
+  req.arduinoCliPath = cli.path;
+  next();
+}
+
+async function runArduinoCliJson(cliPath, args) {
   try {
     const { stdout, stderr } = await execFileAsync(cliPath, args, { maxBuffer: MAX_BUFFER_BYTES });
     const parsed = stdout && stdout.trim().length > 0 ? JSON.parse(stdout) : {};
@@ -77,8 +95,8 @@ async function runArduinoCliJson(args) {
   }
 }
 
-async function listInstalledArduinoLibraries() {
-  const { data } = await runArduinoCliJson(['lib', 'list', '--format', 'json']);
+async function listInstalledArduinoLibraries(cliPath) {
+  const { data } = await runArduinoCliJson(cliPath, ['lib', 'list', '--format', 'json']);
   const libraries = Array.isArray(data?.installed_libraries)
     ? data.installed_libraries.map(normalizeInstalledLibrary)
     : [];
@@ -89,76 +107,138 @@ async function listInstalledArduinoLibraries() {
   };
 }
 
-router.get('/arduino/installed', authMiddleware, async (_req, res) => {
+router.use(authMiddleware);
+router.use(ensureArduinoCli);
+
+router.get('/arduino/installed', async (req, res) => {
   try {
-    const { libraries, warnings } = await listInstalledArduinoLibraries();
-    res.json({ success: true, libraries, warnings });
+    const { libraries, warnings } = await listInstalledArduinoLibraries(req.arduinoCliPath);
+    res.json({ success: true, libraries, warnings, requestId: req.requestId, capability: 'arduino-cli' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message || 'Failed to load installed Arduino libraries.' });
+    logApiEvent('error', 'Failed to load installed Arduino libraries', {
+      requestId: req.requestId,
+      path: req.originalUrl,
+      error: serializeError(error),
+    });
+    sendApiError(res, 500, {
+      message: error.message || 'Failed to load installed Arduino libraries.',
+      code: 'LIBRARIES_ARDUINO_LIST_FAILED',
+      requestId: req.requestId,
+      capability: 'arduino-cli',
+    });
   }
 });
 
-router.get('/arduino/search', authMiddleware, async (req, res) => {
+router.get('/arduino/search', async (req, res) => {
   const query = typeof req.query.q === 'string' ? req.query.q.trim() : '';
   const limitValue = Number(req.query.limit);
   const limit = Number.isFinite(limitValue) ? Math.max(1, Math.min(limitValue, 24)) : 18;
 
   try {
-    const installed = await listInstalledArduinoLibraries();
+    const installed = await listInstalledArduinoLibraries(req.arduinoCliPath);
 
     if (!query) {
-      res.json({ success: true, libraries: installed.libraries.slice(0, limit), warnings: installed.warnings });
+      res.json({
+        success: true,
+        libraries: installed.libraries.slice(0, limit),
+        warnings: installed.warnings,
+        requestId: req.requestId,
+        capability: 'arduino-cli',
+      });
       return;
     }
 
-    const installedByName = new Map(
-      installed.libraries.map((library) => [library.name.toLowerCase(), library])
-    );
-    const { data } = await runArduinoCliJson(['lib', 'search', query, '--format', 'json']);
+    const installedByName = new Map(installed.libraries.map((library) => [library.name.toLowerCase(), library]));
+    const { data } = await runArduinoCliJson(req.arduinoCliPath, ['lib', 'search', query, '--format', 'json']);
     const libraries = Array.isArray(data?.libraries)
       ? data.libraries.map((entry) => normalizeSearchLibrary(entry, installedByName)).slice(0, limit)
       : [];
 
-    res.json({ success: true, libraries, warnings: installed.warnings });
+    res.json({ success: true, libraries, warnings: installed.warnings, requestId: req.requestId, capability: 'arduino-cli' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message || 'Failed to search Arduino libraries.' });
+    logApiEvent('error', 'Failed to search Arduino libraries', {
+      requestId: req.requestId,
+      path: req.originalUrl,
+      query,
+      error: serializeError(error),
+    });
+    sendApiError(res, 500, {
+      message: error.message || 'Failed to search Arduino libraries.',
+      code: 'LIBRARIES_ARDUINO_SEARCH_FAILED',
+      requestId: req.requestId,
+      capability: 'arduino-cli',
+    });
   }
 });
 
-router.post('/arduino/install', authMiddleware, async (req, res) => {
+router.post('/arduino/install', async (req, res) => {
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
   const version = typeof req.body?.version === 'string' ? req.body.version.trim() : '';
 
   if (!name) {
-    res.status(400).json({ success: false, error: 'Library name is required.' });
+    sendApiError(res, 400, {
+      message: 'Library name is required.',
+      code: 'LIBRARIES_ARDUINO_INSTALL_NAME_MISSING',
+      requestId: req.requestId,
+      capability: 'arduino-cli',
+    });
     return;
   }
 
   const spec = version ? `${name}@${version}` : name;
 
   try {
-    await runArduinoCliJson(['lib', 'install', '--json', spec]);
-    const { libraries, warnings } = await listInstalledArduinoLibraries();
-    res.json({ success: true, libraries, warnings });
+    await runArduinoCliJson(req.arduinoCliPath, ['lib', 'install', '--json', spec]);
+    const { libraries, warnings } = await listInstalledArduinoLibraries(req.arduinoCliPath);
+    res.json({ success: true, libraries, warnings, requestId: req.requestId, capability: 'arduino-cli' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message || `Failed to install ${spec}.` });
+    logApiEvent('error', 'Failed to install Arduino library', {
+      requestId: req.requestId,
+      path: req.originalUrl,
+      spec,
+      error: serializeError(error),
+    });
+    sendApiError(res, 500, {
+      message: error.message || `Failed to install ${spec}.`,
+      code: 'LIBRARIES_ARDUINO_INSTALL_FAILED',
+      requestId: req.requestId,
+      capability: 'arduino-cli',
+      details: { spec },
+    });
   }
 });
 
-router.post('/arduino/uninstall', authMiddleware, async (req, res) => {
+router.post('/arduino/uninstall', async (req, res) => {
   const name = typeof req.body?.name === 'string' ? req.body.name.trim() : '';
 
   if (!name) {
-    res.status(400).json({ success: false, error: 'Library name is required.' });
+    sendApiError(res, 400, {
+      message: 'Library name is required.',
+      code: 'LIBRARIES_ARDUINO_UNINSTALL_NAME_MISSING',
+      requestId: req.requestId,
+      capability: 'arduino-cli',
+    });
     return;
   }
 
   try {
-    await runArduinoCliJson(['lib', 'uninstall', '--json', name]);
-    const { libraries, warnings } = await listInstalledArduinoLibraries();
-    res.json({ success: true, libraries, warnings });
+    await runArduinoCliJson(req.arduinoCliPath, ['lib', 'uninstall', '--json', name]);
+    const { libraries, warnings } = await listInstalledArduinoLibraries(req.arduinoCliPath);
+    res.json({ success: true, libraries, warnings, requestId: req.requestId, capability: 'arduino-cli' });
   } catch (error) {
-    res.status(500).json({ success: false, error: error.message || `Failed to uninstall ${name}.` });
+    logApiEvent('error', 'Failed to uninstall Arduino library', {
+      requestId: req.requestId,
+      path: req.originalUrl,
+      name,
+      error: serializeError(error),
+    });
+    sendApiError(res, 500, {
+      message: error.message || `Failed to uninstall ${name}.`,
+      code: 'LIBRARIES_ARDUINO_UNINSTALL_FAILED',
+      requestId: req.requestId,
+      capability: 'arduino-cli',
+      details: { name },
+    });
   }
 });
 
