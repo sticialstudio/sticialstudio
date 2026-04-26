@@ -140,7 +140,18 @@ router.get('/', async (req, res) => {
         const userId = req.user.id;
         const projects = await prisma.project.findMany({
             where: { userId: userId },
-            include: { files: true },
+            select: {
+                id: true,
+                name: true,
+                description: true,
+                board: true,
+                codingMode: true,
+                language: true,
+                generator: true,
+                environment: true,
+                createdAt: true,
+                updatedAt: true,
+            },
             orderBy: { updatedAt: 'desc' }
         });
         res.json(projects);
@@ -354,3 +365,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+
