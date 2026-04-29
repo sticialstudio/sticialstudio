@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const { execFile } = require('child_process');
 const util = require('util');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -96,7 +96,7 @@ async function runArduinoCliJson(cliPath, args) {
 }
 
 async function listInstalledArduinoLibraries(cliPath) {
-  const { data } = await runArduinoCliJson(cliPath, ['lib', 'list', '--format', 'json']);
+  const { data } = await runArduinoCliJson(cliPath, ['lib', 'list', '--json']);
   const libraries = Array.isArray(data?.installed_libraries)
     ? data.installed_libraries.map(normalizeInstalledLibrary)
     : [];
@@ -149,7 +149,7 @@ router.get('/arduino/search', async (req, res) => {
     }
 
     const installedByName = new Map(installed.libraries.map((library) => [library.name.toLowerCase(), library]));
-    const { data } = await runArduinoCliJson(req.arduinoCliPath, ['lib', 'search', query, '--format', 'json']);
+    const { data } = await runArduinoCliJson(req.arduinoCliPath, ['lib', 'search', query, '--json']);
     const libraries = Array.isArray(data?.libraries)
       ? data.libraries.map((entry) => normalizeSearchLibrary(entry, installedByName)).slice(0, limit)
       : [];
@@ -243,3 +243,4 @@ router.post('/arduino/uninstall', async (req, res) => {
 });
 
 module.exports = router;
+
