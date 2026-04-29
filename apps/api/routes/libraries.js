@@ -1,4 +1,4 @@
-﻿const express = require('express');
+const express = require('express');
 const { execFile } = require('child_process');
 const util = require('util');
 const authMiddleware = require('../middleware/authMiddleware');
@@ -8,6 +8,8 @@ const { logApiEvent, sendApiError, serializeError } = require('../lib/telemetry'
 const execFileAsync = util.promisify(execFile);
 const router = express.Router();
 const MAX_BUFFER_BYTES = 12 * 1024 * 1024;
+const INSTALLED_LIBRARIES_CACHE_TTL_MS = 30 * 1000;
+const installedLibrariesCache = new Map();
 
 function cleanText(value) {
   if (typeof value !== 'string') return '';
@@ -95,7 +97,7 @@ async function runArduinoCliJson(cliPath, args) {
   }
 }
 
-async function listInstalledArduinoLibraries(cliPath) {
+async function fetchInstalledArduinoLibraries(cliPath) {
   const { data } = await runArduinoCliJson(cliPath, ['lib', 'list', '--json']);
   const libraries = Array.isArray(data?.installed_libraries)
     ? data.installed_libraries.map(normalizeInstalledLibrary)
@@ -105,6 +107,49 @@ async function listInstalledArduinoLibraries(cliPath) {
     libraries,
     warnings: Array.isArray(data?.warnings) ? data.warnings : [],
   };
+}
+
+async function listInstalledArduinoLibraries(cliPath, options = {}) {
+  const { forceRefresh = false } = options;
+  const now = Date.now();
+  const cached = installedLibrariesCache.get(cliPath);
+
+  if (!forceRefresh && cached?.value && cached.expiresAt > now) {
+    return cached.value;
+  }
+
+  if (!forceRefresh && cached?.promise) {
+    return cached.promise;
+  }
+
+  const promise = fetchInstalledArduinoLibraries(cliPath)
+    .then((value) => {
+      installedLibrariesCache.set(cliPath, {
+        value,
+        expiresAt: Date.now() + INSTALLED_LIBRARIES_CACHE_TTL_MS,
+        promise: null,
+      });
+      return value;
+    })
+    .catch((error) => {
+      const active = installedLibrariesCache.get(cliPath);
+      if (active?.promise === promise) {
+        installedLibrariesCache.delete(cliPath);
+      }
+      throw error;
+    });
+
+  installedLibrariesCache.set(cliPath, {
+    value: cached?.value || null,
+    expiresAt: cached?.expiresAt || 0,
+    promise,
+  });
+
+  return promise;
+}
+
+function invalidateInstalledLibrariesCache(cliPath) {
+  installedLibrariesCache.delete(cliPath);
 }
 
 router.use(authMiddleware);
@@ -135,9 +180,8 @@ router.get('/arduino/search', async (req, res) => {
   const limit = Number.isFinite(limitValue) ? Math.max(1, Math.min(limitValue, 24)) : 18;
 
   try {
-    const installed = await listInstalledArduinoLibraries(req.arduinoCliPath);
-
     if (!query) {
+      const installed = await listInstalledArduinoLibraries(req.arduinoCliPath);
       res.json({
         success: true,
         libraries: installed.libraries.slice(0, limit),
@@ -148,10 +192,14 @@ router.get('/arduino/search', async (req, res) => {
       return;
     }
 
+    const [installed, searchResult] = await Promise.all([
+      listInstalledArduinoLibraries(req.arduinoCliPath),
+      runArduinoCliJson(req.arduinoCliPath, ['lib', 'search', query, '--json']),
+    ]);
+
     const installedByName = new Map(installed.libraries.map((library) => [library.name.toLowerCase(), library]));
-    const { data } = await runArduinoCliJson(req.arduinoCliPath, ['lib', 'search', query, '--json']);
-    const libraries = Array.isArray(data?.libraries)
-      ? data.libraries.map((entry) => normalizeSearchLibrary(entry, installedByName)).slice(0, limit)
+    const libraries = Array.isArray(searchResult.data?.libraries)
+      ? searchResult.data.libraries.map((entry) => normalizeSearchLibrary(entry, installedByName)).slice(0, limit)
       : [];
 
     res.json({ success: true, libraries, warnings: installed.warnings, requestId: req.requestId, capability: 'arduino-cli' });
@@ -189,7 +237,8 @@ router.post('/arduino/install', async (req, res) => {
 
   try {
     await runArduinoCliJson(req.arduinoCliPath, ['lib', 'install', '--json', spec]);
-    const { libraries, warnings } = await listInstalledArduinoLibraries(req.arduinoCliPath);
+    invalidateInstalledLibrariesCache(req.arduinoCliPath);
+    const { libraries, warnings } = await listInstalledArduinoLibraries(req.arduinoCliPath, { forceRefresh: true });
     res.json({ success: true, libraries, warnings, requestId: req.requestId, capability: 'arduino-cli' });
   } catch (error) {
     logApiEvent('error', 'Failed to install Arduino library', {
@@ -223,7 +272,8 @@ router.post('/arduino/uninstall', async (req, res) => {
 
   try {
     await runArduinoCliJson(req.arduinoCliPath, ['lib', 'uninstall', '--json', name]);
-    const { libraries, warnings } = await listInstalledArduinoLibraries(req.arduinoCliPath);
+    invalidateInstalledLibrariesCache(req.arduinoCliPath);
+    const { libraries, warnings } = await listInstalledArduinoLibraries(req.arduinoCliPath, { forceRefresh: true });
     res.json({ success: true, libraries, warnings, requestId: req.requestId, capability: 'arduino-cli' });
   } catch (error) {
     logApiEvent('error', 'Failed to uninstall Arduino library', {
@@ -243,4 +293,3 @@ router.post('/arduino/uninstall', async (req, res) => {
 });
 
 module.exports = router;
-
